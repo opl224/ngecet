@@ -34,14 +34,14 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
                        "items-start" 
                      )}>
       {!isCurrentUser && sender && (
-        <Avatar className="h-8 w-8 self-start mr-2 flex-shrink-0"> {/* Changed self-end to self-start */}
+        <Avatar className="h-8 w-8 self-start mr-2 flex-shrink-0">
           <AvatarImage src={sender.avatarUrl} alt={sender.name} data-ai-hint="avatar person" />
           <AvatarFallback>{sender.name.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
       )}
 
       <div className={cn(
-          "flex items-center", // This parent already has items-center which might not be what we want for overall bubble vs actions alignment. The main div's items-start is more critical.
+          "flex items-center", 
           isCurrentUser ? "flex-row-reverse" : "flex-row"
         )}
       >
@@ -68,11 +68,12 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
           </div>
         </div>
 
-        {isCurrentUser && (
-          <div className={cn(
-            "opacity-0 group-hover/message:opacity-100 transition-opacity duration-150 flex flex-col items-center", // Ensures dropdown trigger is part of the flex alignment
-            isCurrentUser ? "ml-1.5" : "mr-1.5" 
-          )}>
+        {/* Action Icons Container */}
+        <div className={cn(
+          "opacity-0 group-hover/message:opacity-100 transition-opacity duration-150 flex items-center",
+          isCurrentUser ? "ml-1.5" : "mr-1.5" 
+        )}>
+          {isCurrentUser ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -95,8 +96,18 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-        )}
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 bg-background/50 hover:bg-accent text-muted-foreground hover:text-accent-foreground rounded-full p-1 shadow-sm"
+              aria-label="Reply to message"
+              onClick={handleReply}
+            >
+              <CornerUpLeft className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
        <style jsx global>{`
         @keyframes fadeIn {
@@ -112,4 +123,3 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
 };
 
 export default MessageBubble;
-
