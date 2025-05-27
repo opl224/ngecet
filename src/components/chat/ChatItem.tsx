@@ -29,12 +29,15 @@ export function ChatItem({
 }: ChatItemProps) {
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
-      const otherParticipant = chat.participants.find(p => p.id !== currentUser.id);
-      const nameForDisplay = otherParticipant?.name || chat.name || "Unknown User";
+      const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
+      // For direct chats, chat.name should ideally hold the other participant's name (set during creation).
+      // Fallback chain: 1. otherParticipant object's name, 2. chat.name, 3. empty string.
+      const nameForDisplay = otherParticipant?.name || chat.name || "";
       const avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
-      const initials = (nameForDisplay?.substring(0, 2) || "??").toUpperCase();
+      // Ensure initials are "???" if nameForDisplay is empty.
+      const initials = (nameForDisplay ? nameForDisplay.substring(0, 2) : "??").toUpperCase();
       return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials, Icon: UserIcon };
-    } else { 
+    } else {
       const groupName = chat.name || "Unnamed Group";
       return {
         name: groupName,
@@ -54,11 +57,12 @@ export function ChatItem({
   let showDeleteAction = false;
 
   if (chat.type === "direct") {
+    const otherParticipantName = (typeof otherParticipant === 'object' ? otherParticipant?.name : null) || chat.name || "Someone";
     if (chat.pendingApprovalFromUserId === currentUser.id) {
-      statusMessage = `${otherParticipant?.name || 'Someone'} ingin memulai chat.`;
+      statusMessage = `${otherParticipantName} ingin memulai chat.`;
       statusTimestamp = chat.requestTimestamp;
       showAcceptRejectActions = true;
-    } else if (chat.pendingApprovalFromUserId) { 
+    } else if (chat.pendingApprovalFromUserId) {
       statusMessage = `Permintaan terkirim. Menunggu ${name}...`;
       statusTimestamp = chat.requestTimestamp;
     } else if (chat.isRejected) {
@@ -67,15 +71,15 @@ export function ChatItem({
       } else {
         statusMessage = `${name} menolak permintaan Anda.`;
       }
-      statusTimestamp = chat.lastMessageTimestamp; 
-      showDeleteAction = true; 
+      statusTimestamp = chat.lastMessageTimestamp;
+      showDeleteAction = true;
     }
   }
 
 
   const handleItemClick = () => {
     if (chat.pendingApprovalFromUserId || chat.isRejected) {
-      onSelectChat(chat); 
+      onSelectChat(chat);
       return;
     }
     onSelectChat(chat);
@@ -89,7 +93,7 @@ export function ChatItem({
       className={cn(
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isActive && isClickable ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        !isClickable && !showAcceptRejectActions && "opacity-70 cursor-not-allowed" 
+        !isClickable && !showAcceptRejectActions && "opacity-70 cursor-not-allowed"
       )}
     >
       <button
@@ -151,5 +155,3 @@ export function ChatItem({
     </div>
   );
 }
-
-    
