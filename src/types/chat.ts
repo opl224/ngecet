@@ -11,6 +11,7 @@ export interface Message {
   senderId: string;
   text: string;
   timestamp: number;
+  isEdited?: boolean; // Added for edit indicator
 }
 
 export interface Chat {
