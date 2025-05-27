@@ -47,7 +47,7 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
       >
         <div
           className={cn(
-            "p-2.5 rounded-lg shadow-md min-w-60", // MODIFIED: min-w-[80px] to min-w-60 (240px)
+            "p-2.5 rounded-lg shadow-md min-w-[80px]", 
             "max-w-[85%] lg:max-w-2xl",
             isCurrentUser
               ? "bg-primary text-primary-foreground rounded-br-none"
