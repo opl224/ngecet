@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { User, Chat, Message } from "@/types";
 import useLocalStorage from "@/hooks/use-local-storage";
 import { AppLogo } from "@/components/core/AppLogo";
@@ -35,8 +35,12 @@ const LS_MESSAGES_PREFIX = "simplicchat_messages_";
 export default function ChatPage() {
   const { toast } = useToast();
   const [currentUser, setCurrentUser] = useLocalStorage<User | null>(LS_USER_KEY, null);
-  const [chats, setChats] = useLocalStorage<Chat[]>(LS_CHATS_KEY, []);
-  const [allMessages, setAllMessages] = useLocalStorage<Record<string, Message[]>>(`${LS_MESSAGES_PREFIX}all`, {});
+
+  const initialChatsValue = useMemo(() => [], []);
+  const [chats, setChats] = useLocalStorage<Chat[]>(LS_CHATS_KEY, initialChatsValue);
+
+  const initialAllMessagesValue = useMemo(() => ({}), []);
+  const [allMessages, setAllMessages] = useLocalStorage<Record<string, Message[]>>(`${LS_MESSAGES_PREFIX}all`, initialAllMessagesValue);
 
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [isNewDirectChatDialogOpen, setIsNewDirectChatDialogOpen] = useState(false);
@@ -236,3 +240,4 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+
