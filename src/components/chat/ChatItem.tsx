@@ -4,6 +4,7 @@
 import type { Chat, User } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { Users, User as UserIcon, Check, X, Trash2 } from "lucide-react";
@@ -48,27 +49,29 @@ export function ChatItem({
   const { name, avatarUrl, initials, Icon } = getChatDisplayDetails();
   const otherParticipant = chat.type === 'direct' ? chat.participants.find(p => p.id !== currentUser.id) : null;
 
-  let statusMessage = chat.lastMessage;
+  let statusMessage = ""; // Default to empty, will be replaced by unread count or special status
   let statusTimestamp = chat.lastMessageTimestamp;
   let showAcceptRejectActions = false;
   let showDeleteAction = false;
+  let specialStatusText: string | null = null;
+
 
   if (chat.type === "direct") {
     const otherParticipantName = (typeof otherParticipant === 'object' ? otherParticipant?.name : null) || name || "Someone";
     if (chat.pendingApprovalFromUserId === currentUser.id) {
-      statusMessage = `${otherParticipantName} ingin memulai chat.`;
+      specialStatusText = `${otherParticipantName} ingin memulai chat.`;
       statusTimestamp = chat.requestTimestamp;
       showAcceptRejectActions = true;
     } else if (chat.pendingApprovalFromUserId) {
-      statusMessage = `Permintaan terkirim. Menunggu ${name}...`;
+      specialStatusText = `Permintaan dikirim. Menunggu ${name}...`;
       statusTimestamp = chat.requestTimestamp;
     } else if (chat.isRejected) {
       if (chat.rejectedByUserId === currentUser.id) {
-        statusMessage = `Anda menolak permintaan dari ${name}.`;
+        specialStatusText = `Anda menolak permintaan dari ${name}.`;
       } else {
-        statusMessage = `${name} menolak permintaan Anda.`;
+        specialStatusText = `${name} menolak permintaan Anda.`;
       }
-      statusTimestamp = chat.lastMessageTimestamp; // Use lastMessageTimestamp for rejected status as well
+      statusTimestamp = chat.lastMessageTimestamp;
       showDeleteAction = true;
     }
   }
@@ -79,6 +82,8 @@ export function ChatItem({
   };
 
   const isItemActiveInList = isActive && !chat.pendingApprovalFromUserId && !chat.isRejected;
+
+  const unreadCount = chat.unreadCount || 0;
 
 
   return (
@@ -93,9 +98,10 @@ export function ChatItem({
     >
       <button
         onClick={handleItemClick}
+        // Disable click if it's a pending request for someone else OR a rejected chat (unless it's active to show details)
         disabled={
-          (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
-          (chat.isRejected && !isActive)
+           (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) || // Pending for other
+           (chat.isRejected && !isActive) // Rejected and not active
         }
         className="w-full flex items-center space-x-3"
       >
@@ -105,25 +111,51 @@ export function ChatItem({
             {initials || <Icon className="h-5 w-5 text-sidebar-foreground/70" />}
           </AvatarFallback>
         </Avatar>
-        <div className="flex-1 min-w-0 overflow-hidden"> {/* Added overflow-hidden here */}
+        <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex justify-between items-center">
-            <h4 className={cn(
-                "font-semibold text-sm truncate",
-                chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
-                chat.isRejected && "text-destructive"
-              )}
-            >
-              {name}
-            </h4>
+            <div className="flex items-center space-x-2 min-w-0">
+                <h4 className={cn(
+                    "font-semibold text-sm truncate",
+                    chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
+                    chat.isRejected && "text-destructive"
+                  )}
+                >
+                  {name}
+                </h4>
+                {unreadCount > 0 && !specialStatusText && (
+                  <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Badge>
+                )}
+            </div>
             {statusTimestamp && (
-              <p className="text-xs text-sidebar-foreground/60 whitespace-nowrap">
+              <p className="text-xs text-sidebar-foreground/60 whitespace-nowrap ml-2 shrink-0">
                 {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
               </p>
             )}
           </div>
-          <p className="text-xs text-sidebar-foreground/70 truncate">
-            {statusMessage || (chat.type === "group" ? `${chat.participants.length} members` : "No messages yet")}
-          </p>
+          {/* Display special status text if available, otherwise nothing (last message removed) */}
+          {specialStatusText && (
+            <p className="text-xs text-sidebar-foreground/70 truncate">
+              {specialStatusText}
+            </p>
+          )}
+           {!specialStatusText && chat.type === "group" && !chat.lastMessage && (
+             <p className="text-xs text-sidebar-foreground/70 truncate">
+                {`${chat.participants.length} anggota`}
+              </p>
+           )}
+           {!specialStatusText && chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected &&(
+             <p className="text-xs text-sidebar-foreground/70 truncate">
+                Mulai percakapan
+              </p>
+           )}
+            {!specialStatusText && chat.lastMessage && (
+                 <p className="text-xs text-sidebar-foreground/70 truncate">
+                    {chat.lastMessage}
+                 </p>
+            )}
+
         </div>
       </button>
       {showAcceptRejectActions && chat.type === "direct" && chat.pendingApprovalFromUserId === currentUser.id && (
@@ -132,7 +164,7 @@ export function ChatItem({
             size="sm"
             variant="outline"
             onClick={(e) => { e.stopPropagation(); onRejectChat(chat.id); }}
-            className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive-foreground"
+            className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive-foreground focus:border-destructive focus:bg-destructive/10"
           >
             <X className="mr-1 h-4 w-4" /> Tolak
           </Button>
@@ -150,7 +182,7 @@ export function ChatItem({
             <Button
                 size="sm"
                 variant="destructive"
-                className="bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                className="bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground"
                 onClick={(e) => { e.stopPropagation(); onDeleteChatPermanently(chat.id); }}
             >
                 <Trash2 className="mr-1 h-4 w-4" /> Hapus Chat
@@ -160,3 +192,5 @@ export function ChatItem({
     </div>
   );
 }
+
+    
