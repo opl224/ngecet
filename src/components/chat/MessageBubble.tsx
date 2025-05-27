@@ -15,13 +15,12 @@ interface MessageBubbleProps {
 }
 
 const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) => {
-  const bubbleAlignmentClass = isCurrentUser ? "justify-end" : "justify-start";
+  // Ensure displayName truncation logic is applied: max 25 chars, 22 + "..."
+  const displayName = sender?.name ? (sender.name.length > 25 ? sender.name.substring(0, 22) + "..." : sender.name) : "";
   
   // Placeholder functions for actions - implement actual logic later
   const handleReply = () => console.log("Reply to message:", message.id);
   const handleDelete = () => console.log("Delete message:", message.id);
-
-  const displayName = sender?.name ? (sender.name.length > 25 ? sender.name.substring(0, 22) + "..." : sender.name) : "";
 
   return (
     <div className={cn("group/message flex w-full mb-2 animate-fadeIn", 
@@ -29,7 +28,7 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
                        "items-start" 
                      )}>
       {!isCurrentUser && sender && (
-        <Avatar className="h-8 w-8 self-end mr-2 flex-shrink-0"> {/* Ensure avatar doesn't shrink text */}
+        <Avatar className="h-8 w-8 self-end mr-2 flex-shrink-0">
           <AvatarImage src={sender.avatarUrl} alt={sender.name} data-ai-hint="avatar person" />
           <AvatarFallback>{sender.name.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
