@@ -4,10 +4,10 @@
 import type { Chat, Message, User } from "@/types";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea"; // Mengganti Input dengan Textarea
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Send } from "lucide-react"; // Added Send here
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Send } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -35,7 +35,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
   const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
-  const messageInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null); // Mengubah tipe ref
 
   const isChatActive = chat.type === 'group' || (!chat.pendingApprovalFromUserId && !chat.isRejected);
 
@@ -62,6 +62,9 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
       onSendMessage(newMessage.trim(), replyingToMessage);
       setNewMessage("");
       setReplyingToMessage(null);
+      if (messageInputRef.current) {
+        messageInputRef.current.style.height = 'auto'; // Reset height after send
+      }
     }
   };
 
@@ -74,7 +77,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
       const otherParticipant = chat.participants?.find(p => p.id !== currentUser.id);
-      const otherParticipantName = otherParticipant?.name || chat.name || "Unknown User";
+      const otherParticipantName = otherParticipant?.name || chat.name || "Direct Chat";
       const otherParticipantAvatar = otherParticipant?.avatarUrl || chat.avatarUrl;
       const otherParticipantStatus = otherParticipant?.status || "Offline";
       return {
@@ -100,21 +103,22 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
 
   let chatOverlayMessage = null;
   if (chat.type === 'direct') {
+    const otherUserName = displayDetails.name === "Direct Chat" ? "pengguna ini" : displayDetails.name;
     if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) {
       chatOverlayMessage = {
         icon: <Send className="w-16 h-16 text-muted-foreground mb-4" />,
         title: "Menunggu Persetujuan",
-        text: `Permintaan chat Anda kepada ${displayDetails.name} sedang menunggu persetujuan.`,
+        text: `Permintaan chat Anda kepada ${otherUserName} sedang menunggu persetujuan.`,
       };
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId === currentUser.id) {
        chatOverlayMessage = {
         icon: <AlertTriangle className="w-16 h-16 text-amber-500 mb-4" />,
         title: "Permintaan Tertunda",
-        text: `Anda memiliki permintaan chat dari ${displayDetails.name}. Terima atau tolak dari daftar chat.`,
+        text: `Anda memiliki permintaan chat dari ${otherUserName}. Terima atau tolak dari daftar chat.`,
       };
     } else if (chat.isRejected) {
-      const rejecterName = chat.rejectedByUserId === currentUser.id ? "Anda" : (chat.participants.find(p => p.id === chat.rejectedByUserId)?.name || "Pengguna lain");
-      const rejectedTargetName = chat.rejectedByUserId === currentUser.id ? (chat.participants.find(p=>p.id !==currentUser.id)?.name || "pengguna ini") : "Anda";
+      const rejecterName = chat.rejectedByUserId === currentUser.id ? "Anda" : (chat.participants.find(p => p.id === chat.rejectedByUserId)?.name || otherUserName);
+      const rejectedTargetName = chat.rejectedByUserId === currentUser.id ? (chat.participants.find(p=>p.id !==currentUser.id)?.name || otherUserName) : "Anda";
       chatOverlayMessage = {
         icon: <Lock className="w-16 h-16 text-destructive mb-4" />,
         title: "Permintaan Ditolak",
@@ -122,6 +126,14 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
       };
     }
   }
+
+  const handleTextareaInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNewMessage(event.target.value);
+    if (messageInputRef.current) {
+      messageInputRef.current.style.height = 'auto'; // Reset height
+      messageInputRef.current.style.height = `${Math.min(messageInputRef.current.scrollHeight, 120)}px`; // Set new height, max 120px
+    }
+  };
 
 
   return (
@@ -259,18 +271,24 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
         </div>
       )}
       <footer className="p-4 border-t">
-        <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-          <Input
+        <form onSubmit={handleSubmit} className="flex items-end space-x-2">
+          <Textarea
             ref={messageInputRef}
-            type="text"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder={!isChatActive ? "Chat tidak aktif" : (replyingToMessage ? `Balas ke ${replyingToMessage.senderName}...` : "Type a message...")}
-            className="flex-1 bg-input border-border focus-visible:ring-ring"
+            onChange={handleTextareaInput}
+            placeholder={!isChatActive ? "Chat tidak aktif" : (replyingToMessage ? `Balas ke ${replyingToMessage.senderName}...` : "Ketik pesan...")}
+            className="flex-1 bg-input border-border focus-visible:ring-ring resize-none overflow-y-auto"
             aria-label="Message input"
             disabled={!isChatActive}
+            rows={1} // Start with 1 row
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && isChatActive) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
           />
-          <Button type="submit" size="icon" aria-label="Send message" disabled={!newMessage.trim() || !isChatActive}>
+          <Button type="submit" size="icon" aria-label="Send message" disabled={!newMessage.trim() || !isChatActive} className="self-end">
             <SendHorizonal className="h-5 w-5" />
           </Button>
         </form>
@@ -278,3 +296,5 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     </div>
   );
 }
+
+    
