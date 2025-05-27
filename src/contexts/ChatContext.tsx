@@ -39,12 +39,15 @@ const initialUsers: User[] = [
   { id: 'user3', name: 'Charlie', avatarUrl: 'https://placehold.co/40x40/A9A9E6/FFFFFF?text=C' },
 ];
 
+const EMPTY_CHATS_ARRAY: Chat[] = [];
+const EMPTY_MESSAGES_ARRAY: Message[] = [];
+
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const { currentUser } = useAuth();
   const [users, setUsers] = useLocalStorage<User[]>(LS_USERS_KEY, initialUsers);
-  const [chats, setChats] = useLocalStorage<Chat[]>(LS_CHATS_KEY, []);
-  const [messages, setMessages] = useLocalStorage<Message[]>(LS_MESSAGES_KEY, []);
+  const [chats, setChats] = useLocalStorage<Chat[]>(LS_CHATS_KEY, EMPTY_CHATS_ARRAY);
+  const [messages, setMessages] = useLocalStorage<Message[]>(LS_MESSAGES_KEY, EMPTY_MESSAGES_ARRAY);
   
   const [activeChatId, setActiveChatIdState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,9 +61,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   }, [currentUser, users, setUsers]);
 
 
-  const setActiveChatId = (chatId: string | null) => {
+  const setActiveChatId = useCallback((chatId: string | null) => {
     setActiveChatIdState(chatId);
-  };
+  }, []); // setActiveChatIdState from useState is stable
 
   const activeChat = React.useMemo(() => {
     return chats.find(chat => chat.id === activeChatId) || null;
@@ -82,7 +85,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   }, [users]);
 
 
-  const sendMessage = async (text: string) => {
+  const sendMessage = useCallback(async (text: string) => {
     if (!currentUser || !activeChatId || !text.trim()) return;
 
     const newMessage: Message = {
@@ -96,9 +99,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     setChats(prevChats => prevChats.map(chat => 
       chat.id === activeChatId ? { ...chat, lastMessage: newMessage } : chat
     ));
-  };
+  }, [currentUser, activeChatId, setMessages, setChats]);
 
-  const createDirectChat = async (targetUserId: string): Promise<Chat | null> => {
+  const createDirectChat = useCallback(async (targetUserId: string): Promise<Chat | null> => {
     if (!currentUser || currentUser.id === targetUserId) return null;
 
     const existingChat = chats.find(chat => 
@@ -109,7 +112,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     );
 
     if (existingChat) {
-      setActiveChatId(existingChat.id);
+      setActiveChatId(existingChat.id); // setActiveChatId is now stable
       return existingChat;
     }
     
@@ -119,20 +122,20 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const newChat: Chat = {
       id: generateId(),
       type: 'direct',
-      participantIds: [currentUser.id, targetUserId].sort(), // Sort for consistent ID generation if needed
-      name: targetUser.name, // For display purposes, direct chat name is the other user
+      participantIds: [currentUser.id, targetUserId].sort(), 
+      name: targetUser.name, 
       avatarUrl: targetUser.avatarUrl,
     };
     setChats(prev => [...prev, newChat]);
-    setActiveChatId(newChat.id);
+    setActiveChatId(newChat.id); // setActiveChatId is now stable
     return newChat;
-  };
+  }, [currentUser, chats, users, setChats, setActiveChatId]);
 
-  const createGroupChat = async (name: string, participantIds: string[]): Promise<Chat | null> => {
+  const createGroupChat = useCallback(async (name: string, participantIds: string[]): Promise<Chat | null> => {
     if (!currentUser || !name.trim() || participantIds.length === 0) return null;
 
     const allParticipantIds = Array.from(new Set([currentUser.id, ...participantIds]));
-    if (allParticipantIds.length < 2) return null; // Need at least 2 for a group
+    if (allParticipantIds.length < 2) return null; 
 
     const newChat: Chat = {
       id: generateId(),
@@ -142,11 +145,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       avatarUrl: `https://placehold.co/40x40/cccccc/FFFFFF?text=${name.charAt(0).toUpperCase()}`
     };
     setChats(prev => [...prev, newChat]);
-    setActiveChatId(newChat.id);
+    setActiveChatId(newChat.id); // setActiveChatId is now stable
     return newChat;
-  };
+  }, [currentUser, setChats, setActiveChatId]);
   
-  const getSmartReplies = async (conversationHistoryText: string, userMessageText: string): Promise<string[]> => {
+  const getSmartReplies = useCallback(async (conversationHistoryText: string, userMessageText: string): Promise<string[]> => {
     try {
       const input: SuggestRepliesInput = {
         conversationHistory: conversationHistoryText,
@@ -158,7 +161,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       console.error("Error fetching smart replies:", error);
       return [];
     }
-  };
+  }, []); // suggestReplies is an import, stable
   
   const userChats = React.useMemo(() => {
     if (!currentUser) return [];
@@ -182,17 +185,17 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <ChatContext.Provider value={{ 
-      users: users.filter(u => u.id !== currentUser?.id), // Exclude current user from general user list
+      users: users.filter(u => u.id !== currentUser?.id), 
       chats: userChats, 
       activeChatId, 
-      setActiveChatId,
+      setActiveChatId, // Now stable
       activeChat,
       activeChatMessages,
       isLoading,
-      sendMessage, 
-      createDirectChat, 
-      createGroupChat,
-      getSmartReplies,
+      sendMessage,  // Now stable
+      createDirectChat, // Now stable
+      createGroupChat, // Now stable
+      getSmartReplies, // Now stable
       getUsersByIds,
       getUserById
     }}>
@@ -208,3 +211,4 @@ export const useChat = (): ChatContextType => {
   }
   return context;
 };
+
