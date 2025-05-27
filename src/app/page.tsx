@@ -42,7 +42,7 @@ export default function ChatPage() {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [isNewDirectChatDialogOpen, setIsNewDirectChatDialogOpen] = useState(false);
   const [isNewGroupChatDialogOpen, setIsNewGroupChatDialogOpen] = useState(false);
-  
+
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
     setIsClient(true);
@@ -51,11 +51,11 @@ export default function ChatPage() {
 
   const handleSaveProfile = useCallback((name: string) => {
     const userId = name.toLowerCase().replace(/\s+/g, "_") || `user_${Date.now()}`;
-    const profile: User = { 
-      id: userId, 
-      name, 
+    const profile: User = {
+      id: userId,
+      name,
       avatarUrl: `https://placehold.co/100x100.png?text=${name.substring(0,1)}`,
-      status: "Online" // Status default
+      status: "Online"
     };
     setCurrentUser(profile);
     toast({ title: "Profil Disimpan", description: `Selamat datang, ${name}!` });
@@ -63,7 +63,6 @@ export default function ChatPage() {
 
   const handleCreateDirectChat = useCallback((recipientName: string) => {
     if (!currentUser) return;
-    // ID pengguna lain disamakan dengan nama untuk simplicitas
     const recipientId = recipientName.toLowerCase().replace(/\s+/g, "_") || `user_recipient_${Date.now()}`;
 
     if (recipientId === currentUser.id) {
@@ -80,15 +79,13 @@ export default function ChatPage() {
       toast({ title: "Chat Sudah Ada", description: `Membuka chat yang sudah ada dengan ${recipientName}.` });
       return;
     }
-    
-    // Untuk DM, avatarUrl bisa spesifik untuk penerima
+
     const recipientInitial = recipientName.substring(0,1) || 'R';
     const newChat: Chat = {
       id: chatId,
       type: "direct",
-      participants: participantIds, // berisi currentUser.id dan recipientId
+      participants: participantIds,
       lastMessageTimestamp: Date.now(),
-      // Avatar untuk direct chat akan menggunakan inisial nama penerima
       avatarUrl: `https://placehold.co/100x100.png?text=${recipientInitial}`
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
@@ -132,6 +129,7 @@ export default function ChatPage() {
       senderName: currentUser.name,
       content,
       timestamp: Date.now(),
+      isEdited: false,
     };
 
     setAllMessages(prev => ({
@@ -139,16 +137,80 @@ export default function ChatPage() {
       [selectedChat.id]: [...(prev[selectedChat.id] || []), newMessage],
     }));
 
-    setChats(prevChats => prevChats.map(chat => 
-      chat.id === selectedChat.id 
-        ? { ...chat, lastMessage: content, lastMessageTimestamp: newMessage.timestamp } 
+    setChats(prevChats => prevChats.map(chat =>
+      chat.id === selectedChat.id
+        ? { ...chat, lastMessage: content, lastMessageTimestamp: newMessage.timestamp }
         : chat
     ).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
   }, [currentUser, selectedChat, setAllMessages, setChats]);
-  
+
+  const handleDeleteMessage = useCallback((messageId: string, chatId: string) => {
+    setAllMessages(prev => {
+      const chatMessages = (prev[chatId] || []).filter(msg => msg.id !== messageId);
+      return { ...prev, [chatId]: chatMessages };
+    });
+
+    setChats(prevChats => {
+      const chatMessages = (allMessages[chatId] || []).filter(msg => msg.id !== messageId);
+      const lastMessageInChat = chatMessages.length > 0 ? chatMessages[chatMessages.length - 1] : null;
+
+      return prevChats.map(c =>
+        c.id === chatId
+          ? {
+              ...c,
+              lastMessage: lastMessageInChat ? lastMessageInChat.content : "No messages yet",
+              lastMessageTimestamp: lastMessageInChat ? lastMessageInChat.timestamp : c.lastMessageTimestamp, // Keep old if no messages
+            }
+          : c
+      ).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+    });
+    toast({ title: "Pesan Dihapus", description: "Pesan telah berhasil dihapus.", variant: "destructive" });
+  }, [setAllMessages, setChats, allMessages, toast]);
+
+  const handleEditMessage = useCallback((messageToEdit: Message) => {
+    if (!currentUser || messageToEdit.senderId !== currentUser.id) {
+      toast({ title: "Gagal Edit", description: "Anda hanya bisa mengedit pesan Anda sendiri.", variant: "destructive" });
+      return;
+    }
+    const newContent = window.prompt("Edit pesan Anda:", messageToEdit.content);
+    if (newContent !== null && newContent.trim() !== "" && newContent !== messageToEdit.content) {
+      setAllMessages(prev => {
+        const chatMessages = (prev[messageToEdit.chatId] || []).map(msg =>
+          msg.id === messageToEdit.id ? { ...msg, content: newContent, isEdited: true, timestamp: Date.now() } : msg // Update timestamp on edit
+        );
+        return { ...prev, [messageToEdit.chatId]: chatMessages };
+      });
+
+      // Check if this edited message is the last message of the chat
+      const currentChatMessages = (allMessages[messageToEdit.chatId] || []).filter(msg => msg.id !== messageToEdit.id);
+      const updatedEditedMessage = { ...messageToEdit, content: newContent, isEdited: true, timestamp: Date.now() };
+      const fullChatMessagesAfterEdit = [...currentChatMessages, updatedEditedMessage].sort((a,b) => a.timestamp - b.timestamp);
+
+
+      setChats(prevChats => prevChats.map(c => {
+        if (c.id === messageToEdit.chatId) {
+            const lastMsg = fullChatMessagesAfterEdit.length > 0 ? fullChatMessagesAfterEdit[fullChatMessagesAfterEdit.length -1] : null;
+            if (lastMsg && lastMsg.id === messageToEdit.id) { // If the edited message is the last one
+                 return { ...c, lastMessage: newContent, lastMessageTimestamp: updatedEditedMessage.timestamp };
+            } else if (lastMsg) { // If not, but there are other messages
+                 return { ...c, lastMessage: lastMsg.content, lastMessageTimestamp: lastMsg.timestamp };
+            }
+        }
+        return c;
+      }).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
+
+      toast({ title: "Pesan Diedit", description: "Pesan Anda telah berhasil diperbarui." });
+    } else if (newContent === messageToEdit.content) {
+      // No change
+    } else {
+      toast({ title: "Edit Dibatalkan", description: "Tidak ada perubahan pada pesan.", variant: "default" });
+    }
+  }, [currentUser, setAllMessages, setChats, allMessages, toast]);
+
+
   const handleLogout = (clearData: boolean) => {
     setCurrentUser(null);
-    setSelectedChat(null); 
+    setSelectedChat(null);
 
     if (clearData) {
       setChats([]);
@@ -167,7 +229,7 @@ export default function ChatPage() {
       </div>
     );
   }
-  
+
   if (!currentUser) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-primary/20 to-background">
@@ -219,7 +281,7 @@ export default function ChatPage() {
              </Button>
           </SidebarFooter>
         </Sidebar>
-        
+
         <SidebarInset className="flex-1">
            <div className="md:hidden p-2 border-b flex items-center">
              <SidebarTrigger />
@@ -231,6 +293,8 @@ export default function ChatPage() {
               messages={allMessages[selectedChat.id] || []}
               currentUser={currentUser}
               onSendMessage={handleSendMessage}
+              onEditMessage={handleEditMessage}
+              onDeleteMessage={handleDeleteMessage}
             />
           ) : (
             <WelcomeMessage />

@@ -3,7 +3,7 @@ export interface User {
   id: string;
   name: string;
   avatarUrl?: string;
-  status?: string; // Ditambahkan field status
+  status?: string;
 }
 
 export interface Message {
@@ -13,6 +13,7 @@ export interface Message {
   senderName: string; // Denormalized for easier display
   content: string;
   timestamp: number;
+  isEdited?: boolean; // To track if a message was edited
 }
 
 export type ChatType = "direct" | "group";
@@ -21,7 +22,7 @@ export interface Chat {
   id: string;
   type: ChatType;
   name?: string; // For group chats
-  participants: string[]; // Array of user IDs
+  participants: User[]; // Array of user objects or just IDs if fetched separately
   lastMessage?: string;
   lastMessageTimestamp?: number;
   unreadCount?: number; // Optional: for future unread messages feature

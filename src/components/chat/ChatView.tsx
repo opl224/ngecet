@@ -16,19 +16,25 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet"
+} from "@/components/ui/sheet";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatViewProps {
   chat: Chat;
   messages: Message[];
   currentUser: User;
   onSendMessage: (content: string) => void;
+  onEditMessage: (messageToEdit: Message) => void;
+  onDeleteMessage: (messageId: string, chatId: string) => void;
 }
 
-export function ChatView({ chat, messages, currentUser, onSendMessage }: ChatViewProps) {
+export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMessage, onDeleteMessage }: ChatViewProps) {
+  const { toast } = useToast();
   const [newMessage, setNewMessage] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
+
 
   useEffect(() => {
     if (viewportRef.current) {
@@ -45,25 +51,35 @@ export function ChatView({ chat, messages, currentUser, onSendMessage }: ChatVie
     }
   };
 
+  const handleReplyToMessageInView = (messageToReply: Message) => {
+    setNewMessage(prev => `Replying to ${messageToReply.senderName}:\n>"${messageToReply.content.substring(0, 50).replace(/\n/g, ' ')}..."\n\n${prev}`);
+    messageInputRef.current?.focus();
+    toast({
+      title: "Membalas Pesan",
+      description: `Anda sedang membalas pesan dari ${messageToReply.senderName}.`,
+    });
+  };
+
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
       const otherParticipantId = chat.participants.find(p => p !== currentUser.id);
-      // Mengubah ID menjadi nama dengan format yang lebih baik (misal: 'jane_doe' menjadi 'Jane Doe')
-      const otherParticipantName = otherParticipantId 
-        ? otherParticipantId.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ') 
+      const otherParticipantName = otherParticipantId
+        ? otherParticipantId.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ')
         : "Unknown User";
       return {
         name: otherParticipantName,
-        avatarUrl: chat.avatarUrl, // AvatarURL dari chat object untuk DM
+        avatarUrl: chat.avatarUrl,
         Icon: UserIcon,
         description: `Direct message with ${otherParticipantName}`,
+        status: chat.participants.find(pId => pId === otherParticipantId)?.status || "Offline" // Assuming status is on user object, this is a mock
       };
     } else { // group
       return {
         name: chat.name || "Unnamed Group",
-        avatarUrl: chat.avatarUrl, // AvatarURL dari chat object untuk Group
+        avatarUrl: chat.avatarUrl,
         Icon: Users,
         description: `${chat.participants.length} members: ${chat.participants.map(p => p.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ')).join(', ')}`,
+        status: null // No single status for group
       };
     }
   };
@@ -84,11 +100,14 @@ export function ChatView({ chat, messages, currentUser, onSendMessage }: ChatVie
               </Avatar>
               <div className="min-w-0">
                 <h2 className="text-lg font-semibold group-hover:underline truncate">{displayDetails.name}</h2>
-                <p className="text-xs text-muted-foreground truncate">{chat.type === 'direct' ? 'Direct Message' : `Group Chat - ${chat.participants.length} members`}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {chat.type === 'direct'
+                    ? displayDetails.status || currentUser.status // Mock: show other user's status or current user's if direct
+                    : `Group Chat - ${chat.participants.length} members`}
+                </p>
               </div>
             </div>
           </SheetTrigger>
-          {/* Tombol Info eksplisit masih bisa ada jika diperlukan, atau diintegrasikan */}
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="ml-2">
               <Info className="h-5 w-5" />
@@ -96,7 +115,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage }: ChatVie
             </Button>
           </SheetTrigger>
         </header>
-        
+
         <SheetContent>
           <SheetHeader className="mb-4">
             {chat.type === 'direct' ? (
@@ -109,7 +128,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage }: ChatVie
                 </Avatar>
                 <SheetTitle className="text-2xl">{displayDetails.name}</SheetTitle>
                 <SheetDescription className="text-base">
-                  Status: <span className="text-green-500 font-medium">Online</span> (Simulated)
+                  Status: <span className="text-green-500 font-medium">{displayDetails.status || "Online"}</span> (Simulated)
                 </SheetDescription>
               </div>
             ) : (
@@ -130,17 +149,15 @@ export function ChatView({ chat, messages, currentUser, onSendMessage }: ChatVie
             <ScrollArea className="h-[calc(100vh-280px)]"> {/* Adjust height as needed */}
               <ul className="space-y-1 text-sm">
                 {chat.participants.map(participantId => {
-                  const participantName = participantId.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ');
+                  const participantUser = currentUser.id === participantId ? currentUser : { id: participantId, name: participantId.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' '), avatarUrl: `https://placehold.co/40x40.png?text=${participantId.substring(0,1)}` };
+                  const participantName = participantUser.name;
                   const isCurrentUserParticipant = participantId === currentUser.id;
-                  const participantAvatarInitial = participantName.substring(0,1) || '?';
-                  // Di aplikasi nyata, Anda akan mengambil avatarUrl dari data user
-                  const participantAvatarUrl = isCurrentUserParticipant ? currentUser.avatarUrl : `https://placehold.co/40x40.png?text=${participantAvatarInitial}`;
 
                   return (
                     <li key={participantId} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md">
                        <Avatar className="h-8 w-8">
-                         <AvatarImage src={participantAvatarUrl} alt={participantName} data-ai-hint="person abstract small"/>
-                         <AvatarFallback>{participantAvatarInitial}</AvatarFallback>
+                         <AvatarImage src={participantUser.avatarUrl} alt={participantName} data-ai-hint="person abstract small"/>
+                         <AvatarFallback>{participantName.substring(0,1) || '?'}</AvatarFallback>
                        </Avatar>
                        <span className="truncate">
                         {participantName}
@@ -162,6 +179,9 @@ export function ChatView({ chat, messages, currentUser, onSendMessage }: ChatVie
               key={msg.id}
               message={msg}
               isCurrentUserMessage={msg.senderId === currentUser.id}
+              onReplyMessage={handleReplyToMessageInView}
+              onEditMessage={onEditMessage}
+              onDeleteMessage={onDeleteMessage}
             />
           ))}
           {messages.length === 0 && (
@@ -175,6 +195,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage }: ChatVie
       <footer className="p-4 border-t">
         <form onSubmit={handleSubmit} className="flex items-center space-x-2">
           <Input
+            ref={messageInputRef}
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}

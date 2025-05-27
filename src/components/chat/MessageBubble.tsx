@@ -4,7 +4,7 @@
 import type { Message } from "@/types";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
-import { Undo2, MoreVertical, Edit3, Trash2 } from "lucide-react"; 
+import { Undo2, MoreVertical, Edit3, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,19 +17,33 @@ import {
 interface MessageBubbleProps {
   message: Message;
   isCurrentUserMessage: boolean;
+  onReplyMessage?: (message: Message) => void;
+  onEditMessage?: (message: Message) => void;
+  onDeleteMessage?: (messageId: string, chatId: string) => void;
 }
 
-export function MessageBubble({ message, isCurrentUserMessage }: MessageBubbleProps) {
+export function MessageBubble({
+  message,
+  isCurrentUserMessage,
+  onReplyMessage,
+  onEditMessage,
+  onDeleteMessage,
+}: MessageBubbleProps) {
 
-  // Placeholder functions for actions - implement actual logic later
-  const handleReply = () => console.log("Reply to message:", message.id);
-  const handleEdit = () => console.log("Edit message:", message.id);
-  const handleDelete = () => console.log("Delete message:", message.id);
+  const handleReply = () => {
+    onReplyMessage?.(message);
+  };
+  const handleEdit = () => {
+    onEditMessage?.(message);
+  };
+  const handleDelete = () => {
+    onDeleteMessage?.(message.id, message.chatId);
+  };
 
   return (
     <div className={cn(
-      "flex items-center group w-full", 
-      isCurrentUserMessage ? "justify-end" : "justify-start"
+      "flex items-center group w-full",
+      isCurrentUserMessage ? "justify-end pl-2" : "justify-start pr-2"
     )}>
       {/* Action buttons for current user's messages (appear on the left on hover) */}
       {isCurrentUserMessage && (
@@ -51,8 +65,8 @@ export function MessageBubble({ message, isCurrentUserMessage }: MessageBubblePr
                 Edit Pesan
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={handleDelete} 
+              <DropdownMenuItem
+                onClick={handleDelete}
                 className="text-destructive hover:!bg-destructive/10 focus:!bg-destructive/10 focus:!text-destructive-foreground"
               >
                 <Trash2 size={14} className="mr-2" />
@@ -65,22 +79,37 @@ export function MessageBubble({ message, isCurrentUserMessage }: MessageBubblePr
 
       {/* Message Bubble Content */}
       <div className={cn(
-        "max-w-[70%] shadow-sm flex flex-col px-3 py-2",
-        isCurrentUserMessage 
-          ? "bg-primary text-primary-foreground rounded-tr-none rounded-b-lg rounded-tl-lg order-2" 
-          : "bg-card text-card-foreground rounded-tl-none rounded-b-lg rounded-tr-lg border order-1" 
+        "max-w-[70%] shadow-sm flex flex-col px-3 py-2 relative", // Added relative for tail positioning
+        isCurrentUserMessage
+          ? "bg-primary text-primary-foreground rounded-b-lg rounded-tl-lg order-2"
+          : "bg-card text-card-foreground rounded-b-lg rounded-tr-lg border order-1"
       )}>
+        {/* Tail for current user message */}
+        {isCurrentUserMessage && (
+          <div className="absolute top-0 -right-2 w-0 h-0 border-t-[10px] border-t-primary border-l-[10px] border-l-transparent"></div>
+        )}
+        {/* Tail for other user message */}
+        {!isCurrentUserMessage && (
+          <div className="absolute top-0 -left-2 w-0 h-0 border-t-[10px] border-t-card border-r-[10px] border-r-transparent"></div>
+        )}
+
         {!isCurrentUserMessage && (
           <p className="text-xs font-semibold mb-0.5 text-accent-foreground">{message.senderName}</p>
         )}
         <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-        <div className="flex justify-end mt-1">
-            <p className={cn(
-                "text-xs",
+        <div className="flex justify-end mt-1 items-center">
+          {message.isEdited && (
+             <span className={cn(
+                "text-xs italic mr-2",
                 isCurrentUserMessage ? "text-primary-foreground/70" : "text-muted-foreground/70"
-            )}>
+            )}>(edited)</span>
+          )}
+          <p className={cn(
+              "text-xs",
+              isCurrentUserMessage ? "text-primary-foreground/70" : "text-muted-foreground/70"
+          )}>
             {format(new Date(message.timestamp), "p")}
-            </p>
+          </p>
         </div>
       </div>
 
