@@ -49,7 +49,6 @@ export function ChatItem({
   const { name, avatarUrl, initials, Icon } = getChatDisplayDetails();
   const otherParticipant = chat.type === 'direct' ? chat.participants.find(p => p.id !== currentUser.id) : null;
 
-  let statusMessage = ""; // Default to empty, will be replaced by unread count or special status
   let statusTimestamp = chat.lastMessageTimestamp;
   let showAcceptRejectActions = false;
   let showDeleteAction = false;
@@ -71,7 +70,7 @@ export function ChatItem({
       } else {
         specialStatusText = `${name} menolak permintaan Anda.`;
       }
-      statusTimestamp = chat.lastMessageTimestamp;
+      statusTimestamp = chat.lastMessageTimestamp; // Keep timestamp for sorting/display
       showDeleteAction = true;
     }
   }
@@ -98,10 +97,9 @@ export function ChatItem({
     >
       <button
         onClick={handleItemClick}
-        // Disable click if it's a pending request for someone else OR a rejected chat (unless it's active to show details)
         disabled={
-           (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) || // Pending for other
-           (chat.isRejected && !isActive) // Rejected and not active
+           (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
+           (chat.isRejected && !isActive)
         }
         className="w-full flex items-center space-x-3"
       >
@@ -111,7 +109,7 @@ export function ChatItem({
             {initials || <Icon className="h-5 w-5 text-sidebar-foreground/70" />}
           </AvatarFallback>
         </Avatar>
-        <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-hidden"> {/* Added overflow-hidden here */}
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2 min-w-0">
                 <h4 className={cn(
@@ -134,28 +132,43 @@ export function ChatItem({
               </p>
             )}
           </div>
-          {/* Display special status text if available, otherwise nothing (last message removed) */}
-          {specialStatusText && (
+          {/* Display special status text or placeholder messages */}
+          {specialStatusText ? (
             <p className="text-xs text-sidebar-foreground/70 truncate">
               {specialStatusText}
             </p>
-          )}
-           {!specialStatusText && chat.type === "group" && !chat.lastMessage && (
+          ) : chat.type === "group" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected ? (
              <p className="text-xs text-sidebar-foreground/70 truncate">
                 {`${chat.participants.length} anggota`}
               </p>
-           )}
-           {!specialStatusText && chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected &&(
+           ) : chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected ? (
              <p className="text-xs text-sidebar-foreground/70 truncate">
                 Mulai percakapan
               </p>
-           )}
-            {!specialStatusText && chat.lastMessage && (
-                 <p className="text-xs text-sidebar-foreground/70 truncate">
-                    {chat.lastMessage}
-                 </p>
-            )}
-
+           ) : !chat.lastMessage && !specialStatusText ? ( // If no last message and no special text, show a generic placeholder
+            <p className="text-xs text-sidebar-foreground/70 truncate">
+              Belum ada pesan
+            </p>
+           ) : (
+            // Fallback if lastMessage exists but shouldn't be displayed or for other cases
+            // We want to avoid displaying the last message content here.
+            // If specialStatusText is null and there IS a lastMessage, we still don't show it.
+            // The timestamp and unread badge handle the "activity" indication.
+            // If there's no specialStatusText AND no messages at all, the "Mulai percakapan" or "X anggota" handles it.
+            // This effectively hides the last message text.
+            // We can show a generic hint if needed, or just rely on timestamp/unread.
+            // For now, let's ensure nothing is shown if it's not a special status or placeholder.
+            // If chat.lastMessage exists BUT specialStatusText is null, this block is skipped,
+            // which is what we want to hide the last message text.
+            // The conditions above handle the empty/placeholder states.
+            // An explicit empty placeholder if all else fails and we just want to hide last message content
+            chat.lastMessage && !specialStatusText && (
+                <p className="text-xs text-sidebar-foreground/70 truncate italic">
+                    {chat.type === 'group' ? 'Aktivitas grup terakhir' : 'Aktivitas terakhir'}
+                </p>
+            )
+           )
+          }
         </div>
       </button>
       {showAcceptRejectActions && chat.type === "direct" && chat.pendingApprovalFromUserId === currentUser.id && (
@@ -192,5 +205,3 @@ export function ChatItem({
     </div>
   );
 }
-
-    
