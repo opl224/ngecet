@@ -19,14 +19,12 @@ import {
   SidebarFooter,
   SidebarInset,
   SidebarTrigger,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings } from "lucide-react";
+import { LogOut, Trash2 } from "lucide-react"; // Ditambahkan Trash2, Settings dihapus karena tidak dipakai
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator";
+// Separator tidak digunakan secara langsung di sini, bisa dipertimbangkan untuk dihapus jika tidak ada rencana lain
+// import { Separator } from "@/components/ui/separator";
 
 const LS_USER_KEY = "simplicchat_user";
 const LS_CHATS_KEY = "simplicchat_chats";
@@ -51,23 +49,23 @@ export default function ChatPage() {
     setIsClient(true);
     // Attempt to auto-select the most recent chat on initial load if chats exist
     if (chats.length > 0 && !selectedChat) {
-        const sortedChats = [...chats].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
-        // setSelectedChat(sortedChats[0]); // This might cause issues if component isn't fully ready. Defer.
+        // const sortedChats = [...chats].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+        // setSelectedChat(sortedChats[0]); // Defer selection to avoid potential issues during initial render
     }
-  }, []);
+  }, []); // Removed chats and selectedChat from dependencies to avoid re-triggering
 
 
   const handleSaveProfile = useCallback((name: string) => {
     const userId = name.toLowerCase().replace(/\s+/g, "_") || `user_${Date.now()}`;
     const profile: User = { id: userId, name, avatarUrl: `https://placehold.co/100x100.png?text=${name.substring(0,1)}` };
     setCurrentUser(profile);
-    toast({ title: "Profile Saved", description: `Welcome, ${name}!` });
+    toast({ title: "Profil Disimpan", description: `Selamat datang, ${name}!` });
   }, [setCurrentUser, toast]);
 
   const handleCreateDirectChat = useCallback((recipientName: string) => {
     if (!currentUser) return;
     if (recipientName === currentUser.id) {
-      toast({ title: "Error", description: "You cannot chat with yourself.", variant: "destructive" });
+      toast({ title: "Error", description: "Anda tidak bisa chat dengan diri sendiri.", variant: "destructive" });
       return;
     }
 
@@ -77,7 +75,7 @@ export default function ChatPage() {
     const existingChat = chats.find(c => c.id === chatId);
     if (existingChat) {
       setSelectedChat(existingChat);
-      toast({ title: "Chat Exists", description: `Opened existing chat with ${recipientName}.` });
+      toast({ title: "Chat Sudah Ada", description: `Membuka chat yang sudah ada dengan ${recipientName}.` });
       return;
     }
 
@@ -91,7 +89,7 @@ export default function ChatPage() {
     setChats(prev => [newChat, ...prev]);
     setSelectedChat(newChat);
     setAllMessages(prev => ({ ...prev, [chatId]: [] }));
-    toast({ title: "Chat Created", description: `Started a new chat with ${recipientName}.` });
+    toast({ title: "Chat Dibuat", description: `Memulai chat baru dengan ${recipientName}.` });
   }, [currentUser, chats, setChats, setAllMessages, toast]);
 
   const handleCreateGroupChat = useCallback((groupName: string, memberNames: string[]) => {
@@ -110,7 +108,7 @@ export default function ChatPage() {
     setChats(prev => [newChat, ...prev]);
     setSelectedChat(newChat);
     setAllMessages(prev => ({ ...prev, [chatId]: [] }));
-    toast({ title: "Group Created", description: `Group "${groupName}" is ready.` });
+    toast({ title: "Grup Dibuat", description: `Grup "${groupName}" telah siap.` });
   }, [currentUser, setChats, setAllMessages, toast]);
 
   const handleSelectChat = useCallback((chat: Chat) => {
@@ -138,15 +136,20 @@ export default function ChatPage() {
       chat.id === selectedChat.id 
         ? { ...chat, lastMessage: content, lastMessageTimestamp: newMessage.timestamp } 
         : chat
-    ));
+    ).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0))); // Ensure chats are re-sorted
   }, [currentUser, selectedChat, setAllMessages, setChats]);
   
-  const handleLogout = () => {
+  const handleLogout = (clearData: boolean) => {
     setCurrentUser(null);
-    setChats([]);
-    setAllMessages({});
-    setSelectedChat(null);
-    toast({ title: "Logged Out", description: "Your session has been cleared." });
+    setSelectedChat(null); // Selalu batalkan pilihan chat
+
+    if (clearData) {
+      setChats([]);
+      setAllMessages({});
+      toast({ title: "Logout Berhasil", description: "Sesi dan semua data Anda telah dihapus." });
+    } else {
+      toast({ title: "Logout Berhasil", description: "Sesi Anda telah dihapus. Data chat tetap tersimpan." });
+    }
   };
 
 
@@ -159,14 +162,13 @@ export default function ChatPage() {
   }
   
   if (!currentUser) {
-     // Simplified initial profile setup
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-primary/20 to-background">
         <div className="p-8 bg-card shadow-xl rounded-lg w-full max-w-md space-y-6">
             <div className="flex flex-col items-center space-y-2">
                  <AppLogo className="w-12 h-12 text-primary" />
-                 <h1 className="text-2xl font-bold text-center text-foreground">Welcome to SimplicChat</h1>
-                 <p className="text-sm text-muted-foreground text-center">Please set up your profile to begin.</p>
+                 <h1 className="text-2xl font-bold text-center text-foreground">Selamat Datang di SimplicChat</h1>
+                 <p className="text-sm text-muted-foreground text-center">Silakan atur profil Anda untuk memulai.</p>
             </div>
            <UserProfileForm currentUser={null} onSaveProfile={handleSaveProfile} />
         </div>
@@ -185,7 +187,7 @@ export default function ChatPage() {
                     <AppLogo className="h-7 w-7 text-primary" />
                     <h1 className="text-xl font-semibold text-sidebar-primary-foreground">SimplicChat</h1>
                 </div>
-                <SidebarTrigger className="md:hidden" /> {/* Only show trigger on mobile inside sidebar */}
+                <SidebarTrigger className="md:hidden" />
              </div>
             <UserProfileForm currentUser={currentUser} onSaveProfile={handleSaveProfile} />
           </SidebarHeader>
@@ -199,16 +201,20 @@ export default function ChatPage() {
               onNewGroupChat={() => setIsNewGroupChatDialogOpen(true)}
             />
           </SidebarContent>
-          <SidebarFooter className="p-2 border-t border-sidebar-border">
-             <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground" onClick={handleLogout}>
+          <SidebarFooter className="p-2 border-t border-sidebar-border space-y-1">
+             <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground" onClick={() => handleLogout(false)}>
                 <LogOut className="h-4 w-4" />
-                Logout & Clear Data
+                Logout (Simpan Data)
+             </Button>
+             <Button variant="ghost" className="w-full justify-start gap-2 text-destructive hover:bg-destructive/10" onClick={() => handleLogout(true)}>
+                <Trash2 className="h-4 w-4" />
+                Logout & Hapus Data
              </Button>
           </SidebarFooter>
         </Sidebar>
         
         <SidebarInset className="flex-1">
-           <div className="md:hidden p-2 border-b flex items-center"> {/* Mobile header for chat view */}
+           <div className="md:hidden p-2 border-b flex items-center">
              <SidebarTrigger />
              {selectedChat && <span className="ml-2 font-semibold">{selectedChat.type === 'direct' ? (selectedChat.participants.find(p => p !== currentUser.id) || 'Direct Chat') : selectedChat.name}</span>}
            </div>
