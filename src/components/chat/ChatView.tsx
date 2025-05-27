@@ -4,10 +4,10 @@
 import type { Chat, Message, User } from "@/types";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea"; // Mengganti Input dengan Textarea
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Send } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock } from "lucide-react"; // Removed unused Send icon
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -35,7 +35,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
   const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
-  const messageInputRef = useRef<HTMLTextAreaElement>(null); // Mengubah tipe ref
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
 
   const isChatActive = chat.type === 'group' || (!chat.pendingApprovalFromUserId && !chat.isRejected);
 
@@ -49,6 +49,9 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
   useEffect(() => {
     setReplyingToMessage(null);
     setNewMessage("");
+    if (messageInputRef.current) {
+        messageInputRef.current.style.height = 'auto'; // Reset height on chat change
+    }
   }, [chat.id]);
 
 
@@ -106,7 +109,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     const otherUserName = displayDetails.name === "Direct Chat" ? "pengguna ini" : displayDetails.name;
     if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) {
       chatOverlayMessage = {
-        icon: <Send className="w-16 h-16 text-muted-foreground mb-4" />,
+        icon: <SendHorizonal className="w-16 h-16 text-muted-foreground mb-4" />, // Changed to SendHorizonal
         title: "Menunggu Persetujuan",
         text: `Permintaan chat Anda kepada ${otherUserName} sedang menunggu persetujuan.`,
       };
@@ -131,7 +134,9 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     setNewMessage(event.target.value);
     if (messageInputRef.current) {
       messageInputRef.current.style.height = 'auto'; // Reset height
-      messageInputRef.current.style.height = `${Math.min(messageInputRef.current.scrollHeight, 120)}px`; // Set new height, max 120px
+      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120) // Max 120px
+      // Ensure minimum height is at least that of a single line input, e.g., 40px, but scrollHeight should handle this
+      messageInputRef.current.style.height = `${newHeight}px`; 
     }
   };
 
@@ -246,7 +251,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
               No messages yet. Be the first to send one!
             </div>
           )}
-           {messages.length === 0 && !isChatActive && !chatOverlayMessage && ( // Fallback if no overlay but chat inactive
+           {messages.length === 0 && !isChatActive && !chatOverlayMessage && ( 
             <div className="text-center text-muted-foreground py-10">
               Chat ini tidak aktif.
             </div>
@@ -280,7 +285,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
             className="flex-1 bg-input border-border focus-visible:ring-ring resize-none overflow-y-auto"
             aria-label="Message input"
             disabled={!isChatActive}
-            rows={1} // Start with 1 row
+            rows={1} 
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && isChatActive) {
                 e.preventDefault();
@@ -296,5 +301,3 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     </div>
   );
 }
-
-    
