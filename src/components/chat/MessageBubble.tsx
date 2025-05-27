@@ -16,16 +16,16 @@ interface MessageBubbleProps {
 
 const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) => {
   const bubbleAlignmentClass = isCurrentUser ? "justify-end" : "justify-start";
-  // Removed bubbleContainerOrderClass as it's implicitly handled by avatar presence and isCurrentUser logic
-
+  
   // Placeholder functions for actions - implement actual logic later
   const handleReply = () => console.log("Reply to message:", message.id);
   const handleDelete = () => console.log("Delete message:", message.id);
 
+  const displayName = sender?.name ? (sender.name.length > 25 ? sender.name.substring(0, 22) + "..." : sender.name) : "";
+
   return (
     <div className={cn("group/message flex w-full mb-2 animate-fadeIn", 
                        isCurrentUser ? "justify-end" : "justify-start",
-                       // Align items to the start (top) of the row to better handle multi-line messages with avatars
                        "items-start" 
                      )}>
       {!isCurrentUser && sender && (
@@ -36,7 +36,7 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
       )}
 
       <div className={cn(
-          "flex items-center", // Changed from items-end to items-center for vertical centering of bubble & actions
+          "flex items-center", 
           isCurrentUser ? "flex-row-reverse" : "flex-row"
         )}
       >
@@ -49,7 +49,7 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
           )}
         >
           {!isCurrentUser && sender && (
-            <p className="text-xs font-semibold mb-0.5 text-foreground/80">{sender.name}</p>
+            <p className="text-xs font-semibold mb-0.5 text-foreground/80" title={sender.name}>{displayName}</p>
           )}
           <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
           <div
@@ -65,8 +65,8 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
 
         {isCurrentUser && (
           <div className={cn(
-            "flex flex-col space-y-1 opacity-0 group-hover/message:opacity-100 transition-opacity duration-150",
-            isCurrentUser ? "ml-1.5" : "mr-1.5" // Ensure margin is on the correct side
+            "flex flex-row space-x-0.5 opacity-0 group-hover/message:opacity-100 transition-opacity duration-150", // Changed to flex-row and space-x-0.5
+            isCurrentUser ? "ml-1.5" : "mr-1.5" 
           )}>
             <Button
               variant="ghost"
