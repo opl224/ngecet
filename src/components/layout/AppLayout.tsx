@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -33,9 +32,9 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         <Sidebar side="left" className="border-r" collapsible="icon">
           <SidebarContents />
         </Sidebar>
-        <SidebarInset className="flex flex-col">
+        <SidebarInset className="flex flex-col h-full"> {/* Ensure SidebarInset has h-full if not intrinsically */}
           {activeChatId ? <ChatWindow /> : (
-            <div className="flex-grow flex items-center justify-center">
+            <div className="h-full flex flex-col items-center justify-center"> {/* MODIFIED: Centering container */}
               <div className="text-center p-8">
                 <svg className="mx-auto h-24 w-24 text-muted-foreground/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-ai-hint="chat bubble illustration">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
