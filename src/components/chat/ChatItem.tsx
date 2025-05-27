@@ -57,7 +57,7 @@ export function ChatItem({
   let showDeleteAction = false;
 
   if (chat.type === "direct") {
-    const otherParticipantName = (typeof otherParticipant === 'object' ? otherParticipant?.name : null) || chat.name || "Someone";
+    const otherParticipantName = (typeof otherParticipant === 'object' ? otherParticipant?.name : null) || name || "Someone"; // Use derived name
     if (chat.pendingApprovalFromUserId === currentUser.id) {
       statusMessage = `${otherParticipantName} ingin memulai chat.`;
       statusTimestamp = chat.requestTimestamp;
@@ -78,27 +78,34 @@ export function ChatItem({
 
 
   const handleItemClick = () => {
-    if (chat.pendingApprovalFromUserId || chat.isRejected) {
-      onSelectChat(chat);
-      return;
-    }
+    // Always allow selecting the chat item to show appropriate messages/actions in ChatView
     onSelectChat(chat);
   };
 
-  const isClickable = !chat.pendingApprovalFromUserId && !chat.isRejected;
+  // An item is considered "active" in the list if it's selected AND it's an active chat (not pending/rejected)
+  const isItemActiveInList = isActive && !chat.pendingApprovalFromUserId && !chat.isRejected;
 
 
   return (
     <div
       className={cn(
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
-        isActive && isClickable ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        !isClickable && !showAcceptRejectActions && "opacity-70 cursor-not-allowed"
+        isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
+        // Apply opacity if it's not pending for current user and not rejected (i.e. pending for other, or a normal chat that isn't active)
+        // Or if it's a rejected chat that is not currently selected (isActive is false)
+        ( (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) ||
+          (chat.isRejected && !isActive)
+        ) && "opacity-70"
       )}
     >
       <button
         onClick={handleItemClick}
-        disabled={!isClickable && !showAcceptRejectActions && !showDeleteAction} // Allow click if actions are available
+        // Disable button if it's pending for other user to accept and not active
+        // Or if it's rejected and not active
+        disabled={
+          (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
+          (chat.isRejected && !isActive)
+        }
         className="w-full flex items-center space-x-3"
       >
         <Avatar className="h-10 w-10">
@@ -109,7 +116,14 @@ export function ChatItem({
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-center">
-            <h4 className={cn("font-semibold text-sm truncate", chat.pendingApprovalFromUserId === currentUser.id && "text-primary", chat.isRejected && "text-destructive")}>{name}</h4>
+            <h4 className={cn(
+                "font-semibold text-sm truncate",
+                chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
+                chat.isRejected && "text-destructive"
+              )}
+            >
+              {name}
+            </h4>
             {statusTimestamp && (
               <p className="text-xs text-sidebar-foreground/60 whitespace-nowrap">
                 {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
@@ -134,7 +148,7 @@ export function ChatItem({
           <Button
             size="sm"
             onClick={(e) => { e.stopPropagation(); onAcceptChat(chat.id); }}
-            className="bg-primary hover:bg-primary/90"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             <Check className="mr-1 h-4 w-4" /> Terima
           </Button>
