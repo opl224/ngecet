@@ -45,7 +45,6 @@ export function MessageBubble({
       "flex items-center group w-full",
       isCurrentUserMessage ? "justify-end pl-2" : "justify-start pr-2"
     )}>
-      {/* Action buttons for current user's messages (appear on the left on hover) */}
       {isCurrentUserMessage && (
         <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity order-1 mr-2">
           <DropdownMenu>
@@ -56,39 +55,42 @@ export function MessageBubble({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleReply}>
-                <Undo2 size={14} className="mr-2" />
-                Balas
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleEdit}>
-                <Edit3 size={14} className="mr-2" />
-                Edit Pesan
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleDelete}
-                className="text-destructive hover:!bg-destructive/10 focus:!bg-destructive/10 focus:!text-destructive-foreground"
-              >
-                <Trash2 size={14} className="mr-2" />
-                Hapus
-              </DropdownMenuItem>
+              {onReplyMessage && (
+                <DropdownMenuItem onClick={handleReply}>
+                  <Undo2 size={14} className="mr-2" />
+                  Balas
+                </DropdownMenuItem>
+              )}
+              {onEditMessage && (
+                <DropdownMenuItem onClick={handleEdit}>
+                  <Edit3 size={14} className="mr-2" />
+                  Edit Pesan
+                </DropdownMenuItem>
+              )}
+              {(onReplyMessage || onEditMessage) && onDeleteMessage && <DropdownMenuSeparator />}
+              {onDeleteMessage && (
+                <DropdownMenuItem
+                  onClick={handleDelete}
+                  className="text-destructive hover:!bg-destructive/10 focus:!bg-destructive/10 focus:!text-destructive-foreground"
+                >
+                  <Trash2 size={14} className="mr-2" />
+                  Hapus
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       )}
 
-      {/* Message Bubble Content */}
       <div className={cn(
-        "max-w-[70%] shadow-sm flex flex-col px-3 py-2 relative", // Added relative for tail positioning
+        "max-w-[70%] shadow-sm flex flex-col px-3 py-2 relative", 
         isCurrentUserMessage
           ? "bg-primary text-primary-foreground rounded-b-lg rounded-tl-lg order-2"
           : "bg-card text-card-foreground rounded-b-lg rounded-tr-lg border order-1"
       )}>
-        {/* Tail for current user message */}
         {isCurrentUserMessage && (
           <div className="absolute top-0 -right-2 w-0 h-0 border-t-[10px] border-t-primary border-l-[10px] border-l-transparent"></div>
         )}
-        {/* Tail for other user message */}
         {!isCurrentUserMessage && (
           <div className="absolute top-0 -left-2 w-0 h-0 border-t-[10px] border-t-card border-r-[10px] border-r-transparent"></div>
         )}
@@ -96,6 +98,26 @@ export function MessageBubble({
         {!isCurrentUserMessage && (
           <p className="text-xs font-semibold mb-0.5 text-accent-foreground">{message.senderName}</p>
         )}
+
+        {message.replyToMessageId && message.replyToMessageSenderName && message.replyToMessageContent && (
+          <div className={cn(
+            "mb-1.5 pt-1 pb-1 pl-2 pr-1 rounded",
+            "border-l-4",
+            isCurrentUserMessage ? "border-primary-foreground/50 bg-primary-foreground/10" : "border-primary bg-muted/70"
+          )}>
+            <p className={cn(
+              "text-xs font-semibold",
+              isCurrentUserMessage ? "text-primary-foreground" : "text-primary"
+            )}>{message.replyToMessageSenderName}</p>
+            <p className={cn(
+              "text-xs opacity-90",
+              isCurrentUserMessage ? "text-primary-foreground/90" : "text-card-foreground/90"
+            )} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {message.replyToMessageContent}
+            </p>
+          </div>
+        )}
+
         <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
         <div className="flex justify-end mt-1 items-center">
           {message.isEdited && (
@@ -113,8 +135,7 @@ export function MessageBubble({
         </div>
       </div>
 
-      {/* Action buttons for other users' messages (appear on the right on hover) */}
-      {!isCurrentUserMessage && (
+      {!isCurrentUserMessage && onReplyMessage && (
         <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity order-2 ml-2">
           <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-teal-500 hover:bg-teal-500/10 hover:text-teal-600" aria-label="Reply to message" onClick={handleReply}>
             <Undo2 size={16} />

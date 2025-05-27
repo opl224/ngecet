@@ -94,9 +94,9 @@ export default function ChatPage() {
       id: chatId,
       type: "direct",
       participants: participantsArray,
-      name: recipientUser.name, // For direct chat, name can be the other person's name
+      name: recipientUser.name, 
       lastMessageTimestamp: Date.now(),
-      avatarUrl: recipientUser.avatarUrl // Avatar of the other person for direct chat
+      avatarUrl: recipientUser.avatarUrl 
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
     setSelectedChat(newChat);
@@ -146,7 +146,7 @@ export default function ChatPage() {
     setSelectedChat(chat);
   }, []);
 
-  const handleSendMessage = useCallback((content: string) => {
+  const handleSendMessage = useCallback((content: string, replyToMessage?: Message | null) => {
     if (!currentUser || !selectedChat) return;
 
     const newMessage: Message = {
@@ -157,6 +157,11 @@ export default function ChatPage() {
       content,
       timestamp: Date.now(),
       isEdited: false,
+      ...(replyToMessage && {
+        replyToMessageId: replyToMessage.id,
+        replyToMessageContent: replyToMessage.content.length > 50 ? replyToMessage.content.substring(0, 50) + "..." : replyToMessage.content,
+        replyToMessageSenderName: replyToMessage.senderName,
+      }),
     };
 
     setAllMessages(prev => ({
@@ -313,7 +318,7 @@ export default function ChatPage() {
            <div className="md:hidden p-2 border-b flex items-center">
              <SidebarTrigger />
              {selectedChat && <span className="ml-2 font-semibold">
-                {selectedChat.type === 'direct'
+                {selectedChat.type === 'direct' && selectedChat.participants
                     ? selectedChat.participants.find(p => p.id !== currentUser.id)?.name || 'Direct Chat'
                     : selectedChat.name || 'Group Chat'}
                 </span>}
@@ -348,5 +353,3 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
-
-    

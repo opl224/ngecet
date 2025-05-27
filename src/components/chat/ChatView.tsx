@@ -18,12 +18,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface ChatViewProps {
   chat: Chat;
   messages: Message[];
   currentUser: User;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string, replyToMessage?: Message | null) => void;
   onEditMessage: (messageToEdit: Message) => void;
   onDeleteMessage: (messageId: string, chatId: string) => void;
 }
@@ -52,12 +53,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim()) {
-      let contentToSend = newMessage.trim();
-      if (replyingToMessage) {
-        // You can prepend reply context here if desired, or handle it in onSendMessage
-        // For now, just sending the new message. The UI indicates the reply context.
-      }
-      onSendMessage(contentToSend);
+      onSendMessage(newMessage.trim(), replyingToMessage);
       setNewMessage("");
       setReplyingToMessage(null);
     }
@@ -74,9 +70,9 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
 
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
-      const otherParticipant = chat.participants.find(p => p.id !== currentUser.id);
+      const otherParticipant = chat.participants?.find(p => p.id !== currentUser.id);
       const otherParticipantName = otherParticipant?.name || "Unknown User";
-      const otherParticipantAvatar = otherParticipant?.avatarUrl || chat.avatarUrl; // Use chat.avatarUrl as fallback
+      const otherParticipantAvatar = otherParticipant?.avatarUrl || chat.avatarUrl; 
       const otherParticipantStatus = otherParticipant?.status || "Offline";
       return {
         name: otherParticipantName,
@@ -85,13 +81,13 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
         description: `Direct message with ${otherParticipantName}`,
         status: otherParticipantStatus
       };
-    } else { // group
+    } else { 
       const groupName = chat.name || "Unnamed Group";
       return {
         name: groupName,
         avatarUrl: chat.avatarUrl,
         Icon: Users,
-        description: `${chat.participants.length} members: ${chat.participants.map(p => p.name || 'Unknown').join(', ')}`,
+        description: `${chat.participants?.length || 0} members: ${chat.participants?.map(p => p.name || 'Unknown').join(', ') || ''}`,
         status: null
       };
     }
@@ -115,8 +111,8 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
                 <h2 className="text-lg font-semibold group-hover:underline truncate">{displayDetails.name}</h2>
                 <p className="text-xs text-muted-foreground truncate">
                   {chat.type === 'direct'
-                    ? displayDetails.status || (currentUser.id === chat.participants.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline")
-                    : `Group Chat - ${chat.participants.length} members`}
+                    ? displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline")
+                    : `Group Chat - ${chat.participants?.length || 0} members`}
                 </p>
               </div>
             </div>
@@ -161,7 +157,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
             <h4 className="font-semibold mb-2 text-sm px-1">Participants</h4>
             <ScrollArea className="h-[calc(100vh-280px)]"> 
               <ul className="space-y-1 text-sm">
-                {chat.participants.map(participantUser => {
+                {chat.participants?.map(participantUser => {
                   const isCurrentUserParticipant = participantUser.id === currentUser.id;
                   const participantName = participantUser.name || "Unknown User";
                   return (
@@ -238,5 +234,3 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     </div>
   );
 }
-
-    

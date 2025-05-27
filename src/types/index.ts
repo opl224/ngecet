@@ -14,6 +14,9 @@ export interface Message {
   content: string;
   timestamp: number;
   isEdited?: boolean; // To track if a message was edited
+  replyToMessageId?: string;
+  replyToMessageSenderName?: string;
+  replyToMessageContent?: string;
 }
 
 export type ChatType = "direct" | "group";
@@ -22,7 +25,7 @@ export interface Chat {
   id: string;
   type: ChatType;
   name?: string; // For group chats
-  participants: User[]; // Array of user objects or just IDs if fetched separately
+  participants: User[];
   lastMessage?: string;
   lastMessageTimestamp?: number;
   unreadCount?: number; // Optional: for future unread messages feature
