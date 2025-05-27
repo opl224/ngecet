@@ -84,7 +84,7 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent side="bottom" align="end">
+              <DropdownMenuContent side="top" align="end">
                 <DropdownMenuItem onClick={handleReply} className="gap-2">
                   <CornerUpLeft className="h-4 w-4" />
                   <span>Reply</span>
