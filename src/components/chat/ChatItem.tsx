@@ -17,9 +17,11 @@ interface ChatItemProps {
 export function ChatItem({ chat, currentUser, onSelectChat, isActive }: ChatItemProps) {
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
-      const otherParticipant = chat.participants.find(p => p.id !== currentUser.id);
-      const nameForDisplay = otherParticipant?.name || "Unknown User";
-      const avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl; // Fallback to chat.avatarUrl if participant specific one is not there
+      // For direct chats, chat.name is already populated with the other participant's name,
+      // and chat.avatarUrl with their avatar during chat creation.
+      const nameForDisplay = chat.name || "Unknown User";
+      const avatarForDisplay = chat.avatarUrl; // This is set to the recipient's avatar.
+      
       return {
         name: nameForDisplay,
         avatarUrl: avatarForDisplay,
@@ -69,5 +71,3 @@ export function ChatItem({ chat, currentUser, onSelectChat, isActive }: ChatItem
     </button>
   );
 }
-
-    
