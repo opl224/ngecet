@@ -3,6 +3,7 @@ export interface User {
   id: string;
   name: string;
   avatarUrl?: string;
+  status?: string; // Ditambahkan field status
 }
 
 export interface Message {

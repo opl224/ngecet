@@ -21,10 +21,9 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { LogOut, Trash2 } from "lucide-react"; // Ditambahkan Trash2, Settings dihapus karena tidak dipakai
+import { LogOut, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-// Separator tidak digunakan secara langsung di sini, bisa dipertimbangkan untuk dihapus jika tidak ada rencana lain
-// import { Separator } from "@/components/ui/separator";
+
 
 const LS_USER_KEY = "simplicchat_user";
 const LS_CHATS_KEY = "simplicchat_chats";
@@ -47,29 +46,32 @@ export default function ChatPage() {
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
     setIsClient(true);
-    // Attempt to auto-select the most recent chat on initial load if chats exist
-    if (chats.length > 0 && !selectedChat) {
-        // const sortedChats = [...chats].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
-        // setSelectedChat(sortedChats[0]); // Defer selection to avoid potential issues during initial render
-    }
-  }, []); // Removed chats and selectedChat from dependencies to avoid re-triggering
+  }, []);
 
 
   const handleSaveProfile = useCallback((name: string) => {
     const userId = name.toLowerCase().replace(/\s+/g, "_") || `user_${Date.now()}`;
-    const profile: User = { id: userId, name, avatarUrl: `https://placehold.co/100x100.png?text=${name.substring(0,1)}` };
+    const profile: User = { 
+      id: userId, 
+      name, 
+      avatarUrl: `https://placehold.co/100x100.png?text=${name.substring(0,1)}`,
+      status: "Online" // Status default
+    };
     setCurrentUser(profile);
     toast({ title: "Profil Disimpan", description: `Selamat datang, ${name}!` });
   }, [setCurrentUser, toast]);
 
   const handleCreateDirectChat = useCallback((recipientName: string) => {
     if (!currentUser) return;
-    if (recipientName === currentUser.id) {
+    // ID pengguna lain disamakan dengan nama untuk simplicitas
+    const recipientId = recipientName.toLowerCase().replace(/\s+/g, "_") || `user_recipient_${Date.now()}`;
+
+    if (recipientId === currentUser.id) {
       toast({ title: "Error", description: "Anda tidak bisa chat dengan diri sendiri.", variant: "destructive" });
       return;
     }
 
-    const participantIds = [currentUser.id, recipientName].sort();
+    const participantIds = [currentUser.id, recipientId].sort();
     const chatId = `direct_${participantIds.join("_")}`;
 
     const existingChat = chats.find(c => c.id === chatId);
@@ -78,15 +80,18 @@ export default function ChatPage() {
       toast({ title: "Chat Sudah Ada", description: `Membuka chat yang sudah ada dengan ${recipientName}.` });
       return;
     }
-
+    
+    // Untuk DM, avatarUrl bisa spesifik untuk penerima
+    const recipientInitial = recipientName.substring(0,1) || 'R';
     const newChat: Chat = {
       id: chatId,
       type: "direct",
-      participants: participantIds,
+      participants: participantIds, // berisi currentUser.id dan recipientId
       lastMessageTimestamp: Date.now(),
-      avatarUrl: `https://placehold.co/100x100.png?text=${recipientName.substring(0,1)}`
+      // Avatar untuk direct chat akan menggunakan inisial nama penerima
+      avatarUrl: `https://placehold.co/100x100.png?text=${recipientInitial}`
     };
-    setChats(prev => [newChat, ...prev]);
+    setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
     setSelectedChat(newChat);
     setAllMessages(prev => ({ ...prev, [chatId]: [] }));
     toast({ title: "Chat Dibuat", description: `Memulai chat baru dengan ${recipientName}.` });
@@ -94,8 +99,10 @@ export default function ChatPage() {
 
   const handleCreateGroupChat = useCallback((groupName: string, memberNames: string[]) => {
     if (!currentUser) return;
+    const memberIds = memberNames.map(name => name.toLowerCase().replace(/\s+/g, "_") || `user_member_${Date.now()}`);
     const chatId = `group_${groupName.replace(/\s+/g, "_")}_${Date.now()}`;
-    const participants = Array.from(new Set([currentUser.id, ...memberNames]));
+    const participants = Array.from(new Set([currentUser.id, ...memberIds]));
+    const groupInitial = groupName.substring(0,1) || 'G';
 
     const newChat: Chat = {
       id: chatId,
@@ -103,9 +110,9 @@ export default function ChatPage() {
       name: groupName,
       participants,
       lastMessageTimestamp: Date.now(),
-      avatarUrl: `https://placehold.co/100x100.png?text=${groupName.substring(0,1)}`
+      avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`
     };
-    setChats(prev => [newChat, ...prev]);
+    setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
     setSelectedChat(newChat);
     setAllMessages(prev => ({ ...prev, [chatId]: [] }));
     toast({ title: "Grup Dibuat", description: `Grup "${groupName}" telah siap.` });
@@ -136,12 +143,12 @@ export default function ChatPage() {
       chat.id === selectedChat.id 
         ? { ...chat, lastMessage: content, lastMessageTimestamp: newMessage.timestamp } 
         : chat
-    ).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0))); // Ensure chats are re-sorted
+    ).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
   }, [currentUser, selectedChat, setAllMessages, setChats]);
   
   const handleLogout = (clearData: boolean) => {
     setCurrentUser(null);
-    setSelectedChat(null); // Selalu batalkan pilihan chat
+    setSelectedChat(null); 
 
     if (clearData) {
       setChats([]);
@@ -216,7 +223,7 @@ export default function ChatPage() {
         <SidebarInset className="flex-1">
            <div className="md:hidden p-2 border-b flex items-center">
              <SidebarTrigger />
-             {selectedChat && <span className="ml-2 font-semibold">{selectedChat.type === 'direct' ? (selectedChat.participants.find(p => p !== currentUser.id) || 'Direct Chat') : selectedChat.name}</span>}
+             {selectedChat && <span className="ml-2 font-semibold">{selectedChat.type === 'direct' ? (selectedChat.participants.find(p => p !== currentUser.id)?.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ') || 'Direct Chat') : selectedChat.name}</span>}
            </div>
           {selectedChat ? (
             <ChatView
@@ -246,4 +253,3 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
-

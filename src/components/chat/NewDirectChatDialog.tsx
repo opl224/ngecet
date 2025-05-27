@@ -17,7 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 const directChatFormSchema = z.object({
-  recipientName: z.string().min(1, "Recipient name cannot be empty.").max(30, "Name is too long."),
+  // Memperbolehkan spasi dalam nama, akan di-normalize menjadi ID nanti
+  recipientName: z.string().min(2, "Recipient name must be at least 2 characters.").max(50, "Name is too long.").regex(/^[a-zA-Z0-9\s_']+$/, "Name can only contain letters, numbers, spaces, underscores, and apostrophes."),
 });
 
 type DirectChatFormValues = z.infer<typeof directChatFormSchema>;
@@ -25,7 +26,7 @@ type DirectChatFormValues = z.infer<typeof directChatFormSchema>;
 interface NewDirectChatDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onCreateChat: (recipientName: string) => void;
+  onCreateChat: (recipientName: string) => void; // Menerima nama, bukan ID
   currentUserId: string | undefined;
 }
 
@@ -36,11 +37,13 @@ export function NewDirectChatDialog({ isOpen, onOpenChange, onCreateChat, curren
   });
 
   function onSubmit(data: DirectChatFormValues) {
-    if (data.recipientName === currentUserId) {
+    // Normalisasi nama menjadi ID untuk perbandingan
+    const recipientId = data.recipientName.toLowerCase().replace(/\s+/g, "_");
+    if (recipientId === currentUserId) {
         form.setError("recipientName", { type: "manual", message: "You cannot start a chat with yourself." });
         return;
     }
-    onCreateChat(data.recipientName);
+    onCreateChat(data.recipientName); // Kirim nama asli
     form.reset();
     onOpenChange(false);
   }
@@ -63,7 +66,7 @@ export function NewDirectChatDialog({ isOpen, onOpenChange, onCreateChat, curren
                 <FormItem>
                   <FormLabel>Recipient Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., JaneDoe" {...field} />
+                    <Input placeholder="e.g., Jane Doe" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
