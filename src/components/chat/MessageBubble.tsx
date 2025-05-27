@@ -34,14 +34,14 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
                        "items-start" 
                      )}>
       {!isCurrentUser && sender && (
-        <Avatar className="h-8 w-8 self-end mr-2 flex-shrink-0">
+        <Avatar className="h-8 w-8 self-start mr-2 flex-shrink-0"> {/* Changed self-end to self-start */}
           <AvatarImage src={sender.avatarUrl} alt={sender.name} data-ai-hint="avatar person" />
           <AvatarFallback>{sender.name.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
       )}
 
       <div className={cn(
-          "flex items-center", 
+          "flex items-center", // This parent already has items-center which might not be what we want for overall bubble vs actions alignment. The main div's items-start is more critical.
           isCurrentUser ? "flex-row-reverse" : "flex-row"
         )}
       >
@@ -70,7 +70,7 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
 
         {isCurrentUser && (
           <div className={cn(
-            "opacity-0 group-hover/message:opacity-100 transition-opacity duration-150",
+            "opacity-0 group-hover/message:opacity-100 transition-opacity duration-150 flex flex-col items-center", // Ensures dropdown trigger is part of the flex alignment
             isCurrentUser ? "ml-1.5" : "mr-1.5" 
           )}>
             <DropdownMenu>
@@ -112,3 +112,4 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
 };
 
 export default MessageBubble;
+
