@@ -70,13 +70,13 @@ export default function ChatPage() {
       toast({ title: "Error", description: "Anda tidak bisa chat dengan diri sendiri.", variant: "destructive" });
       return;
     }
-
+    
     const recipientInitial = recipientName.substring(0,1).toUpperCase() || 'R';
     const recipientUser: User = {
       id: recipientId,
       name: recipientName,
       avatarUrl: `https://placehold.co/100x100.png?text=${recipientInitial}`,
-      status: "Offline" // Default status for other users
+      status: "Offline" 
     };
 
     const participantsArray: User[] = [currentUser, recipientUser].sort((a, b) => a.id.localeCompare(b.id));
@@ -85,24 +85,88 @@ export default function ChatPage() {
 
     const existingChat = chats.find(c => c.id === chatId);
     if (existingChat) {
+      // If chat exists and is pending for current user, or active, select it.
+      // If it's pending for the other user, also select it to show "waiting" status.
+      // If it was rejected, perhaps allow re-requesting? For now, just select.
       setSelectedChat(existingChat);
-      toast({ title: "Chat Sudah Ada", description: `Membuka chat yang sudah ada dengan ${recipientName}.` });
+      if (existingChat.pendingApprovalFromUserId === currentUser.id) {
+        toast({ title: "Permintaan Tertunda", description: `Anda memiliki permintaan chat dari ${recipientName}. Terima atau tolak dari daftar chat.` });
+      } else if (existingChat.pendingApprovalFromUserId) {
+        toast({ title: "Permintaan Terkirim", description: `Anda sudah mengirim permintaan ke ${recipientName}. Menunggu respon.` });
+      } else if (existingChat.isRejected) {
+         toast({ title: "Chat Ditolak", description: `Permintaan chat dengan ${recipientName} sebelumnya ditolak.` });
+      }
+      else {
+        toast({ title: "Chat Sudah Ada", description: `Membuka chat yang sudah ada dengan ${recipientName}.` });
+      }
       return;
     }
-
+    const now = Date.now();
     const newChat: Chat = {
       id: chatId,
       type: "direct",
       participants: participantsArray,
       name: recipientUser.name, 
-      lastMessageTimestamp: Date.now(),
-      avatarUrl: recipientUser.avatarUrl 
+      avatarUrl: recipientUser.avatarUrl,
+      pendingApprovalFromUserId: recipientUser.id, // Recipient needs to approve
+      isRejected: false,
+      requestTimestamp: now,
+      lastMessage: "Permintaan chat dikirim...",
+      lastMessageTimestamp: now,
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
     setSelectedChat(newChat);
-    setAllMessages(prev => ({ ...prev, [chatId]: [] }));
-    toast({ title: "Chat Dibuat", description: `Memulai chat baru dengan ${recipientName}.` });
+    setAllMessages(prev => ({ ...prev, [chatId]: [] })); // No messages until accepted
+    toast({ title: "Permintaan Terkirim", description: `Permintaan chat telah dikirim ke ${recipientName}.` });
   }, [currentUser, chats, setChats, setAllMessages, toast]);
+
+  const handleAcceptChatRequest = useCallback((chatId: string) => {
+    setChats(prevChats => {
+      const now = Date.now();
+      return prevChats.map(chat => {
+        if (chat.id === chatId && chat.pendingApprovalFromUserId === currentUser?.id) {
+          toast({ title: "Permintaan Diterima", description: `Anda sekarang dapat mengirim pesan.` });
+          return {
+            ...chat,
+            pendingApprovalFromUserId: undefined,
+            isRejected: false,
+            rejectedByUserId: undefined,
+            lastMessage: "Permintaan chat diterima.",
+            lastMessageTimestamp: now,
+          };
+        }
+        return chat;
+      }).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+    });
+    // Select the chat after accepting
+    const acceptedChat = chats.find(c => c.id === chatId);
+    if (acceptedChat) setSelectedChat({...acceptedChat, pendingApprovalFromUserId: undefined, isRejected: false });
+
+  }, [currentUser, setChats, toast, chats]);
+
+  const handleRejectChatRequest = useCallback((chatId: string) => {
+    setChats(prevChats => {
+      const now = Date.now();
+      return prevChats.map(chat => {
+        if (chat.id === chatId && chat.pendingApprovalFromUserId === currentUser?.id) {
+          toast({ title: "Permintaan Ditolak", variant: "destructive" });
+          return {
+            ...chat,
+            pendingApprovalFromUserId: undefined,
+            isRejected: true,
+            rejectedByUserId: currentUser?.id,
+            lastMessage: "Permintaan chat ditolak.",
+            lastMessageTimestamp: now,
+          };
+        }
+        return chat;
+      }).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+    });
+    if (selectedChat?.id === chatId) {
+      setSelectedChat(null); // Deselect if current chat is rejected
+    }
+  }, [currentUser, setChats, toast, selectedChat?.id]);
+
 
   const handleCreateGroupChat = useCallback((groupName: string, memberNames: string[]) => {
     if (!currentUser) return;
@@ -135,6 +199,7 @@ export default function ChatPage() {
       participants: allParticipantUsers,
       lastMessageTimestamp: Date.now(),
       avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`
+      // Group chats are active by default, no request system for groups in this iteration
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
     setSelectedChat(newChat);
@@ -143,11 +208,31 @@ export default function ChatPage() {
   }, [currentUser, setChats, setAllMessages, toast]);
 
   const handleSelectChat = useCallback((chat: Chat) => {
+    // Do not select if it's a request pending for the other user, or if rejected
+    if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
+        toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
+        return;
+    }
+    if (chat.isRejected) {
+        toast({ title: "Chat Ditolak", description: "Permintaan chat ini telah ditolak.", variant: "destructive"});
+        return;
+    }
+    // If it's a request for the current user, don't select, they should use Accept/Reject buttons
+    if (chat.pendingApprovalFromUserId === currentUser?.id) {
+        toast({ title: "Tindakan Diperlukan", description: "Harap terima atau tolak permintaan chat ini dari daftar chat." });
+        return;
+    }
     setSelectedChat(chat);
-  }, []);
+  }, [currentUser?.id, toast]);
 
   const handleSendMessage = useCallback((content: string, replyToMessage?: Message | null) => {
     if (!currentUser || !selectedChat) return;
+
+    // Prevent sending messages in non-active chats
+    if (selectedChat.pendingApprovalFromUserId || selectedChat.isRejected) {
+      toast({ title: "Tidak Dapat Mengirim Pesan", description: "Chat ini belum aktif.", variant: "destructive"});
+      return;
+    }
 
     const newMessage: Message = {
       id: `msg_${Date.now()}`,
@@ -174,7 +259,7 @@ export default function ChatPage() {
         ? { ...chat, lastMessage: content, lastMessageTimestamp: newMessage.timestamp }
         : chat
     ).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
-  }, [currentUser, selectedChat, setAllMessages, setChats]);
+  }, [currentUser, selectedChat, setAllMessages, setChats, toast]);
 
   const handleDeleteMessage = useCallback((messageId: string, chatId: string) => {
     setAllMessages(prev => {
@@ -191,7 +276,7 @@ export default function ChatPage() {
           ? {
               ...c,
               lastMessage: lastMessageInChat ? lastMessageInChat.content : "No messages yet",
-              lastMessageTimestamp: lastMessageInChat ? lastMessageInChat.timestamp : c.lastMessageTimestamp,
+              lastMessageTimestamp: lastMessageInChat ? lastMessageInChat.timestamp : (c.requestTimestamp || c.lastMessageTimestamp),
             }
           : c
       ).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
@@ -300,6 +385,8 @@ export default function ChatPage() {
               selectedChatId={selectedChat?.id}
               onNewDirectChat={() => setIsNewDirectChatDialogOpen(true)}
               onNewGroupChat={() => setIsNewGroupChatDialogOpen(true)}
+              onAcceptChat={handleAcceptChatRequest}
+              onRejectChat={handleRejectChatRequest}
             />
           </SidebarContent>
           <SidebarFooter className="p-2 border-t border-sidebar-border space-y-1">

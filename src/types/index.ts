@@ -7,7 +7,7 @@ export interface User {
 }
 
 export interface Message {
-  id: string;
+  id:string;
   chatId: string;
   senderId: string;
   senderName: string; // Denormalized for easier display
@@ -24,10 +24,16 @@ export type ChatType = "direct" | "group";
 export interface Chat {
   id: string;
   type: ChatType;
-  name?: string; // For group chats
+  name?: string; // For group chats or direct chat partner name
   participants: User[];
   lastMessage?: string;
   lastMessageTimestamp?: number;
   unreadCount?: number; // Optional: for future unread messages feature
-  avatarUrl?: string; // For group chats or direct chat partner
+  avatarUrl?: string; // For group chats or direct chat partner avatar
+
+  // Fields for chat request system
+  pendingApprovalFromUserId?: string; // ID of the user whose approval is awaited
+  isRejected?: boolean;
+  rejectedByUserId?: string; // ID of the user who rejected
+  requestTimestamp?: number; // Timestamp of the initial request
 }

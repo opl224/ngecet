@@ -20,6 +20,8 @@ interface ChatListProps {
   selectedChatId?: string | null;
   onNewDirectChat: () => void;
   onNewGroupChat: () => void;
+  onAcceptChat: (chatId: string) => void;
+  onRejectChat: (chatId: string) => void;
 }
 
 export function ChatList({
@@ -29,12 +31,20 @@ export function ChatList({
   selectedChatId,
   onNewDirectChat,
   onNewGroupChat,
+  onAcceptChat,
+  onRejectChat,
 }: ChatListProps) {
   if (!currentUser) {
     return <div className="p-4 text-sm text-sidebar-foreground/70">Loading user...</div>;
   }
 
-  const sortedChats = [...chats].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+  // Sort chats by lastMessageTimestamp, handling cases where it might be undefined (e.g., new requests)
+  // by prioritizing chats with timestamps. New requests will use requestTimestamp for initial ordering.
+  const sortedChats = [...chats].sort((a, b) => {
+    const tsA = a.lastMessageTimestamp || a.requestTimestamp || 0;
+    const tsB = b.lastMessageTimestamp || b.requestTimestamp || 0;
+    return tsB - tsA;
+  });
 
   return (
     <div className="flex flex-col h-full">
@@ -68,12 +78,14 @@ export function ChatList({
                 chat={chat}
                 currentUser={currentUser}
                 onSelectChat={onSelectChat}
-                isActive={selectedChatId === chat.id}
+                isActive={selectedChatId === chat.id && !chat.pendingApprovalFromUserId && !chat.isRejected}
+                onAcceptChat={onAcceptChat}
+                onRejectChat={onRejectChat}
               />
             ))
           ) : (
             <div className="p-4 text-center text-sm text-sidebar-foreground/70">
-              No chats yet. Start a new conversation!
+              No chats yet. Start a new conversation or wait for requests!
             </div>
           )}
         </div>

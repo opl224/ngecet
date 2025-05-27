@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -37,6 +37,8 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
   const viewportRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
 
+  const isChatActive = chat.type === 'group' || (!chat.pendingApprovalFromUserId && !chat.isRejected);
+
 
   useEffect(() => {
     if (viewportRef.current) {
@@ -52,6 +54,10 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isChatActive) {
+      toast({ title: "Chat Tidak Aktif", description: "Anda tidak dapat mengirim pesan di chat ini.", variant: "destructive"});
+      return;
+    }
     if (newMessage.trim()) {
       onSendMessage(newMessage.trim(), replyingToMessage);
       setNewMessage("");
@@ -60,18 +66,15 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
   };
 
   const handleReplyToMessageInView = (messageToReply: Message) => {
+    if(!isChatActive) return;
     setReplyingToMessage(messageToReply);
     messageInputRef.current?.focus();
-    toast({
-      title: "Membalas Pesan",
-      description: `Anda sedang membalas pesan dari ${messageToReply.senderName}. Isi balasan Anda di bawah.`,
-    });
   };
 
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
       const otherParticipant = chat.participants?.find(p => p.id !== currentUser.id);
-      const otherParticipantName = otherParticipant?.name || "Unknown User";
+      const otherParticipantName = otherParticipant?.name || chat.name || "Unknown User";
       const otherParticipantAvatar = otherParticipant?.avatarUrl || chat.avatarUrl; 
       const otherParticipantStatus = otherParticipant?.status || "Offline";
       return {
@@ -95,6 +98,32 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
 
   const displayDetails = getChatDisplayDetails();
 
+  let chatOverlayMessage = null;
+  if (chat.type === 'direct') {
+    if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) {
+      chatOverlayMessage = {
+        icon: <Send className="w-16 h-16 text-muted-foreground mb-4" />,
+        title: "Menunggu Persetujuan",
+        text: `Permintaan chat Anda kepada ${displayDetails.name} sedang menunggu persetujuan.`,
+      };
+    } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId === currentUser.id) {
+       chatOverlayMessage = {
+        icon: <AlertTriangle className="w-16 h-16 text-amber-500 mb-4" />,
+        title: "Permintaan Tertunda",
+        text: `Anda memiliki permintaan chat dari ${displayDetails.name}. Terima atau tolak dari daftar chat.`,
+      };
+    } else if (chat.isRejected) {
+      const rejecterName = chat.rejectedByUserId === currentUser.id ? "Anda" : (chat.participants.find(p => p.id === chat.rejectedByUserId)?.name || "Pengguna lain");
+      const rejectedTargetName = chat.rejectedByUserId === currentUser.id ? (chat.participants.find(p=>p.id !==currentUser.id)?.name || "pengguna ini") : "Anda";
+      chatOverlayMessage = {
+        icon: <Lock className="w-16 h-16 text-destructive mb-4" />,
+        title: "Permintaan Ditolak",
+        text: `${rejecterName} telah menolak permintaan chat dengan ${rejectedTargetName}.`,
+      };
+    }
+  }
+
+
   return (
     <div className="flex flex-col h-full bg-background">
       <Sheet>
@@ -111,7 +140,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
                 <h2 className="text-lg font-semibold group-hover:underline truncate">{displayDetails.name}</h2>
                 <p className="text-xs text-muted-foreground truncate">
                   {chat.type === 'direct'
-                    ? displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline")
+                    ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline")) : "Inactive")
                     : `Group Chat - ${chat.participants?.length || 0} members`}
                 </p>
               </div>
@@ -137,7 +166,9 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
                 </Avatar>
                 <SheetTitle className="text-2xl">{displayDetails.name}</SheetTitle>
                 <SheetDescription className="text-base">
-                  Status: <span className="font-medium text-green-500">{displayDetails.status || "Online"}</span> (Simulated)
+                 Status: <span className={cn("font-medium", isChatActive && displayDetails.status === "Online" ? "text-green-500" : "text-muted-foreground")}>
+                    {isChatActive ? (displayDetails.status || "Offline") : "Tidak Aktif"}
+                  </span> (Simulated)
                 </SheetDescription>
               </div>
             ) : (
@@ -164,7 +195,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
                     <li key={participantUser.id} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md">
                        <Avatar className="h-8 w-8">
                          <AvatarImage src={participantUser.avatarUrl} alt={participantName} data-ai-hint="person abstract small"/>
-                         <AvatarFallback>{participantName?.substring(0,1).toUpperCase() || '?'}</AvatarFallback>
+                         <AvatarFallback>{participantUser?.name?.substring(0,1).toUpperCase() || '?'}</AvatarFallback>
                        </Avatar>
                        <span className="truncate">
                         {participantName}
@@ -179,27 +210,39 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
         </SheetContent>
       </Sheet>
 
-      <ScrollArea className="flex-1 p-4" viewportRef={viewportRef} ref={scrollAreaRef}>
-        <div className="space-y-4 mb-4">
+      <ScrollArea className="flex-1 p-4 relative" viewportRef={viewportRef} ref={scrollAreaRef}>
+        {chatOverlayMessage && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4 z-10">
+                {chatOverlayMessage.icon}
+                <h3 className="text-xl font-semibold mb-2">{chatOverlayMessage.title}</h3>
+                <p className="text-muted-foreground">{chatOverlayMessage.text}</p>
+            </div>
+        )}
+        <div className={cn("space-y-4 mb-4", chatOverlayMessage && "blur-sm pointer-events-none")}>
           {messages.map((msg) => (
             <MessageBubble
               key={msg.id}
               message={msg}
               isCurrentUserMessage={msg.senderId === currentUser.id}
-              onReplyMessage={handleReplyToMessageInView}
-              onEditMessage={onEditMessage}
-              onDeleteMessage={onDeleteMessage}
+              onReplyMessage={isChatActive ? handleReplyToMessageInView : undefined}
+              onEditMessage={isChatActive ? onEditMessage : undefined}
+              onDeleteMessage={isChatActive ? onDeleteMessage : undefined}
             />
           ))}
-          {messages.length === 0 && (
+          {messages.length === 0 && isChatActive && (
             <div className="text-center text-muted-foreground py-10">
               No messages yet. Be the first to send one!
+            </div>
+          )}
+           {messages.length === 0 && !isChatActive && !chatOverlayMessage && ( // Fallback if no overlay but chat inactive
+            <div className="text-center text-muted-foreground py-10">
+              Chat ini tidak aktif.
             </div>
           )}
         </div>
       </ScrollArea>
 
-      {replyingToMessage && (
+      {replyingToMessage && isChatActive && (
         <div className="p-3 border-t bg-muted/30 text-sm">
           <div className="flex justify-between items-center text-muted-foreground">
             <div className="truncate flex-1 min-w-0 pr-2">
@@ -222,11 +265,12 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder={replyingToMessage ? `Balas ke ${replyingToMessage.senderName}...` : "Type a message..."}
+            placeholder={!isChatActive ? "Chat tidak aktif" : (replyingToMessage ? `Balas ke ${replyingToMessage.senderName}...` : "Type a message...")}
             className="flex-1 bg-input border-border focus-visible:ring-ring"
             aria-label="Message input"
+            disabled={!isChatActive}
           />
-          <Button type="submit" size="icon" aria-label="Send message" disabled={!newMessage.trim()}>
+          <Button type="submit" size="icon" aria-label="Send message" disabled={!newMessage.trim() || !isChatActive}>
             <SendHorizonal className="h-5 w-5" />
           </Button>
         </form>
