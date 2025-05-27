@@ -5,8 +5,8 @@ import type { Chat, User } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNowStrict, format } from 'date-fns';
-import { Users, User as UserIcon, Check, X, Send, AlertCircle } from "lucide-react";
+import { formatDistanceToNowStrict } from 'date-fns';
+import { Users, User as UserIcon, Check, X, Trash2 } from "lucide-react";
 
 interface ChatItemProps {
   chat: Chat;
@@ -15,17 +15,26 @@ interface ChatItemProps {
   isActive: boolean;
   onAcceptChat: (chatId: string) => void;
   onRejectChat: (chatId: string) => void;
+  onDeleteChatPermanently: (chatId: string) => void;
 }
 
-export function ChatItem({ chat, currentUser, onSelectChat, isActive, onAcceptChat, onRejectChat }: ChatItemProps) {
+export function ChatItem({
+  chat,
+  currentUser,
+  onSelectChat,
+  isActive,
+  onAcceptChat,
+  onRejectChat,
+  onDeleteChatPermanently
+}: ChatItemProps) {
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
       const otherParticipant = chat.participants.find(p => p.id !== currentUser.id);
-      const nameForDisplay = otherParticipant?.name || chat.name || "Unknown User"; // Fallback to chat.name
+      const nameForDisplay = otherParticipant?.name || chat.name || "Unknown User";
       const avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
       const initials = (nameForDisplay?.substring(0, 2) || "??").toUpperCase();
       return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials, Icon: UserIcon };
-    } else { // group
+    } else { 
       const groupName = chat.name || "Unnamed Group";
       return {
         name: groupName,
@@ -39,17 +48,17 @@ export function ChatItem({ chat, currentUser, onSelectChat, isActive, onAcceptCh
   const { name, avatarUrl, initials, Icon } = getChatDisplayDetails();
   const otherParticipant = chat.type === 'direct' ? chat.participants.find(p => p.id !== currentUser.id) : null;
 
-  // Determine chat status message and actions
   let statusMessage = chat.lastMessage;
   let statusTimestamp = chat.lastMessageTimestamp;
-  let showActions = false;
+  let showAcceptRejectActions = false;
+  let showDeleteAction = false;
 
   if (chat.type === "direct") {
     if (chat.pendingApprovalFromUserId === currentUser.id) {
       statusMessage = `${otherParticipant?.name || 'Someone'} ingin memulai chat.`;
       statusTimestamp = chat.requestTimestamp;
-      showActions = true;
-    } else if (chat.pendingApprovalFromUserId) { // Request sent by current user, waiting for other
+      showAcceptRejectActions = true;
+    } else if (chat.pendingApprovalFromUserId) { 
       statusMessage = `Permintaan terkirim. Menunggu ${name}...`;
       statusTimestamp = chat.requestTimestamp;
     } else if (chat.isRejected) {
@@ -58,15 +67,15 @@ export function ChatItem({ chat, currentUser, onSelectChat, isActive, onAcceptCh
       } else {
         statusMessage = `${name} menolak permintaan Anda.`;
       }
-      statusTimestamp = chat.lastMessageTimestamp; // Use rejection timestamp
+      statusTimestamp = chat.lastMessageTimestamp; 
+      showDeleteAction = true; 
     }
   }
 
 
   const handleItemClick = () => {
     if (chat.pendingApprovalFromUserId || chat.isRejected) {
-      // Do nothing or show a toast, handled by page.tsx handleSelectChat
-      onSelectChat(chat); // Let page.tsx handle the toast/logic
+      onSelectChat(chat); 
       return;
     }
     onSelectChat(chat);
@@ -80,12 +89,12 @@ export function ChatItem({ chat, currentUser, onSelectChat, isActive, onAcceptCh
       className={cn(
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isActive && isClickable ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        !isClickable && "opacity-70 cursor-not-allowed"
+        !isClickable && !showAcceptRejectActions && "opacity-70 cursor-not-allowed" 
       )}
     >
       <button
         onClick={handleItemClick}
-        disabled={!isClickable}
+        disabled={!isClickable && !showAcceptRejectActions && !showDeleteAction} // Allow click if actions are available
         className="w-full flex items-center space-x-3"
       >
         <Avatar className="h-10 w-10">
@@ -96,7 +105,7 @@ export function ChatItem({ chat, currentUser, onSelectChat, isActive, onAcceptCh
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-center">
-            <h4 className={cn("font-semibold text-sm truncate", chat.pendingApprovalFromUserId === currentUser.id && "text-primary")}>{name}</h4>
+            <h4 className={cn("font-semibold text-sm truncate", chat.pendingApprovalFromUserId === currentUser.id && "text-primary", chat.isRejected && "text-destructive")}>{name}</h4>
             {statusTimestamp && (
               <p className="text-xs text-sidebar-foreground/60 whitespace-nowrap">
                 {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
@@ -108,7 +117,7 @@ export function ChatItem({ chat, currentUser, onSelectChat, isActive, onAcceptCh
           </p>
         </div>
       </button>
-      {showActions && chat.type === "direct" && chat.pendingApprovalFromUserId === currentUser.id && (
+      {showAcceptRejectActions && chat.type === "direct" && chat.pendingApprovalFromUserId === currentUser.id && (
         <div className="mt-2 flex justify-end space-x-2">
           <Button
             size="sm"
@@ -127,6 +136,20 @@ export function ChatItem({ chat, currentUser, onSelectChat, isActive, onAcceptCh
           </Button>
         </div>
       )}
+      {showDeleteAction && (
+        <div className="mt-2 flex justify-end space-x-2">
+            <Button
+                size="sm"
+                variant="destructive"
+                className="bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={(e) => { e.stopPropagation(); onDeleteChatPermanently(chat.id); }}
+            >
+                <Trash2 className="mr-1 h-4 w-4" /> Hapus Chat
+            </Button>
+        </div>
+      )}
     </div>
   );
 }
+
+    

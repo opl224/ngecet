@@ -22,6 +22,7 @@ interface ChatListProps {
   onNewGroupChat: () => void;
   onAcceptChat: (chatId: string) => void;
   onRejectChat: (chatId: string) => void;
+  onDeleteChatPermanently: (chatId: string) => void;
 }
 
 export function ChatList({
@@ -33,13 +34,12 @@ export function ChatList({
   onNewGroupChat,
   onAcceptChat,
   onRejectChat,
+  onDeleteChatPermanently,
 }: ChatListProps) {
   if (!currentUser) {
     return <div className="p-4 text-sm text-sidebar-foreground/70">Loading user...</div>;
   }
 
-  // Sort chats by lastMessageTimestamp, handling cases where it might be undefined (e.g., new requests)
-  // by prioritizing chats with timestamps. New requests will use requestTimestamp for initial ordering.
   const sortedChats = [...chats].sort((a, b) => {
     const tsA = a.lastMessageTimestamp || a.requestTimestamp || 0;
     const tsB = b.lastMessageTimestamp || b.requestTimestamp || 0;
@@ -81,6 +81,7 @@ export function ChatList({
                 isActive={selectedChatId === chat.id && !chat.pendingApprovalFromUserId && !chat.isRejected}
                 onAcceptChat={onAcceptChat}
                 onRejectChat={onRejectChat}
+                onDeleteChatPermanently={onDeleteChatPermanently}
               />
             ))
           ) : (
@@ -93,3 +94,5 @@ export function ChatList({
     </div>
   );
 }
+
+    

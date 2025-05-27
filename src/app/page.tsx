@@ -85,9 +85,6 @@ export default function ChatPage() {
 
     const existingChat = chats.find(c => c.id === chatId);
     if (existingChat) {
-      // If chat exists and is pending for current user, or active, select it.
-      // If it's pending for the other user, also select it to show "waiting" status.
-      // If it was rejected, perhaps allow re-requesting? For now, just select.
       setSelectedChat(existingChat);
       if (existingChat.pendingApprovalFromUserId === currentUser.id) {
         toast({ title: "Permintaan Tertunda", description: `Anda memiliki permintaan chat dari ${recipientName}. Terima atau tolak dari daftar chat.` });
@@ -108,7 +105,7 @@ export default function ChatPage() {
       participants: participantsArray,
       name: recipientUser.name, 
       avatarUrl: recipientUser.avatarUrl,
-      pendingApprovalFromUserId: recipientUser.id, // Recipient needs to approve
+      pendingApprovalFromUserId: recipientUser.id, 
       isRejected: false,
       requestTimestamp: now,
       lastMessage: "Permintaan chat dikirim...",
@@ -116,7 +113,7 @@ export default function ChatPage() {
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
     setSelectedChat(newChat);
-    setAllMessages(prev => ({ ...prev, [chatId]: [] })); // No messages until accepted
+    setAllMessages(prev => ({ ...prev, [chatId]: [] })); 
     toast({ title: "Permintaan Terkirim", description: `Permintaan chat telah dikirim ke ${recipientName}.` });
   }, [currentUser, chats, setChats, setAllMessages, toast]);
 
@@ -138,9 +135,19 @@ export default function ChatPage() {
         return chat;
       }).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
     });
-    // Select the chat after accepting
+    
     const acceptedChat = chats.find(c => c.id === chatId);
-    if (acceptedChat) setSelectedChat({...acceptedChat, pendingApprovalFromUserId: undefined, isRejected: false });
+    if (acceptedChat) {
+        const updatedAcceptedChat = {
+            ...acceptedChat,
+            pendingApprovalFromUserId: undefined,
+            isRejected: false,
+            rejectedByUserId: undefined,
+            lastMessage: "Permintaan chat diterima.",
+            lastMessageTimestamp: Date.now(),
+        };
+        setSelectedChat(updatedAcceptedChat);
+    }
 
   }, [currentUser, setChats, toast, chats]);
 
@@ -163,7 +170,7 @@ export default function ChatPage() {
       }).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
     });
     if (selectedChat?.id === chatId) {
-      setSelectedChat(null); // Deselect if current chat is rejected
+      setSelectedChat(null); 
     }
   }, [currentUser, setChats, toast, selectedChat?.id]);
 
@@ -199,7 +206,6 @@ export default function ChatPage() {
       participants: allParticipantUsers,
       lastMessageTimestamp: Date.now(),
       avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`
-      // Group chats are active by default, no request system for groups in this iteration
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
     setSelectedChat(newChat);
@@ -208,7 +214,6 @@ export default function ChatPage() {
   }, [currentUser, setChats, setAllMessages, toast]);
 
   const handleSelectChat = useCallback((chat: Chat) => {
-    // Do not select if it's a request pending for the other user, or if rejected
     if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
         toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
         return;
@@ -217,7 +222,6 @@ export default function ChatPage() {
         toast({ title: "Chat Ditolak", description: "Permintaan chat ini telah ditolak.", variant: "destructive"});
         return;
     }
-    // If it's a request for the current user, don't select, they should use Accept/Reject buttons
     if (chat.pendingApprovalFromUserId === currentUser?.id) {
         toast({ title: "Tindakan Diperlukan", description: "Harap terima atau tolak permintaan chat ini dari daftar chat." });
         return;
@@ -228,7 +232,6 @@ export default function ChatPage() {
   const handleSendMessage = useCallback((content: string, replyToMessage?: Message | null) => {
     if (!currentUser || !selectedChat) return;
 
-    // Prevent sending messages in non-active chats
     if (selectedChat.pendingApprovalFromUserId || selectedChat.isRejected) {
       toast({ title: "Tidak Dapat Mengirim Pesan", description: "Chat ini belum aktif.", variant: "destructive"});
       return;
@@ -317,13 +320,25 @@ export default function ChatPage() {
       toast({ title: "Pesan Diedit", description: "Pesan Anda telah berhasil diperbarui." });
     } else if (newContent === messageToEdit.content) {
       // No change
-    } else if (newContent !== null) { // User entered empty or only spaces
+    } else if (newContent !== null) { 
       toast({ title: "Edit Gagal", description: "Konten pesan tidak boleh kosong.", variant: "destructive" });
-    } else { // User cancelled prompt
+    } else { 
       toast({ title: "Edit Dibatalkan", description: "Tidak ada perubahan pada pesan.", variant: "default" });
     }
   }, [currentUser, setAllMessages, setChats, allMessages, toast]);
 
+  const handleDeleteChatPermanently = useCallback((chatId: string) => {
+    setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
+    setAllMessages(prevAllMessages => {
+      const newAllMessages = { ...prevAllMessages };
+      delete newAllMessages[chatId];
+      return newAllMessages;
+    });
+    if (selectedChat?.id === chatId) {
+      setSelectedChat(null);
+    }
+    toast({ title: "Chat Dihapus", description: "Chat telah dihapus secara permanen.", variant: "destructive" });
+  }, [setChats, setAllMessages, selectedChat?.id, toast]);
 
   const handleLogout = (clearData: boolean) => {
     setCurrentUser(null);
@@ -387,6 +402,7 @@ export default function ChatPage() {
               onNewGroupChat={() => setIsNewGroupChatDialogOpen(true)}
               onAcceptChat={handleAcceptChatRequest}
               onRejectChat={handleRejectChatRequest}
+              onDeleteChatPermanently={handleDeleteChatPermanently}
             />
           </SidebarContent>
           <SidebarFooter className="p-2 border-t border-sidebar-border space-y-1">
@@ -440,3 +456,5 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+
+    
