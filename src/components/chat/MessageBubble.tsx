@@ -16,8 +16,8 @@ export function MessageBubble({ message, isCurrentUserMessage }: MessageBubblePr
 
   return (
     <div className={cn(
-      "flex items-end group w-full",
-      isCurrentUserMessage ? "justify-end pl-2" : "justify-start pr-2" // Mengurangi padding dari pl-10/pr-10 menjadi pl-2/pr-2
+      "flex items-center group w-full", // Changed items-end to items-center
+      isCurrentUserMessage ? "justify-end pl-2" : "justify-start pr-2"
     )}>
       {/* Action buttons for current user's messages (appear on the left on hover) */}
       {isCurrentUserMessage && (
