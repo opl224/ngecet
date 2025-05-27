@@ -23,7 +23,7 @@ const MessageList = () => {
 
   return (
     <ScrollArea className="flex-grow" ref={scrollAreaRef} viewportRef={viewportRef}>
-      <div className="space-y-4 p-4 md:p-6">
+      <div className="space-y-4 py-4 md:py-6"> {/* Horizontal padding (px) removed */}
         {activeChatMessages.map((msg) => {
           const sender = getUserById(msg.senderId);
           return (
@@ -41,4 +41,3 @@ const MessageList = () => {
 };
 
 export default MessageList;
-
