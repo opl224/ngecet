@@ -51,10 +51,11 @@ export default function ChatPage() {
 
   const handleSaveProfile = useCallback((name: string) => {
     const userId = name.toLowerCase().replace(/\s+/g, "_") || `user_${Date.now()}`;
+    const nameInitial = name.substring(0,1).toUpperCase() || 'U';
     const profile: User = {
       id: userId,
       name,
-      avatarUrl: `https://placehold.co/100x100.png?text=${name.substring(0,1)}`,
+      avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
       status: "Online"
     };
     setCurrentUser(profile);
@@ -70,8 +71,17 @@ export default function ChatPage() {
       return;
     }
 
-    const participantIds = [currentUser.id, recipientId].sort();
-    const chatId = `direct_${participantIds.join("_")}`;
+    const recipientInitial = recipientName.substring(0,1).toUpperCase() || 'R';
+    const recipientUser: User = {
+      id: recipientId,
+      name: recipientName,
+      avatarUrl: `https://placehold.co/100x100.png?text=${recipientInitial}`,
+      status: "Offline" // Default status for other users
+    };
+
+    const participantsArray: User[] = [currentUser, recipientUser].sort((a, b) => a.id.localeCompare(b.id));
+    const chatParticipantIds = participantsArray.map(p => p.id);
+    const chatId = `direct_${chatParticipantIds.join("_")}`;
 
     const existingChat = chats.find(c => c.id === chatId);
     if (existingChat) {
@@ -80,13 +90,13 @@ export default function ChatPage() {
       return;
     }
 
-    const recipientInitial = recipientName.substring(0,1) || 'R';
     const newChat: Chat = {
       id: chatId,
       type: "direct",
-      participants: participantIds,
+      participants: participantsArray,
+      name: recipientUser.name, // For direct chat, name can be the other person's name
       lastMessageTimestamp: Date.now(),
-      avatarUrl: `https://placehold.co/100x100.png?text=${recipientInitial}`
+      avatarUrl: recipientUser.avatarUrl // Avatar of the other person for direct chat
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
     setSelectedChat(newChat);
@@ -96,16 +106,33 @@ export default function ChatPage() {
 
   const handleCreateGroupChat = useCallback((groupName: string, memberNames: string[]) => {
     if (!currentUser) return;
-    const memberIds = memberNames.map(name => name.toLowerCase().replace(/\s+/g, "_") || `user_member_${Date.now()}`);
+
+    const groupInitial = groupName.substring(0,1).toUpperCase() || 'G';
     const chatId = `group_${groupName.replace(/\s+/g, "_")}_${Date.now()}`;
-    const participants = Array.from(new Set([currentUser.id, ...memberIds]));
-    const groupInitial = groupName.substring(0,1) || 'G';
+
+    const memberUsers: User[] = memberNames.map(name => {
+      const memberId = name.toLowerCase().replace(/\s+/g, "_") || `user_member_${Date.now()}_${Math.random().toString(36).substring(2,7)}`;
+      const memberInitial = name.substring(0,1).toUpperCase() || 'M';
+      return {
+        id: memberId,
+        name: name,
+        avatarUrl: `https://placehold.co/100x100.png?text=${memberInitial}`,
+        status: "Offline"
+      };
+    });
+
+    const allParticipantUsers: User[] = [currentUser];
+    memberUsers.forEach(memberUser => {
+      if (!allParticipantUsers.find(p => p.id === memberUser.id)) {
+        allParticipantUsers.push(memberUser);
+      }
+    });
 
     const newChat: Chat = {
       id: chatId,
       type: "group",
       name: groupName,
-      participants,
+      participants: allParticipantUsers,
       lastMessageTimestamp: Date.now(),
       avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`
     };
@@ -159,7 +186,7 @@ export default function ChatPage() {
           ? {
               ...c,
               lastMessage: lastMessageInChat ? lastMessageInChat.content : "No messages yet",
-              lastMessageTimestamp: lastMessageInChat ? lastMessageInChat.timestamp : c.lastMessageTimestamp, // Keep old if no messages
+              lastMessageTimestamp: lastMessageInChat ? lastMessageInChat.timestamp : c.lastMessageTimestamp,
             }
           : c
       ).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
@@ -176,23 +203,21 @@ export default function ChatPage() {
     if (newContent !== null && newContent.trim() !== "" && newContent !== messageToEdit.content) {
       setAllMessages(prev => {
         const chatMessages = (prev[messageToEdit.chatId] || []).map(msg =>
-          msg.id === messageToEdit.id ? { ...msg, content: newContent, isEdited: true, timestamp: Date.now() } : msg // Update timestamp on edit
+          msg.id === messageToEdit.id ? { ...msg, content: newContent, isEdited: true, timestamp: Date.now() } : msg
         );
         return { ...prev, [messageToEdit.chatId]: chatMessages };
       });
 
-      // Check if this edited message is the last message of the chat
       const currentChatMessages = (allMessages[messageToEdit.chatId] || []).filter(msg => msg.id !== messageToEdit.id);
       const updatedEditedMessage = { ...messageToEdit, content: newContent, isEdited: true, timestamp: Date.now() };
       const fullChatMessagesAfterEdit = [...currentChatMessages, updatedEditedMessage].sort((a,b) => a.timestamp - b.timestamp);
 
-
       setChats(prevChats => prevChats.map(c => {
         if (c.id === messageToEdit.chatId) {
             const lastMsg = fullChatMessagesAfterEdit.length > 0 ? fullChatMessagesAfterEdit[fullChatMessagesAfterEdit.length -1] : null;
-            if (lastMsg && lastMsg.id === messageToEdit.id) { // If the edited message is the last one
+            if (lastMsg?.id === messageToEdit.id) {
                  return { ...c, lastMessage: newContent, lastMessageTimestamp: updatedEditedMessage.timestamp };
-            } else if (lastMsg) { // If not, but there are other messages
+            } else if (lastMsg) {
                  return { ...c, lastMessage: lastMsg.content, lastMessageTimestamp: lastMsg.timestamp };
             }
         }
@@ -202,7 +227,9 @@ export default function ChatPage() {
       toast({ title: "Pesan Diedit", description: "Pesan Anda telah berhasil diperbarui." });
     } else if (newContent === messageToEdit.content) {
       // No change
-    } else {
+    } else if (newContent !== null) { // User entered empty or only spaces
+      toast({ title: "Edit Gagal", description: "Konten pesan tidak boleh kosong.", variant: "destructive" });
+    } else { // User cancelled prompt
       toast({ title: "Edit Dibatalkan", description: "Tidak ada perubahan pada pesan.", variant: "default" });
     }
   }, [currentUser, setAllMessages, setChats, allMessages, toast]);
@@ -275,7 +302,7 @@ export default function ChatPage() {
                 <LogOut className="h-4 w-4" />
                 Logout (Simpan Data)
              </Button>
-             <Button variant="ghost" className="w-full justify-start gap-2 text-destructive hover:bg-destructive/10" onClick={() => handleLogout(true)}>
+             <Button variant="ghost" className="w-full justify-start gap-2 text-destructive hover:text-destructive-foreground hover:bg-destructive/10 focus:text-destructive-foreground focus:bg-destructive/10" onClick={() => handleLogout(true)}>
                 <Trash2 className="h-4 w-4" />
                 Logout & Hapus Data
              </Button>
@@ -285,7 +312,11 @@ export default function ChatPage() {
         <SidebarInset className="flex-1">
            <div className="md:hidden p-2 border-b flex items-center">
              <SidebarTrigger />
-             {selectedChat && <span className="ml-2 font-semibold">{selectedChat.type === 'direct' ? (selectedChat.participants.find(p => p !== currentUser.id)?.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ') || 'Direct Chat') : selectedChat.name}</span>}
+             {selectedChat && <span className="ml-2 font-semibold">
+                {selectedChat.type === 'direct'
+                    ? selectedChat.participants.find(p => p.id !== currentUser.id)?.name || 'Direct Chat'
+                    : selectedChat.name || 'Group Chat'}
+                </span>}
            </div>
           {selectedChat ? (
             <ChatView
@@ -317,3 +348,5 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+
+    

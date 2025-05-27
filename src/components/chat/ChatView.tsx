@@ -44,9 +44,8 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
   }, [messages, chat.id]);
 
   useEffect(() => {
-    // Clear reply state if chat changes
     setReplyingToMessage(null);
-    setNewMessage(""); // Also clear current message input
+    setNewMessage(""); 
   }, [chat.id]);
 
 
@@ -54,10 +53,10 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     e.preventDefault();
     if (newMessage.trim()) {
       let contentToSend = newMessage.trim();
-      // The actual association of reply will be handled by the parent or backend if needed
-      // For now, replyingToMessage is mostly for UI context.
-      // If you want to send the replied message ID, you'd pass `replyingToMessage.id`
-      // to onSendMessage and handle it in page.tsx.
+      if (replyingToMessage) {
+        // You can prepend reply context here if desired, or handle it in onSendMessage
+        // For now, just sending the new message. The UI indicates the reply context.
+      }
       onSendMessage(contentToSend);
       setNewMessage("");
       setReplyingToMessage(null);
@@ -75,22 +74,24 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
 
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
-      const otherParticipantId = chat.participants.find(p => p.id !== currentUser.id)?.id;
-      const otherParticipant = chat.participants.find(p => p.id === otherParticipantId);
+      const otherParticipant = chat.participants.find(p => p.id !== currentUser.id);
       const otherParticipantName = otherParticipant?.name || "Unknown User";
+      const otherParticipantAvatar = otherParticipant?.avatarUrl || chat.avatarUrl; // Use chat.avatarUrl as fallback
+      const otherParticipantStatus = otherParticipant?.status || "Offline";
       return {
         name: otherParticipantName,
-        avatarUrl: chat.avatarUrl,
+        avatarUrl: otherParticipantAvatar,
         Icon: UserIcon,
         description: `Direct message with ${otherParticipantName}`,
-        status: otherParticipant?.status || "Offline"
+        status: otherParticipantStatus
       };
     } else { // group
+      const groupName = chat.name || "Unnamed Group";
       return {
-        name: chat.name || "Unnamed Group",
+        name: groupName,
         avatarUrl: chat.avatarUrl,
         Icon: Users,
-        description: `${chat.participants.length} members: ${chat.participants.map(p => p.name).join(', ')}`,
+        description: `${chat.participants.length} members: ${chat.participants.map(p => p.name || 'Unknown').join(', ')}`,
         status: null
       };
     }
@@ -105,7 +106,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
           <SheetTrigger asChild>
             <div className="flex items-center space-x-3 cursor-pointer group flex-1 min-w-0">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name} data-ai-hint={chat.type === 'group' ? 'group abstract' : 'person abstract'}/>
+                <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Chat Avatar'} data-ai-hint={chat.type === 'group' ? 'group abstract' : 'person abstract'}/>
                 <AvatarFallback>
                   <displayDetails.Icon className="h-5 w-5 text-muted-foreground" />
                 </AvatarFallback>
@@ -114,7 +115,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
                 <h2 className="text-lg font-semibold group-hover:underline truncate">{displayDetails.name}</h2>
                 <p className="text-xs text-muted-foreground truncate">
                   {chat.type === 'direct'
-                    ? displayDetails.status || currentUser.status 
+                    ? displayDetails.status || (currentUser.id === chat.participants.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline")
                     : `Group Chat - ${chat.participants.length} members`}
                 </p>
               </div>
@@ -133,7 +134,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
             {chat.type === 'direct' ? (
               <div className="flex flex-col items-center text-center space-y-3 pt-4">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name} data-ai-hint="person abstract large"/>
+                  <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'User Avatar'} data-ai-hint="person abstract large"/>
                   <AvatarFallback>
                     <displayDetails.Icon className="h-12 w-12 text-muted-foreground" />
                   </AvatarFallback>
@@ -146,7 +147,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
             ) : (
               <div className="text-center pt-4">
                  <Avatar className="h-24 w-24 mx-auto mb-3">
-                    <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name} data-ai-hint="group abstract large"/>
+                    <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Group Avatar'} data-ai-hint="group abstract large"/>
                     <AvatarFallback>
                         <displayDetails.Icon className="h-12 w-12 text-muted-foreground" />
                     </AvatarFallback>
@@ -162,14 +163,15 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
               <ul className="space-y-1 text-sm">
                 {chat.participants.map(participantUser => {
                   const isCurrentUserParticipant = participantUser.id === currentUser.id;
+                  const participantName = participantUser.name || "Unknown User";
                   return (
                     <li key={participantUser.id} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md">
                        <Avatar className="h-8 w-8">
-                         <AvatarImage src={participantUser.avatarUrl} alt={participantUser.name} data-ai-hint="person abstract small"/>
-                         <AvatarFallback>{participantUser.name.substring(0,1) || '?'}</AvatarFallback>
+                         <AvatarImage src={participantUser.avatarUrl} alt={participantName} data-ai-hint="person abstract small"/>
+                         <AvatarFallback>{participantName?.substring(0,1).toUpperCase() || '?'}</AvatarFallback>
                        </Avatar>
                        <span className="truncate">
-                        {participantUser.name}
+                        {participantName}
                         {isCurrentUserParticipant && " (You)"}
                       </span>
                     </li>
@@ -236,3 +238,5 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     </div>
   );
 }
+
+    
