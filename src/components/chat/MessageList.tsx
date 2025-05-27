@@ -22,8 +22,8 @@ const MessageList = () => {
   if (!currentUser) return null;
 
   return (
-    <ScrollArea className="flex-grow p-4 md:p-6" ref={scrollAreaRef} viewportRef={viewportRef}>
-      <div className="space-y-4">
+    <ScrollArea className="flex-grow" ref={scrollAreaRef} viewportRef={viewportRef}>
+      <div className="space-y-4 p-4 md:p-6">
         {activeChatMessages.map((msg) => {
           const sender = getUserById(msg.senderId);
           return (
@@ -41,3 +41,4 @@ const MessageList = () => {
 };
 
 export default MessageList;
+
