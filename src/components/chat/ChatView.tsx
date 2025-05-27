@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, Info, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -31,6 +31,7 @@ interface ChatViewProps {
 export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMessage, onDeleteMessage }: ChatViewProps) {
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState("");
+  const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
@@ -42,21 +43,35 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     }
   }, [messages, chat.id]);
 
+  useEffect(() => {
+    // Clear reply state if chat changes
+    setReplyingToMessage(null);
+  }, [chat.id]);
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim()) {
-      onSendMessage(newMessage.trim());
+      let contentToSend = newMessage.trim();
+      if (replyingToMessage) {
+        // For now, we are just visually showing the reply.
+        // If we wanted to include the reply in the message data itself,
+        // we would modify `contentToSend` here or pass `replyingToMessage.id`
+        // to `onSendMessage` and handle it in `page.tsx`.
+        // Example: contentToSend = `Replying to "${replyingToMessage.content.substring(0,30)}...":\n${contentToSend}`;
+      }
+      onSendMessage(contentToSend);
       setNewMessage("");
+      setReplyingToMessage(null);
     }
   };
 
   const handleReplyToMessageInView = (messageToReply: Message) => {
-    setNewMessage(prev => `Replying to ${messageToReply.senderName}:\n>"${messageToReply.content.substring(0, 50).replace(/\n/g, ' ')}..."\n\n${prev}`);
+    setReplyingToMessage(messageToReply);
     messageInputRef.current?.focus();
     toast({
       title: "Membalas Pesan",
-      description: `Anda sedang membalas pesan dari ${messageToReply.senderName}.`,
+      description: `Anda sedang membalas pesan dari ${messageToReply.senderName}. Isi balasan Anda di bawah.`,
     });
   };
 
@@ -71,7 +86,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
         avatarUrl: chat.avatarUrl,
         Icon: UserIcon,
         description: `Direct message with ${otherParticipantName}`,
-        status: chat.participants.find(pId => pId === otherParticipantId)?.status || "Offline" // Assuming status is on user object, this is a mock
+        status: chat.participants.find(pId => pId === otherParticipantId)?.status || "Offline"
       };
     } else { // group
       return {
@@ -79,7 +94,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
         avatarUrl: chat.avatarUrl,
         Icon: Users,
         description: `${chat.participants.length} members: ${chat.participants.map(p => p.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ')).join(', ')}`,
-        status: null // No single status for group
+        status: null
       };
     }
   };
@@ -102,7 +117,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
                 <h2 className="text-lg font-semibold group-hover:underline truncate">{displayDetails.name}</h2>
                 <p className="text-xs text-muted-foreground truncate">
                   {chat.type === 'direct'
-                    ? displayDetails.status || currentUser.status // Mock: show other user's status or current user's if direct
+                    ? displayDetails.status || currentUser.status 
                     : `Group Chat - ${chat.participants.length} members`}
                 </p>
               </div>
@@ -121,7 +136,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
             {chat.type === 'direct' ? (
               <div className="flex flex-col items-center text-center space-y-3 pt-4">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name} data-ai-hint="person abstract large" />
+                  <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name} data-ai-hint="person abstract large"/>
                   <AvatarFallback>
                     <displayDetails.Icon className="h-12 w-12 text-muted-foreground" />
                   </AvatarFallback>
@@ -146,10 +161,10 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
           </SheetHeader>
           <div className="py-2 border-t">
             <h4 className="font-semibold mb-2 text-sm px-1">Participants</h4>
-            <ScrollArea className="h-[calc(100vh-280px)]"> {/* Adjust height as needed */}
+            <ScrollArea className="h-[calc(100vh-280px)]"> 
               <ul className="space-y-1 text-sm">
                 {chat.participants.map(participantId => {
-                  const participantUser = currentUser.id === participantId ? currentUser : { id: participantId, name: participantId.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' '), avatarUrl: `https://placehold.co/40x40.png?text=${participantId.substring(0,1)}` };
+                  const participantUser = currentUser.id === participantId ? currentUser : { id: participantId, name: participantId.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' '), avatarUrl: `https://placehold.co/40x40.png?text=${participantId.substring(0,1)}`, status: "Online" };
                   const participantName = participantUser.name;
                   const isCurrentUserParticipant = participantId === currentUser.id;
 
@@ -180,8 +195,8 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
               message={msg}
               isCurrentUserMessage={msg.senderId === currentUser.id}
               onReplyMessage={handleReplyToMessageInView}
-              onEditMessage={onEditMessage}
-              onDeleteMessage={onDeleteMessage}
+              onEditMessage={onEditMessage} // Passed down from ChatPage
+              onDeleteMessage={onDeleteMessage} // Passed down from ChatPage
             />
           ))}
           {messages.length === 0 && (
@@ -192,6 +207,20 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
         </div>
       </ScrollArea>
 
+      {replyingToMessage && (
+        <div className="p-3 border-t bg-muted/30 text-sm">
+          <div className="flex justify-between items-center text-muted-foreground">
+            <div className="truncate">
+              <span className="font-medium">Membalas {replyingToMessage.senderName}:</span>
+              <p className="italic truncate text-xs">"{replyingToMessage.content.length > 70 ? replyingToMessage.content.substring(0, 70) + "..." : replyingToMessage.content}"</p>
+            </div>
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setReplyingToMessage(null)}>
+              <X className="h-4 w-4" />
+              <span className="sr-only">Batalkan Balasan</span>
+            </Button>
+          </div>
+        </div>
+      )}
       <footer className="p-4 border-t">
         <form onSubmit={handleSubmit} className="flex items-center space-x-2">
           <Input
