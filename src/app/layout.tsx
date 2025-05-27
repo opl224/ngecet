@@ -27,8 +27,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${robotoMono.variable}`}>
-      <body className="font-sans antialiased">
+    <html lang="en" className={`${inter.variable} ${robotoMono.variable} h-full`}>
+      <body className={`font-sans antialiased h-full`}>
         <AuthProvider>
           <ChatProvider>
             {children}

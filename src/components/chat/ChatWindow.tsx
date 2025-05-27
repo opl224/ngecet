@@ -36,7 +36,7 @@ const ChatWindow = () => {
   }
 
   return (
-    <div className="flex-grow flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       <ChatHeader />
       <MessageList />
       <MessageInput />
