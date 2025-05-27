@@ -46,6 +46,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
   useEffect(() => {
     // Clear reply state if chat changes
     setReplyingToMessage(null);
+    setNewMessage(""); // Also clear current message input
   }, [chat.id]);
 
 
@@ -53,13 +54,10 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     e.preventDefault();
     if (newMessage.trim()) {
       let contentToSend = newMessage.trim();
-      if (replyingToMessage) {
-        // For now, we are just visually showing the reply.
-        // If we wanted to include the reply in the message data itself,
-        // we would modify `contentToSend` here or pass `replyingToMessage.id`
-        // to `onSendMessage` and handle it in `page.tsx`.
-        // Example: contentToSend = `Replying to "${replyingToMessage.content.substring(0,30)}...":\n${contentToSend}`;
-      }
+      // The actual association of reply will be handled by the parent or backend if needed
+      // For now, replyingToMessage is mostly for UI context.
+      // If you want to send the replied message ID, you'd pass `replyingToMessage.id`
+      // to onSendMessage and handle it in page.tsx.
       onSendMessage(contentToSend);
       setNewMessage("");
       setReplyingToMessage(null);
@@ -77,23 +75,22 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
 
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
-      const otherParticipantId = chat.participants.find(p => p !== currentUser.id);
-      const otherParticipantName = otherParticipantId
-        ? otherParticipantId.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ')
-        : "Unknown User";
+      const otherParticipantId = chat.participants.find(p => p.id !== currentUser.id)?.id;
+      const otherParticipant = chat.participants.find(p => p.id === otherParticipantId);
+      const otherParticipantName = otherParticipant?.name || "Unknown User";
       return {
         name: otherParticipantName,
         avatarUrl: chat.avatarUrl,
         Icon: UserIcon,
         description: `Direct message with ${otherParticipantName}`,
-        status: chat.participants.find(pId => pId === otherParticipantId)?.status || "Offline"
+        status: otherParticipant?.status || "Offline"
       };
     } else { // group
       return {
         name: chat.name || "Unnamed Group",
         avatarUrl: chat.avatarUrl,
         Icon: Users,
-        description: `${chat.participants.length} members: ${chat.participants.map(p => p.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' ')).join(', ')}`,
+        description: `${chat.participants.length} members: ${chat.participants.map(p => p.name).join(', ')}`,
         status: null
       };
     }
@@ -143,7 +140,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
                 </Avatar>
                 <SheetTitle className="text-2xl">{displayDetails.name}</SheetTitle>
                 <SheetDescription className="text-base">
-                  Status: <span className="text-green-500 font-medium">{displayDetails.status || "Online"}</span> (Simulated)
+                  Status: <span className="font-medium text-green-500">{displayDetails.status || "Online"}</span> (Simulated)
                 </SheetDescription>
               </div>
             ) : (
@@ -163,19 +160,16 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
             <h4 className="font-semibold mb-2 text-sm px-1">Participants</h4>
             <ScrollArea className="h-[calc(100vh-280px)]"> 
               <ul className="space-y-1 text-sm">
-                {chat.participants.map(participantId => {
-                  const participantUser = currentUser.id === participantId ? currentUser : { id: participantId, name: participantId.split('_').map(s => s.charAt(0).toUpperCase() + s.substring(1)).join(' '), avatarUrl: `https://placehold.co/40x40.png?text=${participantId.substring(0,1)}`, status: "Online" };
-                  const participantName = participantUser.name;
-                  const isCurrentUserParticipant = participantId === currentUser.id;
-
+                {chat.participants.map(participantUser => {
+                  const isCurrentUserParticipant = participantUser.id === currentUser.id;
                   return (
-                    <li key={participantId} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md">
+                    <li key={participantUser.id} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md">
                        <Avatar className="h-8 w-8">
-                         <AvatarImage src={participantUser.avatarUrl} alt={participantName} data-ai-hint="person abstract small"/>
-                         <AvatarFallback>{participantName.substring(0,1) || '?'}</AvatarFallback>
+                         <AvatarImage src={participantUser.avatarUrl} alt={participantUser.name} data-ai-hint="person abstract small"/>
+                         <AvatarFallback>{participantUser.name.substring(0,1) || '?'}</AvatarFallback>
                        </Avatar>
                        <span className="truncate">
-                        {participantName}
+                        {participantUser.name}
                         {isCurrentUserParticipant && " (You)"}
                       </span>
                     </li>
@@ -195,8 +189,8 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
               message={msg}
               isCurrentUserMessage={msg.senderId === currentUser.id}
               onReplyMessage={handleReplyToMessageInView}
-              onEditMessage={onEditMessage} // Passed down from ChatPage
-              onDeleteMessage={onDeleteMessage} // Passed down from ChatPage
+              onEditMessage={onEditMessage}
+              onDeleteMessage={onDeleteMessage}
             />
           ))}
           {messages.length === 0 && (
@@ -210,9 +204,11 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
       {replyingToMessage && (
         <div className="p-3 border-t bg-muted/30 text-sm">
           <div className="flex justify-between items-center text-muted-foreground">
-            <div className="truncate">
+            <div className="truncate flex-1 min-w-0 pr-2">
               <span className="font-medium">Membalas {replyingToMessage.senderName}:</span>
-              <p className="italic truncate text-xs">"{replyingToMessage.content.length > 70 ? replyingToMessage.content.substring(0, 70) + "..." : replyingToMessage.content}"</p>
+              <p className="italic truncate text-xs">
+                "{replyingToMessage.content.length > 70 ? replyingToMessage.content.substring(0, 70) + "..." : replyingToMessage.content}"
+              </p>
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setReplyingToMessage(null)}>
               <X className="h-4 w-4" />
@@ -228,7 +224,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
+            placeholder={replyingToMessage ? `Balas ke ${replyingToMessage.senderName}...` : "Type a message..."}
             className="flex-1 bg-input border-border focus-visible:ring-ring"
             aria-label="Message input"
           />
