@@ -4,8 +4,8 @@
 import type { Message } from "@/types";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
-import { Undo2, Trash2 } from "lucide-react"; // Added Undo2 and Trash2 icons
-import { Button } from "@/components/ui/button"; // Added Button for actions
+import { Undo2, Trash2 } from "lucide-react"; 
+import { Button } from "@/components/ui/button"; 
 
 interface MessageBubbleProps {
   message: Message;
@@ -13,12 +13,11 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message, isCurrentUserMessage }: MessageBubbleProps) {
-  // getInitials function is no longer needed as Avatars are removed.
 
   return (
     <div className={cn(
-      "flex items-end group w-full", // Added w-full to ensure group hover works across the row
-      isCurrentUserMessage ? "justify-end pl-10" : "justify-start pr-10" // Added padding to make space for actions
+      "flex items-end group w-full",
+      isCurrentUserMessage ? "justify-end pl-2" : "justify-start pr-2" // Mengurangi padding dari pl-10/pr-10 menjadi pl-2/pr-2
     )}>
       {/* Action buttons for current user's messages (appear on the left on hover) */}
       {isCurrentUserMessage && (
