@@ -109,7 +109,7 @@ export function ChatItem({
             {initials || <Icon className="h-5 w-5 text-sidebar-foreground/70" />}
           </AvatarFallback>
         </Avatar>
-        <div className="flex-1 min-w-0 overflow-hidden"> {/* Added overflow-hidden here */}
+        <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2 min-w-0">
                 <h4 className={cn(
@@ -120,17 +120,16 @@ export function ChatItem({
                 >
                   {name}
                 </h4>
-                {unreadCount > 0 && !specialStatusText && (
-                  <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </Badge>
-                )}
             </div>
-            {statusTimestamp && (
+            {unreadCount > 0 && !specialStatusText ? (
+              <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0 ml-2">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </Badge>
+            ) : statusTimestamp ? (
               <p className="text-xs text-sidebar-foreground/60 whitespace-nowrap ml-2 shrink-0">
                 {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
               </p>
-            )}
+            ) : null}
           </div>
           {/* Display special status text or placeholder messages */}
           {specialStatusText ? (
@@ -150,19 +149,7 @@ export function ChatItem({
               Belum ada pesan
             </p>
            ) : (
-            // Fallback if lastMessage exists but shouldn't be displayed or for other cases
-            // We want to avoid displaying the last message content here.
-            // If specialStatusText is null and there IS a lastMessage, we still don't show it.
-            // The timestamp and unread badge handle the "activity" indication.
-            // If there's no specialStatusText AND no messages at all, the "Mulai percakapan" or "X anggota" handles it.
-            // This effectively hides the last message text.
-            // We can show a generic hint if needed, or just rely on timestamp/unread.
-            // For now, let's ensure nothing is shown if it's not a special status or placeholder.
-            // If chat.lastMessage exists BUT specialStatusText is null, this block is skipped,
-            // which is what we want to hide the last message text.
-            // The conditions above handle the empty/placeholder states.
-            // An explicit empty placeholder if all else fails and we just want to hide last message content
-            chat.lastMessage && !specialStatusText && (
+            chat.lastMessage && !specialStatusText && ( // If lastMessage exists AND not a specialStatus, show generic activity text
                 <p className="text-xs text-sidebar-foreground/70 truncate italic">
                     {chat.type === 'group' ? 'Aktivitas grup terakhir' : 'Aktivitas terakhir'}
                 </p>
