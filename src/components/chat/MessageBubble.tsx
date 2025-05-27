@@ -3,8 +3,9 @@
 
 import type { Message } from "@/types";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from 'date-fns';
+import { Undo2, Trash2 } from "lucide-react"; // Added Undo2 and Trash2 icons
+import { Button } from "@/components/ui/button"; // Added Button for actions
 
 interface MessageBubbleProps {
   message: Message;
@@ -12,41 +13,56 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message, isCurrentUserMessage }: MessageBubbleProps) {
-  const getInitials = (name: string) => {
-    if (!name) return "??";
-    const names = name.split(' ');
-    if (names.length === 1) return names[0].substring(0, 2).toUpperCase();
-    return names[0][0].toUpperCase() + names[names.length - 1][0].toUpperCase();
-  }
+  // getInitials function is no longer needed as Avatars are removed.
 
   return (
-    <div className={cn("flex items-end space-x-2 group", isCurrentUserMessage ? "justify-end" : "justify-start")}>
-      {!isCurrentUserMessage && (
-        <Avatar className="h-8 w-8 self-start">
-          {/* In a real app, fetch sender's avatarUrl based on message.senderId */}
-          <AvatarImage src={undefined} alt={message.senderName} data-ai-hint="person icon" />
-          <AvatarFallback>{getInitials(message.senderName)}</AvatarFallback>
-        </Avatar>
+    <div className={cn(
+      "flex items-end group w-full", // Added w-full to ensure group hover works across the row
+      isCurrentUserMessage ? "justify-end pl-10" : "justify-start pr-10" // Added padding to make space for actions
+    )}>
+      {/* Action buttons for current user's messages (appear on the left on hover) */}
+      {isCurrentUserMessage && (
+        <div className="flex flex-col-reverse sm:flex-row space-y-1 sm:space-y-0 sm:space-x-1 opacity-0 group-hover:opacity-100 transition-opacity order-1 mr-2">
+          <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-red-500 hover:bg-red-500/10 hover:text-red-600" aria-label="Delete message">
+            <Trash2 size={16} />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-teal-500 hover:bg-teal-500/10 hover:text-teal-600" aria-label="Reply to message">
+            <Undo2 size={16} />
+          </Button>
+        </div>
       )}
-      <div className={cn("max-w-[70%] p-3 rounded-lg shadow-sm", 
-        isCurrentUserMessage ? "bg-primary text-primary-foreground rounded-br-none" : "bg-card text-card-foreground rounded-bl-none border"
+
+      {/* Message Bubble Content */}
+      <div className={cn(
+        "max-w-[70%] rounded-lg shadow-sm flex flex-col px-3 py-2",
+        isCurrentUserMessage 
+          ? "bg-primary text-primary-foreground rounded-tr-none order-2" 
+          : "bg-card text-card-foreground rounded-tl-none border order-1"
       )}>
         {!isCurrentUserMessage && (
-          <p className="text-xs font-semibold mb-1 text-accent-foreground">{message.senderName}</p>
+          <p className="text-xs font-semibold mb-0.5 text-accent-foreground">{message.senderName}</p>
         )}
         <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-        <p className={cn(
-          "text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity",
-          isCurrentUserMessage ? "text-primary-foreground/70 text-right" : "text-muted-foreground/70 text-left"
-        )}>
-          {format(new Date(message.timestamp), "p")}
-        </p>
+        <div className="flex justify-end mt-1">
+            <p className={cn(
+                "text-xs",
+                isCurrentUserMessage ? "text-primary-foreground/70" : "text-muted-foreground/70"
+            )}>
+            {format(new Date(message.timestamp), "p")}
+            </p>
+        </div>
       </div>
-      {isCurrentUserMessage && (
-        <Avatar className="h-8 w-8 self-start">
-          <AvatarImage src={undefined} alt={message.senderName} data-ai-hint="person icon" />
-          <AvatarFallback>{getInitials(message.senderName)}</AvatarFallback>
-        </Avatar>
+
+      {/* Action buttons for other users' messages (appear on the right on hover) */}
+      {!isCurrentUserMessage && (
+        <div className="flex flex-col-reverse sm:flex-row space-y-1 sm:space-y-0 sm:space-x-1 opacity-0 group-hover:opacity-100 transition-opacity order-2 ml-2">
+          <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-teal-500 hover:bg-teal-500/10 hover:text-teal-600" aria-label="Reply to message">
+            <Undo2 size={16} />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-red-500 hover:bg-red-500/10 hover:text-red-600" aria-label="Delete message">
+            <Trash2 size={16} />
+          </Button>
+        </div>
       )}
     </div>
   );
