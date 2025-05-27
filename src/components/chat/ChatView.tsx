@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Send } from "lucide-react"; // Added Send here
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -48,7 +48,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
 
   useEffect(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); 
+    setNewMessage("");
   }, [chat.id]);
 
 
@@ -75,7 +75,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     if (chat.type === "direct") {
       const otherParticipant = chat.participants?.find(p => p.id !== currentUser.id);
       const otherParticipantName = otherParticipant?.name || chat.name || "Unknown User";
-      const otherParticipantAvatar = otherParticipant?.avatarUrl || chat.avatarUrl; 
+      const otherParticipantAvatar = otherParticipant?.avatarUrl || chat.avatarUrl;
       const otherParticipantStatus = otherParticipant?.status || "Offline";
       return {
         name: otherParticipantName,
@@ -84,7 +84,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
         description: `Direct message with ${otherParticipantName}`,
         status: otherParticipantStatus
       };
-    } else { 
+    } else {
       const groupName = chat.name || "Unnamed Group";
       return {
         name: groupName,
@@ -186,7 +186,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
           </SheetHeader>
           <div className="py-2 border-t">
             <h4 className="font-semibold mb-2 text-sm px-1">Participants</h4>
-            <ScrollArea className="h-[calc(100vh-280px)]"> 
+            <ScrollArea className="h-[calc(100vh-280px)]">
               <ul className="space-y-1 text-sm">
                 {chat.participants?.map(participantUser => {
                   const isCurrentUserParticipant = participantUser.id === currentUser.id;
