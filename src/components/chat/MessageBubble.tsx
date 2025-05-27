@@ -4,7 +4,7 @@
 import type { Message } from "@/types";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
-import { Undo2, Trash2 } from "lucide-react"; 
+import { Undo2 } from "lucide-react"; // Removed Trash2
 import { Button } from "@/components/ui/button"; 
 
 interface MessageBubbleProps {
@@ -16,15 +16,13 @@ export function MessageBubble({ message, isCurrentUserMessage }: MessageBubblePr
 
   return (
     <div className={cn(
-      "flex items-center group w-full", // Changed items-end to items-center
+      "flex items-center group w-full", 
       isCurrentUserMessage ? "justify-end pl-2" : "justify-start pr-2"
     )}>
       {/* Action buttons for current user's messages (appear on the left on hover) */}
       {isCurrentUserMessage && (
         <div className="flex flex-col-reverse sm:flex-row space-y-1 sm:space-y-0 sm:space-x-1 opacity-0 group-hover:opacity-100 transition-opacity order-1 mr-2">
-          <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-red-500 hover:bg-red-500/10 hover:text-red-600" aria-label="Delete message">
-            <Trash2 size={16} />
-          </Button>
+          {/* Delete button removed */}
           <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-teal-500 hover:bg-teal-500/10 hover:text-teal-600" aria-label="Reply to message">
             <Undo2 size={16} />
           </Button>
@@ -33,10 +31,10 @@ export function MessageBubble({ message, isCurrentUserMessage }: MessageBubblePr
 
       {/* Message Bubble Content */}
       <div className={cn(
-        "max-w-[70%] rounded-lg shadow-sm flex flex-col px-3 py-2",
+        "max-w-[70%] shadow-sm flex flex-col px-3 py-2",
         isCurrentUserMessage 
-          ? "bg-primary text-primary-foreground rounded-tr-none order-2" 
-          : "bg-card text-card-foreground rounded-tl-none border order-1"
+          ? "bg-primary text-primary-foreground rounded-tr-none rounded-b-lg rounded-tl-lg order-2" 
+          : "bg-card text-card-foreground rounded-tl-none rounded-b-lg rounded-tr-lg border order-1" // Matched styling from image (all corners rounded except one for the tail)
       )}>
         {!isCurrentUserMessage && (
           <p className="text-xs font-semibold mb-0.5 text-accent-foreground">{message.senderName}</p>
@@ -58,9 +56,7 @@ export function MessageBubble({ message, isCurrentUserMessage }: MessageBubblePr
           <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-teal-500 hover:bg-teal-500/10 hover:text-teal-600" aria-label="Reply to message">
             <Undo2 size={16} />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-red-500 hover:bg-red-500/10 hover:text-red-600" aria-label="Delete message">
-            <Trash2 size={16} />
-          </Button>
+          {/* Delete button removed */}
         </div>
       )}
     </div>
