@@ -16,25 +16,33 @@ interface MessageBubbleProps {
 
 const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) => {
   const bubbleAlignmentClass = isCurrentUser ? "justify-end" : "justify-start";
-  const bubbleContainerOrderClass = isCurrentUser ? "flex-row-reverse" : "flex-row";
+  // Removed bubbleContainerOrderClass as it's implicitly handled by avatar presence and isCurrentUser logic
 
   // Placeholder functions for actions - implement actual logic later
   const handleReply = () => console.log("Reply to message:", message.id);
   const handleDelete = () => console.log("Delete message:", message.id);
 
   return (
-    <div className={cn("group/message flex items-end w-full mb-2 animate-fadeIn", bubbleAlignmentClass)}>
+    <div className={cn("group/message flex w-full mb-2 animate-fadeIn", 
+                       isCurrentUser ? "justify-end" : "justify-start",
+                       // Align items to the start (top) of the row to better handle multi-line messages with avatars
+                       "items-start" 
+                     )}>
       {!isCurrentUser && sender && (
-        <Avatar className="h-8 w-8 self-end mr-2">
+        <Avatar className="h-8 w-8 self-end mr-2 flex-shrink-0"> {/* Ensure avatar doesn't shrink text */}
           <AvatarImage src={sender.avatarUrl} alt={sender.name} data-ai-hint="avatar person" />
           <AvatarFallback>{sender.name.charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
       )}
 
-      <div className={cn("flex items-end", bubbleContainerOrderClass)}>
+      <div className={cn(
+          "flex items-center", // Changed from items-end to items-center for vertical centering of bubble & actions
+          isCurrentUser ? "flex-row-reverse" : "flex-row"
+        )}
+      >
         <div
           className={cn(
-            "p-2.5 rounded-lg shadow-md max-w-[calc(100%-4rem)] sm:max-w-[75%] min-w-[80px]", // min-w to ensure space for timestamp
+            "p-2.5 rounded-lg shadow-md max-w-[calc(100%-4rem)] sm:max-w-[75%] min-w-[80px]",
             isCurrentUser
               ? "bg-primary text-primary-foreground rounded-br-none"
               : "bg-card text-card-foreground border rounded-bl-none"
@@ -56,7 +64,10 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
         </div>
 
         {isCurrentUser && (
-          <div className="ml-1.5 flex flex-col space-y-1 opacity-0 group-hover/message:opacity-100 transition-opacity duration-150">
+          <div className={cn(
+            "flex flex-col space-y-1 opacity-0 group-hover/message:opacity-100 transition-opacity duration-150",
+            isCurrentUser ? "ml-1.5" : "mr-1.5" // Ensure margin is on the correct side
+          )}>
             <Button
               variant="ghost"
               size="icon"
