@@ -112,7 +112,7 @@ export default function ChatPage() {
       lastMessageTimestamp: now,
       unreadCount: 0,
     };
-    setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
+    setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
     setAllMessages(prev => ({ ...prev, [chatId]: [] })); 
     toast({ title: "Permintaan Terkirim", description: `Permintaan chat telah dikirim ke ${recipientName}.` });
@@ -137,11 +137,11 @@ export default function ChatPage() {
           };
         }
         return chat;
-      }).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+      }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
       
       const acceptedChat = updatedChats.find(c => c.id === chatId);
       if (acceptedChat) {
-          setSelectedChat(acceptedChat); // Select the chat after accepting
+          setSelectedChat(acceptedChat); 
       }
       return updatedChats;
     });
@@ -167,7 +167,7 @@ export default function ChatPage() {
           };
         }
         return chat;
-      }).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+      }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
        if (selectedChat?.id === chatId) {
         setSelectedChat(null); 
       }
@@ -219,25 +219,21 @@ export default function ChatPage() {
   const handleSelectChat = useCallback((chat: Chat) => {
     if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
         toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
-        // Allow selecting to see the status, but ChatView will restrict actions
     }
     if (chat.isRejected) {
         const rejecterName = chat.rejectedByUserId === currentUser?.id ? "Anda" : chat.participants.find(p => p.id === chat.rejectedByUserId)?.name || "Pengguna lain";
         const rejectedTargetName = chat.rejectedByUserId === currentUser?.id ? (chat.participants.find(p => p.id !== currentUser?.id)?.name || "Pengguna lain") : "Anda";
         toast({ title: "Chat Ditolak", description: `${rejecterName} telah menolak permintaan dengan ${rejectedTargetName}.`, variant: "destructive"});
-        // Allow selecting to see the status, but ChatView will restrict actions
     }
     if (chat.pendingApprovalFromUserId === currentUser?.id) {
         toast({ title: "Tindakan Diperlukan", description: "Harap terima atau tolak permintaan chat ini dari daftar chat." });
-         // Allow selecting to see the status, but ChatView will restrict actions
     }
 
     setSelectedChat(chat);
-    // Reset unread count for the selected chat
     setChats(prevChats =>
       prevChats.map(c =>
         c.id === chat.id ? { ...c, unreadCount: 0 } : c
-      )
+      ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0))
     );
   }, [currentUser?.id, toast, setChats]);
 
@@ -275,20 +271,20 @@ export default function ChatPage() {
           ...chat, 
           lastMessage: content, 
           lastMessageTimestamp: newMessage.timestamp,
-          // unreadCount for selected chat should be 0 for the current user
+          // unreadCount for selected chat is handled by handleSelectChat or should be 0
         };
       } else if (!chat.pendingApprovalFromUserId && !chat.isRejected) {
         // Simulate receiving a message: Increment unread count for other active chats
-        // This is a local simulation, in a real app, server would push this
+        // and update their last message details for sorting/display.
         return {
           ...chat,
+          lastMessage: "Aktivitas baru", // Generic message for other chats
+          lastMessageTimestamp: newMessage.timestamp, // Use current message's timestamp
           unreadCount: (chat.unreadCount || 0) + 1,
-          // Optionally update lastMessage and timestamp for other chats if you want a generic "New message"
-          // For now, let's just increment unreadCount for simplicity of demo
         };
       }
       return chat;
-    }).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
+    }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
   }, [currentUser, selectedChat, setAllMessages, setChats, toast]);
 
   const handleDeleteMessage = useCallback((messageId: string, chatId: string) => {
@@ -306,10 +302,10 @@ export default function ChatPage() {
           ? {
               ...c,
               lastMessage: lastMessageInChat ? lastMessageInChat.content : (c.type === 'direct' && (c.pendingApprovalFromUserId || c.isRejected) ? (c.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan"),
-              lastMessageTimestamp: lastMessageInChat ? lastMessageInChat.timestamp : (c.requestTimestamp || c.lastMessageTimestamp),
+              lastMessageTimestamp: lastMessageInChat ? lastMessageInChat.timestamp : (c.requestTimestamp || c.lastMessageTimestamp || Date.now()),
             }
           : c
-      ).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+      ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
     toast({ title: "Pesan Dihapus", description: "Pesan telah berhasil dihapus.", variant: "destructive" });
   }, [setAllMessages, setChats, allMessages, toast]);
@@ -331,20 +327,21 @@ export default function ChatPage() {
       
       setChats(prevChats => prevChats.map(c => {
         if (c.id === messageToEdit.chatId) {
-            // Check if the edited message is the last one
             const currentChatMessages = (allMessages[messageToEdit.chatId] || [])
                                            .map(msg => msg.id === messageToEdit.id ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg)
                                            .sort((a,b) => a.timestamp - b.timestamp);
             const lastMsg = currentChatMessages.length > 0 ? currentChatMessages[currentChatMessages.length -1] : null;
             
-            if (lastMsg?.id === messageToEdit.id) { // If the edited message is now the last
+            if (lastMsg?.id === messageToEdit.id) { 
                  return { ...c, lastMessage: newContent, lastMessageTimestamp: editedTimestamp };
-            } else if (lastMsg) { // If not, but there are other messages, update to the actual last one
+            } else if (lastMsg) { 
                  return { ...c, lastMessage: lastMsg.content, lastMessageTimestamp: lastMsg.timestamp };
+            } else { // No messages left, reset lastMessage indicators
+                 return { ...c, lastMessage: (c.type === 'direct' && (c.pendingApprovalFromUserId || c.isRejected) ? (c.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan"), lastMessageTimestamp: (c.requestTimestamp || c.lastMessageTimestamp || Date.now()) };
             }
         }
         return c;
-      }).sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
+      }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
 
       toast({ title: "Pesan Diedit", description: "Pesan Anda telah berhasil diperbarui." });
     } else if (newContent === messageToEdit.content) {
@@ -376,7 +373,6 @@ export default function ChatPage() {
     if (clearData) {
       setChats([]);
       setAllMessages({});
-      // Clear individual message stores if they were separate
       if (typeof window !== "undefined") {
         Object.keys(window.localStorage).forEach(key => {
           if (key.startsWith(LS_MESSAGES_PREFIX) && key !== `${LS_MESSAGES_PREFIX}all`) {
@@ -493,5 +489,6 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+    
 
     
