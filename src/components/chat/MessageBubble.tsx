@@ -4,9 +4,15 @@
 import type { Message as MessageType, User } from '@/types/chat';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Pencil, CornerUpLeft, Trash2 } from 'lucide-react';
+import { Pencil, CornerUpLeft, Trash2, MoreHorizontal } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: MessageType;
@@ -64,27 +70,31 @@ const MessageBubble = ({ message, sender, isCurrentUser }: MessageBubbleProps) =
 
         {isCurrentUser && (
           <div className={cn(
-            "flex flex-row space-x-0.5 opacity-0 group-hover/message:opacity-100 transition-opacity duration-150", // Changed to flex-row and space-x-0.5
+            "opacity-0 group-hover/message:opacity-100 transition-opacity duration-150",
             isCurrentUser ? "ml-1.5" : "mr-1.5" 
           )}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 bg-background/50 hover:bg-accent text-muted-foreground hover:text-accent-foreground rounded-full p-1 shadow-sm"
-              onClick={handleReply}
-              aria-label="Reply"
-            >
-              <CornerUpLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 bg-background/50 hover:bg-destructive/20 text-muted-foreground hover:text-destructive rounded-full p-1 shadow-sm"
-              onClick={handleDelete}
-              aria-label="Delete"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 bg-background/50 hover:bg-accent text-muted-foreground hover:text-accent-foreground rounded-full p-1 shadow-sm"
+                  aria-label="Message options"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="bottom" align="end">
+                <DropdownMenuItem onClick={handleReply} className="gap-2">
+                  <CornerUpLeft className="h-4 w-4" />
+                  <span>Reply</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </div>
