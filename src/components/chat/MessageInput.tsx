@@ -70,7 +70,7 @@ const MessageInput = () => {
 
 
   return (
-    <div className="p-4 border-t bg-card">
+    <div className="py-4 px-6 border-t bg-card"> {/* MODIFIED: p-4 to py-4 px-6 */}
       {isLoadingReplies && (
         <div className="flex items-center text-sm text-muted-foreground mb-2">
           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
