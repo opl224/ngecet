@@ -2,7 +2,7 @@
 "use client";
 
 import type { User } from '@/types/chat';
-import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import useLocalStorage from '@/hooks/use-local-storage';
 
 interface AuthContextType {
@@ -18,12 +18,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // This effect now only handles the initial loading state for the AuthContext itself.
+    // The currentUser value will be loaded by useLocalStorage.
     setIsLoading(false); 
   }, []);
 
-  const setCurrentUser = (user: User | null) => {
+  const setCurrentUser = useCallback((user: User | null) => {
     setCurrentUserInternal(user);
-  };
+  }, [setCurrentUserInternal]);
   
   return (
     <AuthContext.Provider value={{ currentUser, setCurrentUser, isLoading }}>
