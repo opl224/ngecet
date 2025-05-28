@@ -96,7 +96,7 @@ export function ChatList({
           onClick={() => handleFilterClick('direct')}
           className="flex-1 h-9" // Added h-9 for consistent height
         >
-          Direct
+          Pesan
         </Button>
         <Button
           variant={activeFilter === 'group' ? 'secondary' : 'ghost'}
@@ -104,7 +104,7 @@ export function ChatList({
           onClick={() => handleFilterClick('group')}
           className="flex-1 h-9" // Added h-9 for consistent height
         >
-          Groups
+          Grup
         </Button>
       </div>
       <ScrollArea className="flex-1">
@@ -144,11 +144,11 @@ export function ChatList({
           <DropdownMenuContent align="end" side="top" className="mb-2 w-56">
             <DropdownMenuItem onClick={onNewDirectChat}>
               <MessageSquarePlus className="mr-2 h-4 w-4" />
-              New Direct Message
+              Buat Pesan Baru
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onNewGroupChat}>
               <Users className="mr-2 h-4 w-4" />
-              New Group Chat
+              Buat Grup Baru
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

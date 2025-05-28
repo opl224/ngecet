@@ -68,7 +68,7 @@ export function EditMessageDialog({ isOpen, onOpenChange, messageToEdit, onSaveE
     }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Message</DialogTitle>
+          <DialogTitle>Ubah Profil</DialogTitle>
           <DialogDescription>
             Make changes to your message. Click save when you're done.
           </DialogDescription>
@@ -92,8 +92,8 @@ export function EditMessageDialog({ isOpen, onOpenChange, messageToEdit, onSaveE
               <Button type="button" variant="outline" onClick={() => {
                  form.reset({ content: messageToEdit?.content || "" }); // Reset form explicitly on cancel
                  onOpenChange(false);
-              }}>Cancel</Button>
-              <Button type="submit">Save Changes</Button>
+              }}>Batal</Button>
+              <Button type="submit">Simpan</Button>
             </DialogFooter>
           </form>
         </Form>

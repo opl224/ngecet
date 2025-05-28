@@ -40,7 +40,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Trash2, Settings, ArrowLeft, ShieldOff, ShieldAlert } from "lucide-react";
+import { LogOut, Trash2, Settings, ArrowLeft, ShieldOff, ShieldAlert, InfoIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -69,6 +69,8 @@ export default function ChatPage() {
   const [isDeleteGroupConfirmOpen, setIsDeleteGroupConfirmOpen] = useState(false);
   const [groupToDeleteId, setGroupToDeleteId] = useState<string | null>(null);
   const [groupDialogInitialMemberName, setGroupDialogInitialMemberName] = useState<string | null>(null);
+
+  const [isAboutDialogOpen, setIsAboutDialogOpen] = useState(false);
 
 
   const [isClient, setIsClient] = useState(false);
@@ -118,8 +120,6 @@ export default function ChatPage() {
         return;
       }
       if (existingChat.blockedByUser === recipientUser.id) {
-        // This case is harder to detect reliably client-side without server events.
-        // For now, we'll assume the chat can be opened, but sending might be restricted later.
         toast({ title: "Info", description: `Anda mungkin diblokir oleh ${recipientName}.`, variant: "default" });
       }
       if (existingChat.pendingApprovalFromUserId === currentUser.id) {
@@ -129,7 +129,7 @@ export default function ChatPage() {
       } else if (existingChat.isRejected) {
          toast({ title: "Chat Ditolak", description: `Permintaan chat dengan ${recipientName} sebelumnya ditolak.` });
       }
-      else if (!existingChat.blockedByUser) { // Only if not blocked
+      else if (!existingChat.blockedByUser) { 
         toast({ title: "Chat Sudah Ada", description: `Membuka chat yang sudah ada dengan ${recipientName}.` });
       }
       return;
@@ -248,7 +248,6 @@ export default function ChatPage() {
             if (memberUserObject) {
                 finalMemberUsers.push(memberUserObject);
             } else {
-                // This case should ideally not happen if direct chat exists and is active
                 const memberInitial = name.substring(0,1).toUpperCase() || 'M';
                 finalMemberUsers.push({
                     id: memberId, name: name,
@@ -328,7 +327,6 @@ export default function ChatPage() {
     if (chat.type === "direct" && chat.blockedByUser === currentUser?.id) {
         toast({ title: "Chat Diblokir", description: "Anda telah memblokir pengguna ini. Buka blokir untuk melanjutkan." });
     } else if (chat.type === "direct" && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
-        // This is harder to determine client-side, could just be a generic "cannot interact"
         toast({ title: "Interaksi Terbatas", description: "Anda tidak dapat berinteraksi dalam chat ini saat ini." });
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
         toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
@@ -401,7 +399,6 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
-      // Update last message for other active chats to help with sorting
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
          return {
           ...chat,
@@ -626,7 +623,7 @@ export default function ChatPage() {
 
     let userObjectToAdd: User;
 
-    if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected && existingDirectChat.blockedByUser !== currentUser.id) {
+    if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected && existingDirectChat.blockedByUser !== currentUser.id && existingDirectChat.blockedByUser !== newUserId) {
         const foundUser = existingDirectChat.participants.find(p => p.id === newUserId);
         if (!foundUser) {
             toast({ title: "Error Internal", description: `Tidak dapat menemukan detail untuk ${userName}. Coba mulai chat langsung dulu.`, variant: "destructive" });
@@ -637,6 +634,7 @@ export default function ChatPage() {
         let reason = "Anda harus memiliki chat langsung yang aktif dengannya terlebih dahulu.";
         if (existingDirectChat) { 
             if (existingDirectChat.blockedByUser === currentUser.id) reason = `Anda telah memblokir ${userName}.`;
+            else if (existingDirectChat.blockedByUser === newUserId) reason = `${userName} telah memblokir Anda.`;
             else if (existingDirectChat.pendingApprovalFromUserId === newUserId) reason = `permintaan chat Anda kepada ${userName} masih tertunda.`;
             else if (existingDirectChat.pendingApprovalFromUserId === currentUser.id) reason = `Anda belum menerima permintaan chat dari ${userName}.`;
             else if (existingDirectChat.isRejected) reason = `chat langsung dengan ${userName} sebelumnya ditolak.`;
@@ -838,7 +836,7 @@ export default function ChatPage() {
              <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
                 <div className="flex items-center gap-2 shrink-0 mr-2">
                     <AppLogo className="h-7 w-7 text-primary" />
-                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground">Ngecet</h1>
+                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground">SimplicChat</h1>
                 </div>
                 <div className="flex items-center gap-2">
                     {currentUser && (
@@ -871,11 +869,16 @@ export default function ChatPage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground">
                   <Settings className="h-4 w-4" />
-                  Pengaturan & Logout
+                  Pengaturan & Akun
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel>Opsi Akun</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
+                    <InfoIcon className="mr-2 h-4 w-4" />
+                    <span>Tentang Aplikasi</span>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleLogout(false)}>
                   <LogOut className="mr-2 h-4 w-4" />
@@ -977,6 +980,26 @@ export default function ChatPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tentang SimplicChat</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground pt-2">
+              SimplicChat adalah aplikasi chatting sederhana yang dibuat untuk Project IDX. 
+              Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal. 
+              Dibangun dengan Next.js, React, ShadCN UI, Tailwind CSS, dan Genkit.
+              <div className="flex items-center justify-center mt-4">
+                <AppLogo className="h-10 w-10 text-primary" />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIsAboutDialogOpen(false)}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </SidebarProvider>
   );
 }

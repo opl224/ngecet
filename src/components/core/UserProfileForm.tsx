@@ -81,7 +81,7 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Display Name</FormLabel>
+                  <FormLabel>Nama</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter your name" {...field} />
                   </FormControl>
@@ -89,7 +89,7 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">Save Profile</Button>
+            <Button type="submit" className="w-full">Simpan</Button>
           </form>
         </Form>
       </div>
@@ -106,7 +106,7 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
               <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} data-ai-hint="abstract person small" />
               <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
             </Avatar>
-            <span className="sr-only">Edit Profile</span>
+            <span className="sr-only">Ubah Profil</span>
           </Button>
         </DialogTrigger>
       ) : ( // "full" displayMode (default)
@@ -125,7 +125,7 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
                 <DialogTrigger asChild>
                   <Button variant="ghost" size="icon" className="text-sidebar-foreground/70 hover:text-sidebar-foreground shrink-0"> {/* Added shrink-0 */}
                     <Edit3 className="h-4 w-4" />
-                    <span className="sr-only">Edit Profile</span>
+                    <span className="sr-only">Ubah Profil</span>
                   </Button>
                 </DialogTrigger>
               </div>
@@ -135,7 +135,7 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
       )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Profile</DialogTitle>
+          <DialogTitle>Ubah Profil</DialogTitle>
           <br />
           {/* <DialogDescription>
             Make changes to your display name. Click save when you're done.
@@ -148,7 +148,7 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Display Name</FormLabel>
+                  <FormLabel>Nama</FormLabel>
                   <FormControl>
                     <Input placeholder="Your Name" {...field} autoFocus/>
                   </FormControl>
@@ -157,8 +157,8 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsProfileDialogOpen(false)}>Cancel</Button>
-              <Button type="submit">Save Changes</Button>
+              <Button type="button" variant="outline" onClick={() => setIsProfileDialogOpen(false)}>Batal</Button>
+              <Button type="submit">Simpan</Button>
             </DialogFooter>
           </form>
         </Form>
