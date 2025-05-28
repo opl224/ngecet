@@ -79,7 +79,7 @@ export function ChatView({
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
       if (replyingToMessage) {
-        setReplyingToMessage(null);
+        setReplyingToMessage(null); // Cancel reply if starting to edit
       }
       setTimeout(() => {
         messageInputRef.current?.focus();
@@ -89,20 +89,22 @@ export function ChatView({
           messageInputRef.current.selectionEnd = len;
         }
       }, 0);
-    } else if (!replyingToMessage) { // Only clear if not replying, to keep reply context
+    } else if (!replyingToMessage) { // Only clear if not replying and not editing
         setNewMessage("");
     }
   }, [editingMessageDetails, replyingToMessage]);
 
 
   useEffect(() => {
-    // Reset states when chat.id changes, but be careful not to interfere with edit/reply flows
+    // Reset states when chat.id changes
+    // but be careful not to interfere with edit/reply flows for the *new* chat
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-      onCancelEditMessage();
+      onCancelEditMessage(); // Cancel edit if it was for a different chat
     }
     if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
-        setReplyingToMessage(null);
+        setReplyingToMessage(null); // Cancel reply if it was for a different chat
     }
+    
     // Clear newMessage only if not in edit/reply mode for the *current* chat
     if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
         (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
@@ -113,7 +115,7 @@ export function ChatView({
         messageInputRef.current.style.height = 'auto'; // Reset height on chat change
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chat.id, onCancelEditMessage]); // Keep onCancelEditMessage as it's part of the cleanup logic
+  }, [chat.id, onCancelEditMessage]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -127,8 +129,8 @@ export function ChatView({
         onSaveEditedMessage(editingMessageDetails.id, newMessage.trim());
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
-        setReplyingToMessage(null);
-        setNewMessage("");
+        setReplyingToMessage(null); // Clear reply context after sending
+        setNewMessage(""); // Clear input after sending
       }
 
       if (messageInputRef.current) {
@@ -139,9 +141,9 @@ export function ChatView({
 
   const handleReplyToMessageInView = (messageToReply: Message) => {
     if(!isChatActive) return;
-    if (editingMessageDetails) onCancelEditMessage();
+    if (editingMessageDetails) onCancelEditMessage(); // Cancel edit if starting to reply
     setReplyingToMessage(messageToReply);
-    setNewMessage("");
+    setNewMessage(""); // Clear current input for reply
     setTimeout(() => messageInputRef.current?.focus(), 0);
   };
 
@@ -213,6 +215,15 @@ export function ChatView({
 
   const userClearedTimestamp = chat.clearedTimestamp?.[currentUser.id] || 0;
   const displayedMessages = messages.filter(msg => msg.timestamp > userClearedTimestamp);
+
+  const sortedParticipants = React.useMemo(() => {
+    if (!chat.participants) return [];
+    return [...chat.participants].sort((a, b) => {
+      if (a.id === chat.createdByUserId) return -1; // Admin comes first
+      if (b.id === chat.createdByUserId) return 1;  // Admin comes first
+      return (a.name || '').localeCompare(b.name || ''); // Then sort by name
+    });
+  }, [chat.participants, chat.createdByUserId]);
 
 
   return (
@@ -334,7 +345,7 @@ export function ChatView({
             </div>
             <ScrollArea className="h-[calc(100vh-380px)]">
               <ul className="space-y-1 text-sm">
-                {chat.participants?.map(participantUser => {
+                {sortedParticipants.map(participantUser => {
                   const isCurrentUserParticipant = participantUser.id === currentUser.id;
                   const participantName = participantUser.name || "Unknown User";
                   const isChatAdmin = participantUser.id === chat.createdByUserId;
@@ -490,3 +501,4 @@ export function ChatView({
     </div>
   );
 }
+
