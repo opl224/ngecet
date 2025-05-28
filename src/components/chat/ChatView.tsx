@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, MessageSquarePlus, ShieldAlert, ShieldOff, Send } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, X, AlertTriangle, Lock, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, ShieldAlert, ShieldOff, Send, Palette, Sun, Moon, Laptop, InfoIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -73,7 +73,7 @@ export function ChatView({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
-  
+
   const prevChatIdRef = useRef<string | undefined>(undefined);
   const prevEditingMessageDetailsRef = useRef<Message | null>(null);
 
@@ -87,19 +87,19 @@ export function ChatView({
 
   const handleCancelEditClick = useCallback(() => {
     onCancelEditMessage();
-    setNewMessage("");
+    if (newMessage !== "") setNewMessage("");
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [onCancelEditMessage]);
+  }, [onCancelEditMessage, newMessage]);
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); 
+    if (newMessage !== "") setNewMessage("");
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, []);
+  }, [newMessage]);
 
 
   useEffect(() => {
@@ -124,16 +124,15 @@ export function ChatView({
 
    useEffect(() => {
     if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
-      if (messageInputRef.current && messageInputRef.current.value !== propsEditingMessageDetails.content) {
-        messageInputRef.current.value = propsEditingMessageDetails.content;
+      if (newMessage !== propsEditingMessageDetails.content) {
+        setNewMessage(propsEditingMessageDetails.content);
       }
-      setNewMessage(propsEditingMessageDetails.content);
       if (replyingToMessage) {
-        setReplyingToMessage(null);
+         setReplyingToMessage(null);
       }
       setTimeout(() => {
         if (messageInputRef.current) {
-          messageInputRef.current.style.height = 'auto'; 
+          messageInputRef.current.style.height = 'auto';
           const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
           messageInputRef.current.style.height = `${newHeight}px`;
           messageInputRef.current.focus();
@@ -143,43 +142,46 @@ export function ChatView({
         }
       }, 50);
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
+      // This case handles when editing is cancelled or finished for the current chat
       if (messageInputRef.current && !replyingToMessage ) {
+          // Only reset height if not in reply mode, newMessage is reset by handleCancelEditClick or chat switch
           messageInputRef.current.style.height = 'auto';
       }
     }
     prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
-  }, [propsEditingMessageDetails, chat.id, replyingToMessage]);
+  }, [propsEditingMessageDetails, chat.id, replyingToMessage, newMessage]);
 
 
   useEffect(() => {
     const chatJustSwitched = prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id;
-    
+
     if (chatJustSwitched) {
-      setNewMessage("");
-      if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto';
+      if (newMessage !== "") setNewMessage("");
+      if (messageInputRef.current) { // Ensure ref is current
+        messageInputRef.current.style.setProperty('height', 'auto', 'important');
       }
-      setReplyingToMessage(null);
+      if (replyingToMessage !== null) setReplyingToMessage(null);
+
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
-        onCancelEditMessage(); 
+        onCancelEditMessage();
       }
     }
-    
-    if (isChatActive && messageInputRef.current && 
+
+    if (isChatActive && messageInputRef.current &&
         (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
       setTimeout(() => {
         messageInputRef.current?.focus();
-      }, 50); 
+      }, 50);
     }
     prevChatIdRef.current = chat.id;
 
-  }, [chat.id, isChatActive, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage]);
+  }, [chat.id, isChatActive, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage, newMessage]);
 
 
   useEffect(() => {
     if (viewportRef.current) {
       setTimeout(() => {
-        if (viewportRef.current) { 
+        if (viewportRef.current) {
           viewportRef.current.scrollTo({
             top: viewportRef.current.scrollHeight,
             behavior: 'smooth'
@@ -201,9 +203,9 @@ export function ChatView({
         onSaveEditedMessage(propsEditingMessageDetails.id, newMessage.trim());
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
-        setReplyingToMessage(null);
+        if (replyingToMessage !== null) setReplyingToMessage(null);
       }
-      setNewMessage("");
+      if (newMessage !== "") setNewMessage("");
 
       if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
@@ -215,9 +217,9 @@ export function ChatView({
     if(!isChatActive) return;
     if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); 
+    if (newMessage !== "") setNewMessage("");
     setTimeout(() => messageInputRef.current?.focus(), 50);
-  }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
+  }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage, newMessage]);
 
   const getChatDisplayDetails = useMemo(() => {
     if (chat.type === "direct") {
@@ -315,16 +317,14 @@ export function ChatView({
 
       if (isACreator && !isBCreator) return -1;
       if (!isACreator && isBCreator) return 1;
-      
+
       if (isACurrentUser && !isBCurrentUser) {
-         // If current user is also creator, they still come first among non-creators.
-         // Otherwise, non-creator current user comes after admin.
         return isACreator ? -1 : 1;
       }
       if (!isACurrentUser && isBCurrentUser) {
         return isBCreator ? 1 : -1;
       }
-      
+
       return (a.name || '').localeCompare(b.name || '');
     });
   }, [chat.participants, chat.createdByUserId, currentUser.id]);
@@ -434,7 +434,7 @@ export function ChatView({
                   </span>
                 </DialogDescription>
               </div>
-            ) : chat.type === 'group' ? ( 
+            ) : chat.type === 'group' ? (
               <div className="text-center pt-4">
                  <Avatar className="h-24 w-24 mx-auto mb-3">
                     <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Group Avatar'} data-ai-hint="group abstract large"/>
@@ -444,12 +444,12 @@ export function ChatView({
                 </Avatar>
                 <DialogTitle className="text-2xl">{displayDetails.name}</DialogTitle>
                  <DialogDescription className="text-base">
-                   {`Group Chat - ${chat.participants?.length || 0} anggota`}
+                    {`Group Chat - ${chat.participants?.length || 0} anggota`}
                 </DialogDescription>
               </div>
             ) : null}
           </DialogHeader>
-          
+
           {chat.type === 'direct' && onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
               <div className="py-2 border-t">
                   <Button
@@ -474,7 +474,7 @@ export function ChatView({
                       </Button>
                   )}
               </div>
-              <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] md:max-h-[300px]"> {}
+              <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] md:max-h-[300px]">
                 <ul className="space-y-1 text-sm">
                   {sortedParticipants.map(participantUser => {
                     const isCurrentUserInList = participantUser.id === currentUser.id;
@@ -553,9 +553,9 @@ export function ChatView({
 
             const senderToDisplay : User = sender || {
               id: msg.senderId,
-              name: msg.senderName, 
-              avatarUrl: undefined, 
-              status: "Offline" 
+              name: msg.senderName,
+              avatarUrl: undefined,
+              status: "Offline"
             };
 
             return (
@@ -565,7 +565,7 @@ export function ChatView({
                 isCurrentUserMessage={msg.senderId === currentUser.id}
                 senderDetails={senderToDisplay}
                 chatType={chat.type}
-                chat={chat} 
+                chat={chat}
                 onReplyMessage={isChatActive ? handleReplyToMessageInView : undefined}
                 onEditMessage={isChatActive ? onRequestEditMessage : undefined}
                 onDeleteMessage={isChatActive ? onDeleteMessage : undefined}
