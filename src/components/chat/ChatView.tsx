@@ -63,7 +63,7 @@ export function ChatView({
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
       setReplyingToMessage(null); // Ensure reply mode is off when edit mode starts
-      messageInputRef.current?.focus(); // Focus on input
+      setTimeout(() => messageInputRef.current?.focus(), 0); // Focus on input
     } else { 
       // This 'else' block runs when editingMessageDetails becomes null (edit finished or cancelled)
       // OR when the component mounts and editingMessageDetails is initially null.
@@ -76,18 +76,17 @@ export function ChatView({
     if (messageInputRef.current && !editingMessageDetails) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [editingMessageDetails]); // Removed replyingToMessage to avoid re-triggering when reply starts
+  }, [editingMessageDetails]); 
 
 
    // Effect to reset input and interaction states when the active chat (chat.id) changes.
    useEffect(() => {
     // Only reset if not entering edit mode for the current chat OR not in reply mode
-    if (!editingMessageDetails || editingMessageDetails.chatId !== chat.id) {
-        if (!replyingToMessage) {
-            setNewMessage(""); 
-        }
+    if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) && !replyingToMessage) {
+      setNewMessage(""); 
     }
-    if (!replyingToMessage) { // Always clear reply context on chat change
+    
+    if (!replyingToMessage || (replyingToMessage && replyingToMessage.chatId !== chat.id)) { 
         setReplyingToMessage(null); 
     }
     
@@ -98,7 +97,7 @@ export function ChatView({
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
+  }, [chat.id, onCancelEditMessage]); // Dependencies simplified
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -128,7 +127,7 @@ export function ChatView({
     if (editingMessageDetails) onCancelEditMessage(); 
     setReplyingToMessage(messageToReply);
     setNewMessage(""); // Clear input when starting a reply
-    messageInputRef.current?.focus(); // Focus on input
+    setTimeout(() => messageInputRef.current?.focus(), 0); // Focus on input
   };
   
   const handleCancelEditClick = () => {
