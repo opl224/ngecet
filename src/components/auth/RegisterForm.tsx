@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 const registerFormSchema = z.object({
-  displayName: z.string().min(2, "Nama tampilan minimal 2 karakter.").max(30, "Nama tampilan terlalu panjang."),
+  email: z.string().email("Alamat email tidak valid.").min(5, "Email minimal 5 karakter.").max(50, "Email terlalu panjang."),
   username: z.string().min(3, "Username minimal 3 karakter.").max(20, "Username terlalu panjang.").regex(/^[a-zA-Z0-9_]+$/, "Username hanya boleh berisi huruf, angka, dan underscore."),
   password: z.string().min(6, "Password minimal 6 karakter."),
   confirmPassword: z.string(),
@@ -21,17 +21,17 @@ const registerFormSchema = z.object({
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
 
 interface RegisterFormProps {
-  onRegister: (displayName: string, username: string, password_mock: string) => boolean;
+  onRegister: (email: string, username: string, password_mock: string) => boolean;
 }
 
 export function RegisterForm({ onRegister }: RegisterFormProps) {
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
-    defaultValues: { displayName: "", username: "", password: "", confirmPassword: "" },
+    defaultValues: { email: "", username: "", password: "", confirmPassword: "" },
   });
 
   function onSubmit(data: RegisterFormValues) {
-    const registerSuccess = onRegister(data.displayName, data.username, data.password);
+    const registerSuccess = onRegister(data.email, data.username, data.password);
     if (registerSuccess) {
       form.reset();
     }
@@ -43,12 +43,12 @@ export function RegisterForm({ onRegister }: RegisterFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="displayName"
+          name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nama Tampilan</FormLabel>
+              <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., John Doe" {...field} />
+                <Input placeholder="e.g., anda@contoh.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

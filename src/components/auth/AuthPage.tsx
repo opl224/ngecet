@@ -49,9 +49,6 @@ export function AuthPage({ onLogin, onRegister }: AuthPageProps) {
           </div>
         </CardContent>
       </Card>
-       <p className="mt-8 text-xs text-muted-foreground">
-        Demo Aplikasi Ngecet - Project IDX
-      </p>
     </div>
   );
 }
