@@ -69,13 +69,17 @@ export function ChatView({
 
   const isChatActive = chat.type === 'group' || (!chat.pendingApprovalFromUserId && !chat.isRejected);
 
-  useEffect(() => {
-    if (viewportRef.current) {
-      viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
-    }
-  }, [messages, chat.id]);
+  const handleCancelEditClick = useCallback(() => {
+    onCancelEditMessage();
+    setNewMessage(replyingToMessage ? "" : ""); 
+  }, [onCancelEditMessage, replyingToMessage]);
 
-  // Effect for handling Escape key to go back
+  const handleCancelReplyClick = useCallback(() => {
+    setReplyingToMessage(null);
+    setNewMessage(""); 
+  }, []);
+
+  // Effect for handling Escape key to go back or cancel edit/reply
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -96,12 +100,19 @@ export function ChatView({
   }, [editingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
+  useEffect(() => {
+    if (viewportRef.current) {
+      viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
+    }
+  }, [messages, chat.id]);
+
+
   // Effect for handling message editing state
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
       if (replyingToMessage) {
-        setReplyingToMessage(null);
+        setReplyingToMessage(null); // Ensure reply mode is off when editing
       }
       setTimeout(() => {
         messageInputRef.current?.focus();
@@ -111,31 +122,33 @@ export function ChatView({
           messageInputRef.current.selectionEnd = len;
         }
       }, 0);
-    } else if (!replyingToMessage) {
-      // Only clear if not editing AND not replying,
-      // and newMessage is not empty (to avoid clearing during initial empty state)
-      if(newMessage !== "") setNewMessage("");
+    } else if (!replyingToMessage) { 
+      // Only clear if not editing AND not replying
+      // setNewMessage(""); // This line was causing issues, let's manage clearing more carefully
     }
-  }, [editingMessageDetails]); // Removed replyingToMessage, newMessage from deps
+  }, [editingMessageDetails]); // Removed replyingToMessage from deps as it's handled inside
 
   // Effect for resetting states when chat.id changes
-  useEffect(() => {
-    // Reset states when chat.id changes, but only if not currently editing/replying to a message from the *new* chat
-    if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id)) {
-      onCancelEditMessage(); // Cancel any ongoing edit if it's for a different chat
+   useEffect(() => {
+    // Reset states when chat.id changes,
+    // but only if not currently editing/replying to a message from the *new* chat
+    if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
+      onCancelEditMessage();
     }
     if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
       setReplyingToMessage(null);
     }
-     // Always clear the new message input when chat.id changes, unless an edit for the current chat is in progress
-    if (!editingMessageDetails || editingMessageDetails.chatId !== chat.id) {
+     // Always clear the new message input when chat.id changes,
+     // unless an edit for the current chat is in progress or a reply is active for the current chat.
+    if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
+        (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
         setNewMessage("");
     }
 
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [chat.id, onCancelEditMessage]);
+  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -161,23 +174,11 @@ export function ChatView({
 
   const handleReplyToMessageInView = useCallback((messageToReply: Message) => {
     if(!isChatActive) return;
-    if (editingMessageDetails) onCancelEditMessage(); // Cancel edit if replying
+    if (editingMessageDetails) onCancelEditMessage(); 
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); // Clear input for reply
+    setNewMessage(""); 
     setTimeout(() => messageInputRef.current?.focus(), 0);
   }, [isChatActive, editingMessageDetails, onCancelEditMessage]);
-
-  const handleCancelEditClick = useCallback(() => {
-    onCancelEditMessage();
-    setNewMessage(replyingToMessage ? "" : ""); // If still replying, keep input for reply, otherwise clear
-  }, [onCancelEditMessage, replyingToMessage]);
-
-
-  const handleCancelReplyClick = useCallback(() => {
-    setReplyingToMessage(null);
-    setNewMessage(""); // Clear input when reply is cancelled
-  }, []);
-
 
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
@@ -534,7 +535,6 @@ export function ChatView({
                 e.preventDefault();
                 handleSubmit(e);
               }
-              // Escape key is handled by the global useEffect now
             }}
           />
           <Button type="submit" size="icon" aria-label="Send message" disabled={!newMessage.trim() || !isChatActive} className="self-end">
