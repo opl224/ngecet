@@ -86,7 +86,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage("");
+    setNewMessage(""); // Clear input when reply is cancelled
   }, []);
 
 
@@ -110,11 +110,12 @@ export function ChatView({
   }, [editingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
+  // Effect for handling message editing state
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
       if (replyingToMessage && replyingToMessage.chatId !== editingMessageDetails.chatId) {
-        setReplyingToMessage(null);
+        setReplyingToMessage(null); // Cancel reply if editing message from a different chat
       }
       setTimeout(() => {
         messageInputRef.current?.focus();
@@ -124,26 +125,32 @@ export function ChatView({
           messageInputRef.current.selectionEnd = len;
         }
       }, 0);
-    } else if (!replyingToMessage && !newMessage) { // Avoid clearing input if user is typing a new message after cancelling edit
-      // If not editing and not replying, newMessage should be what user is typing or empty
     }
-  }, [editingMessageDetails]); // Removed replyingToMessage, newMessage from deps to avoid issues
+    // Removed the else if (!replyingToMessage) setNewMessage(""); to avoid clearing input when canceling reply
+  }, [editingMessageDetails]);
 
 
+   // Effect for handling chat switching
    useEffect(() => {
-    if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
-        (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
+    // Reset message input and reply/edit state when chat.id changes,
+    // but only if not currently editing a message from the *new* chat.
+    if (!editingMessageDetails || editingMessageDetails.chatId !== chat.id) {
         setNewMessage("");
+        if (editingMessageDetails) onCancelEditMessage(); // Cancel edit if it was for the previous chat
+    }
+    if (!replyingToMessage || replyingToMessage.chatId !== chat.id) {
+      setReplyingToMessage(null); // Cancel reply if it was for the previous chat
     }
 
+    // Auto-resize textarea
     if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto';
-        if (messageInputRef.current.value) {
+        messageInputRef.current.style.height = 'auto'; // Reset height first
+        if (messageInputRef.current.value || newMessage) { // Check current value or newMessage state
           const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
           messageInputRef.current.style.height = `${newHeight}px`;
         }
     }
-  }, [chat.id, editingMessageDetails, replyingToMessage, onCancelEditMessage]);
+  }, [chat.id]); // Dependency: chat.id, editingMessageDetails, replyingToMessage were causing issues. Simpler now.
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -171,7 +178,7 @@ export function ChatView({
     if(!isChatActive) return;
     if (editingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage("");
+    setNewMessage(""); // Clear input for the reply
     setTimeout(() => messageInputRef.current?.focus(), 0);
   }, [isChatActive, editingMessageDetails, onCancelEditMessage]);
 
@@ -254,7 +261,7 @@ export function ChatView({
   const userClearedTimestamp = chat.clearedTimestamp?.[currentUser.id] || 0;
   const displayedMessages = messages.filter(msg => {
     if (chat.type === 'direct' && chat.blockedByUser === currentUser.id && msg.senderId !== currentUser.id) {
-        return false;
+        return false; // Don't show messages from blocked user if current user initiated block
     }
     return msg.timestamp > userClearedTimestamp;
   });
@@ -262,19 +269,17 @@ export function ChatView({
   const sortedParticipants = useMemo(() => {
     if (!chat.participants) return [];
     return [...chat.participants].sort((a, b) => {
-      const isACreator = a.id === chat.createdByUserId;
-      const isBCreator = b.id === chat.createdByUserId;
+      const isAAdmin = a.id === chat.createdByUserId;
+      const isBAdmin = b.id === chat.createdByUserId;
       const isACurrentUser = a.id === currentUser.id;
       const isBCurrentUser = b.id === currentUser.id;
 
-      if (isACreator && isACurrentUser) return -1; 
-      if (isBCreator && isBCurrentUser) return 1;
-
-      if (isACreator) return -1; 
-      if (isBCreator) return 1;
+      if (isAAdmin && !isBAdmin) return -1;
+      if (!isAAdmin && isBAdmin) return 1;
       
-      if (isACurrentUser) return -1; 
-      if (isBCurrentUser) return 1;
+      // If both are admin or neither are admin, then sort by current user
+      if (isACurrentUser && !isBCurrentUser) return -1;
+      if (!isACurrentUser && isBCurrentUser) return 1;
       
       return (a.name || '').localeCompare(b.name || '');
     });
@@ -331,13 +336,10 @@ export function ChatView({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         {onGoBack && (
-                             <>
-                                <DropdownMenuItem onClick={onGoBack}>
-                                    <LogOut className="mr-2 h-4 w-4" />
-                                    <span>Tutup Chat</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                             </>
+                            <DropdownMenuItem onClick={onGoBack}>
+                                <LogOut className="mr-2 h-4 w-4" />
+                                <span>Tutup Chat</span>
+                            </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
                             onClick={() => onDeleteAllMessagesInChat(chat.id)}
@@ -347,8 +349,6 @@ export function ChatView({
                             <span>Hapus Semua Pesan</span>
                         </DropdownMenuItem>
                          {chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerDeleteGroup && (
-                           <>
-                             <DropdownMenuSeparator />
                              <DropdownMenuItem
                                onClick={() => onTriggerDeleteGroup(chat.id)}
                                className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10"
@@ -356,11 +356,9 @@ export function ChatView({
                                <Trash2 className="mr-2 h-4 w-4" />
                                <span>Hapus Grup</span>
                              </DropdownMenuItem>
-                           </>
                          )}
                          {chat.type === 'direct' && onBlockUser && onUnblockUser && (
                             <>
-                                <DropdownMenuSeparator />
                                 {chat.blockedByUser === currentUser.id ? (
                                     <DropdownMenuItem onClick={() => onUnblockUser(chat.id)}>
                                         <ShieldOff className="mr-2 h-4 w-4" />

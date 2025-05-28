@@ -886,7 +886,6 @@ export default function ChatPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel>Opsi Akun</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
                     <InfoIcon className="mr-2 h-4 w-4" />
@@ -895,7 +894,7 @@ export default function ChatPage() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleLogout(false)}>
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout (Simpan Data)</span>
+                  <span>Keluar (Simpan Data)</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
                   <Trash2 className="mr-2 h-4 w-4" />

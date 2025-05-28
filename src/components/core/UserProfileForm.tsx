@@ -136,7 +136,6 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Ubah Profil</DialogTitle>
-          <br />
           {/* <DialogDescription>
             Make changes to your display name. Click save when you're done.
           </DialogDescription> */}
