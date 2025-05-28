@@ -70,7 +70,7 @@ export function ChatItem({
       } else {
         specialStatusText = `${name} menolak permintaan Anda.`;
       }
-      statusTimestamp = chat.lastMessageTimestamp;
+      statusTimestamp = chat.lastMessageTimestamp; // Could be requestTimestamp if lastMessageTimestamp is not set after rejection
       showDeleteAction = true;
     }
   }
@@ -130,16 +130,18 @@ export function ChatItem({
             >
               {name}
             </h4>
-            {/* Display unread badge OR timestamp, but not if specialStatusText is present for pending/rejected */}
-            {unreadCount > 0 && !specialStatusText ? (
-              <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0 ml-2">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </Badge>
-            ) : statusTimestamp && !specialStatusText ? ( // Only show timestamp if no special text and no unread count takes precedence
-              <p className="text-xs text-sidebar-foreground/60 whitespace-nowrap ml-2 shrink-0">
-                {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
-              </p>
-            ) : null}
+            {/* Display unread badge (if >0) or '0' badge (if 0 and active), but not if specialStatusText is present */}
+            {!specialStatusText ? (
+              unreadCount > 0 ? (
+                <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0 ml-2">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Badge>
+              ) : statusTimestamp ? ( // If unreadCount is 0 or undefined, but there was activity
+                <Badge variant="outline" className="h-5 px-1.5 text-xs shrink-0 ml-2 text-sidebar-foreground/70 border-sidebar-foreground/30 bg-transparent">
+                  {unreadCount || 0}
+                </Badge>
+              ) : null // No special text, no positive unread, no timestamp (e.g. truly empty new chat)
+            ) : null /* specialStatusText exists, so it's handled in statusMessage below */}
           </div>
           {/* Display status message (previously last message or special status) */}
           {statusMessage && (
@@ -183,3 +185,5 @@ export function ChatItem({
     </div>
   );
 }
+
+    
