@@ -1,17 +1,15 @@
 
 import Image from 'next/image';
 import type { HTMLAttributes } from 'react';
+import { cn } from "@/lib/utils"; // Assuming cn is in lib/utils
 
 interface AppLogoProps extends Omit<HTMLAttributes<HTMLDivElement>, 'className'> {
-  className?: string; // className untuk styling, terutama ukuran
-  // Anda bisa menambahkan props lain jika diperlukan, seperti width dan height spesifik
-  // namun dengan 'fill', ukuran akan dikontrol oleh parent dan className
+  className?: string;
 }
 
 export function AppLogo({ className, ...props }: AppLogoProps) {
-  // Placeholder image, ganti dengan path ke logo PNG Anda di direktori /public
-  // Contoh: src="/logo.png"
-  const logoSrc = "https://placehold.co/100x100.png";
+  // Path ke logo PNG Anda di direktori /public
+  const logoSrc = "/logo.png"; // Ganti ini jika nama file Anda berbeda
 
   return (
     <div
@@ -20,7 +18,7 @@ export function AppLogo({ className, ...props }: AppLogoProps) {
         className // Kelas dari parent untuk ukuran, e.g., "h-7 w-7"
       )}
       {...props}
-      data-ai-hint="logo company" // Petunjuk untuk AI jika ingin mengganti gambar
+      data-ai-hint="logo company" // Anda bisa mengubah hint ini jika mau
     >
       <Image
         src={logoSrc}
@@ -33,14 +31,12 @@ export function AppLogo({ className, ...props }: AppLogoProps) {
   );
 }
 
-// Helper function cn jika belum ada di file ini, atau impor dari lib/utils
-// Asumsi cn sudah ada di lib/utils dan diimpor di tempat lain jika diperlukan.
-// Untuk berdiri sendiri, bisa ditambahkan di sini:
-function cn(...inputs: Array<string | undefined | null | Record<string, boolean>>): string {
-  return inputs
-    .flat()
-    .filter(x => typeof x === 'string' || (typeof x === 'object' && x !== null))
-    .map(x => typeof x === 'string' ? x : Object.entries(x).filter(([, v]) => v).map(([k]) => k))
-    .flat()
-    .join(' ');
-}
+// Fungsi cn tidak perlu ada di sini jika sudah diimpor dari @/lib/utils
+// function cn(...inputs: Array<string | undefined | null | Record<string, boolean>>): string {
+//   return inputs
+//     .flat()
+//     .filter(x => typeof x === 'string' || (typeof x === 'object' && x !== null))
+//     .map(x => typeof x === 'string' ? x : Object.entries(x).filter(([, v]) => v).map(([k]) => k))
+//     .flat()
+//     .join(' ');
+// }
