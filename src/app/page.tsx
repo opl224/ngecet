@@ -44,6 +44,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuPortal, // Added DropdownMenuPortal
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Trash2, Settings, ArrowLeft, ShieldOff, ShieldAlert, InfoIcon, UserPlus, UserMinus, MessageSquarePlus, Sun, Moon, Laptop, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -334,9 +335,9 @@ export default function ChatPage() {
   }, [currentUser, chats, setChats, setAllMessages, toast]);
 
   const handleSelectChat = useCallback((chat: Chat) => {
-    if (chat.type === "direct" && chat.blockedByUser === currentUser?.id) {
-        // toast({ title: "Chat Diblokir", description: "Anda telah memblokir pengguna ini. Buka blokir untuk melanjutkan." }); // Removed this toast
-    } else if (chat.type === "direct" && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
+    // if (chat.type === "direct" && chat.blockedByUser === currentUser?.id) {
+    // } else
+    if (chat.type === "direct" && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
         toast({ title: "Interaksi Terbatas", description: "Anda tidak dapat berinteraksi dalam chat ini saat ini." });
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
         toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
@@ -1034,5 +1035,7 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+
+    
 
     
