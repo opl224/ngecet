@@ -61,7 +61,6 @@ export function ChatItem({
     const otherParticipantNameDisplay = otherParticipant?.name || name || "Seseorang";
 
     if (chat.blockedByUser === currentUser.id) {
-        specialStatusText = `Anda memblokir ${otherParticipantNameDisplay}.`;
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
         // This case (other user blocked current user) is harder to manage client-side for display in ChatItem
