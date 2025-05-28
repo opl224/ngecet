@@ -88,7 +88,7 @@ export function MessageBubble({
     <div
       ref={ref}
       className={cn(
-        "shadow-sm flex flex-col px-3 py-3 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative", // py-3 was added
+        "shadow-sm flex flex-col px-3 py-3 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative", // Changed py-1.5 to py-3
         isCurrentUserMessage
           ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl"
           : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
@@ -96,14 +96,14 @@ export function MessageBubble({
       )}
       {...props}
     >
-      {(isCurrentUserMessage && chatType === 'group') || (!isCurrentUserMessage && chatType === 'group') ? (
+      { (isCurrentUserMessage && chatType === 'group') || (!isCurrentUserMessage && chatType === 'group') ? (
           <div className={cn(
               "text-xs font-semibold mb-0.5",
               isCurrentUserMessage ? "text-primary-foreground/90" : "text-accent-foreground"
           )}>
               <span>
                 {isCurrentUserMessage && chatType === 'group'
-                  ? `Anda`
+                  ? "Anda"
                   : senderName
                 }
               </span>
@@ -232,23 +232,22 @@ export function MessageBubble({
 
   return (
     <div className={cn(
-      "flex w-full items-start group", // Removed mb-3
+      "flex w-full items-start group",
       isCurrentUserMessage ? "justify-end" : "justify-start"
     )}>
       {isCurrentUserMessage ? (
-        // Pesan Anda (keluar)
         <>
-          <SenderActionButtons className="order-1 mr-1 self-center" />
-          <BubbleContentLayout className="order-2 mr-2">
+          {chatType === 'group' && <UserAvatarComponent className="order-1 mr-2 self-start" />}
+          <BubbleContentLayout className={cn("order-2", chatType === 'direct' && "mr-0")}>
             {/* Content rendered inside BubbleContentLayout */}
           </BubbleContentLayout>
-          {chatType === 'group' && <UserAvatarComponent className="order-3 self-start ml-0" />}
+          <SenderActionButtons className="order-3 ml-1 self-center" />
+          {chatType === 'direct' && <div className="w-8 shrink-0 order-1" />} {/* Spacer for direct messages to align action button */}
         </>
       ) : (
-        // Pesan dari orang lain (masuk)
         <>
           {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
-          <BubbleContentLayout className={cn("mr-1", chatType === 'direct' && "ml-0")}>
+          <BubbleContentLayout className={cn(chatType === 'direct' && "ml-0")}>
              {/* Content rendered inside BubbleContentLayout */}
           </BubbleContentLayout>
           <ReceiverActionButton className="ml-1 self-center" />
@@ -257,3 +256,4 @@ export function MessageBubble({
     </div>
   );
 }
+
