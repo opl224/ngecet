@@ -94,7 +94,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); // Clear input when canceling reply
+    setNewMessage(""); 
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -121,18 +121,17 @@ export function ChatView({
   }, [propsEditingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
-  // Effect for handling message editing state (populating input, focusing, setting cursor, height)
   useEffect(() => {
     if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
+      if (messageInputRef.current && messageInputRef.current.value !== propsEditingMessageDetails.content) {
+        messageInputRef.current.value = propsEditingMessageDetails.content;
+      }
       setNewMessage(propsEditingMessageDetails.content);
       if (replyingToMessage) {
         setReplyingToMessage(null);
       }
       setTimeout(() => {
         if (messageInputRef.current) {
-          if (messageInputRef.current.value !== propsEditingMessageDetails.content) {
-             messageInputRef.current.value = propsEditingMessageDetails.content;
-          }
           const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
           messageInputRef.current.style.height = `${newHeight}px`;
           messageInputRef.current.focus();
@@ -150,7 +149,6 @@ export function ChatView({
   }, [propsEditingMessageDetails, chat.id, replyingToMessage]);
 
 
-  // Effect for handling chat switches (resetting input, focus)
  useEffect(() => {
     let chatJustSwitched = false;
     if (prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id) {
@@ -209,7 +207,7 @@ export function ChatView({
     if(!isChatActive) return;
     if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); // Clear input before focusing for reply
+    setNewMessage(""); 
     setTimeout(() => messageInputRef.current?.focus(), 50);
   }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
@@ -307,11 +305,11 @@ export function ChatView({
       const isACurrentUser = a.id === currentUser.id;
       const isBCurrentUser = b.id === currentUser.id;
 
-      if (isAAdmin && !isBAdmin) return -1; // Admin always first
+      if (isAAdmin && !isBAdmin) return -1; 
       if (!isAAdmin && isBAdmin) return 1;
 
-      if (isACurrentUser && !isBCurrentUser) return -1; // Current user (if not admin) comes after admin, but before others
-      if (!isACurrentUser && isBCurrentUser) return 1;
+      if (isACurrentUser && !isBAdmin && !isAAdmin) return -1; 
+      if (!isACurrentUser && isBCurrentUser && !isBAdmin) return 1;
       
       return (a.name || '').localeCompare(b.name || '');
     });
@@ -544,6 +542,7 @@ export function ChatView({
                 isCurrentUserMessage={msg.senderId === currentUser.id}
                 senderDetails={senderToDisplay}
                 chatType={chat.type}
+                chat={chat} 
                 onReplyMessage={isChatActive ? handleReplyToMessageInView : undefined}
                 onEditMessage={isChatActive ? onRequestEditMessage : undefined}
                 onDeleteMessage={isChatActive ? onDeleteMessage : undefined}
@@ -646,4 +645,3 @@ export function ChatView({
     </div>
   );
 }
-

@@ -1,11 +1,11 @@
 
 "use client";
 
-import type { Message, User, ChatType } from "@/types";
+import type { Message, User, ChatType, Chat } from "@/types";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
-import { Undo2, MoreVertical, Edit3, Trash2 } from "lucide-react";
+import { Undo2, MoreVertical, Edit3, Trash2, Check, CheckCheck } from "lucide-react"; 
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,6 +21,7 @@ interface MessageBubbleProps {
   isCurrentUserMessage: boolean;
   senderDetails: User;
   chatType: ChatType;
+  chat: Chat; 
   onReplyMessage?: (message: Message) => void;
   onEditMessage?: (message: Message) => void;
   onDeleteMessage?: (messageId: string, chatId: string) => void;
@@ -31,6 +32,7 @@ export function MessageBubble({
   isCurrentUserMessage,
   senderDetails,
   chatType,
+  chat, 
   onReplyMessage,
   onEditMessage,
   onDeleteMessage,
@@ -50,23 +52,51 @@ export function MessageBubble({
   const senderAvatarUrl = senderDetails.avatarUrl;
   const senderInitial = senderDetails.name ? senderDetails.name.substring(0, 1).toUpperCase() : "?";
 
+  let isReadByAtLeastOneOther = false;
+  if (isCurrentUserMessage && chat.lastReadBy) { // Ensure lastReadBy exists
+    const messageTimestamp = message.timestamp;
+    if (chat.type === 'direct') {
+      const otherParticipant = chat.participants.find(p => p.id !== senderDetails.id);
+      if (otherParticipant) {
+        const theirLastReadTimestamp = chat.lastReadBy[otherParticipant.id] || 0;
+        if (messageTimestamp <= theirLastReadTimestamp) {
+          isReadByAtLeastOneOther = true;
+        }
+      }
+    } else if (chat.type === 'group') {
+      for (const participant of chat.participants) {
+        if (participant.id !== senderDetails.id) {
+          const theirLastReadTimestamp = chat.lastReadBy[participant.id] || 0;
+          if (messageTimestamp <= theirLastReadTimestamp) {
+            isReadByAtLeastOneOther = true;
+            break; 
+          }
+        }
+      }
+    }
+  }
+
+
   const BubbleContentLayout = ({ className }: { className?: string }) => (
     <div className={cn(
-      "shadow-sm flex flex-col px-3 py-2 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg",
+      "shadow-sm flex flex-col px-3 py-2 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative", 
       isCurrentUserMessage
         ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl"
         : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
       className
     )}>
-      {/* Display sender name or "Anda" only for group chats */}
-      { chatType === 'group' && (
+      {((isCurrentUserMessage && chatType === 'group') || (!isCurrentUserMessage && chatType === 'group')) ? (
           <div className={cn(
               "text-xs font-semibold mb-0.5",
-              isCurrentUserMessage ? "text-primary-foreground/90" : "text-primary"
+              isCurrentUserMessage ? "text-primary-foreground/90" : "text-accent-foreground" 
           )}>
               {isCurrentUserMessage ? "Anda" : <span>{senderName}</span>}
           </div>
-      )}
+      ) : isCurrentUserMessage && chatType === 'direct' ? (
+          <div className={cn("text-xs font-semibold mb-0.5 text-primary-foreground/90")}>
+            Anda
+          </div>
+      ) : null}
 
       {message.replyToMessageId && message.replyToMessageSenderName && message.replyToMessageContent && (
         <div className={cn(
@@ -90,12 +120,11 @@ export function MessageBubble({
       <p className="whitespace-pre-wrap break-words">{message.content}</p>
 
       <div className={cn(
-          "flex items-center mt-1",
-          isCurrentUserMessage ? "justify-end" : "justify-start"
+          "flex items-center mt-1 self-end", 
       )}>
         {message.isEdited && (
            <span className={cn(
-              "text-[10px] italic mr-2",
+              "text-[10px] italic mr-1.5", 
               isCurrentUserMessage ? "text-primary-foreground/70" : "text-muted-foreground/70"
           )}>(edited)</span>
         )}
@@ -105,6 +134,15 @@ export function MessageBubble({
         )}>
           {format(new Date(message.timestamp), "HH:mm", { locale: idLocale })}
         </p>
+        {isCurrentUserMessage && (
+          <span className="ml-1">
+            {isReadByAtLeastOneOther ? (
+              <CheckCheck size={14} className="text-blue-500" />
+            ) : (
+              <Check size={14} className="text-primary-foreground/70" /> 
+            )}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -182,19 +220,18 @@ export function MessageBubble({
       {isCurrentUserMessage ? (
         // My messages
         <div className="flex w-full justify-end items-start group mb-3">
-          {chatType === 'group' && <UserAvatarComponent className="ml-2 order-3 self-start" />}
           <SenderActionButtons className="mr-1 order-1 self-center" />
-          <BubbleContentLayout className="mr-2 order-2" />
+          <BubbleContentLayout className="order-2 mr-2" />
+          {chatType === 'group' && <UserAvatarComponent className="order-3 self-start" />}
         </div>
       ) : (
         // Others' messages
         <div className="flex w-full justify-start items-start group mb-3">
           {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
-          <BubbleContentLayout className={cn(chatType === 'group' ? "mr-1" : "", "ml-0")} />
+          <BubbleContentLayout className={cn(chatType === 'group' ? "mr-1" : "ml-0", "flex-1")} />
           <ReceiverActionButton className="ml-1 self-center" />
         </div>
       )}
     </>
   );
 }
-    
