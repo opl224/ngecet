@@ -214,40 +214,46 @@ export default function ChatPage() {
   }, [currentUser, setChats, toast, selectedChat?.id]);
 
 
-  const handleCreateGroupChat = useCallback((groupName: string, memberNames: string[]) => {
+  const handleCreateGroupChat = useCallback((groupName: string, memberDisplayNames: string[]) => {
     if (!currentUser) return;
 
     const invalidMemberDisplayNames: string[] = [];
     const finalMemberUsers: User[] = [currentUser]; // Start with the current user
 
-    for (const name of memberNames) {
+    for (const name of memberDisplayNames) {
+        // We receive display names from the dialog. We need to find/create User objects.
+        // The dialog's local validation should ensure these names correspond to active contacts.
+        // Here, we re-verify and fetch/create the User object.
         const memberId = name.toLowerCase().replace(/\s+/g, "_") || `user_member_${Date.now()}_${Math.random().toString(36).substring(2,7)}`;
 
-        if (memberId === currentUser.id) {
+        if (memberId === currentUser.id) { // Should be caught by dialog, but double-check
             continue;
         }
-        if (finalMemberUsers.find(u => u.id === memberId)) {
-            continue; // Avoid duplicate members if names resolve to same ID
+        if (finalMemberUsers.find(u => u.id === memberId)) { // Avoid duplicates
+            continue;
         }
 
+        // Check if user has an active direct chat with the member
         const potentialDirectChatIdParts = [currentUser.id, memberId].sort();
         const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
         const existingDirectChat = chats.find(c => c.id === potentialDirectChatId);
 
         if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected) {
+            // This member is valid, try to get their User object from the direct chat participants
             const memberUserObject = existingDirectChat.participants.find(p => p.id === memberId);
             if (memberUserObject) {
                 finalMemberUsers.push(memberUserObject);
             } else {
-                // Fallback: create a new user object if not found in the direct chat (should be rare)
+                 // Fallback: create a new user object if not found in the direct chat (should be rare if IDs are consistent)
                 const memberInitial = name.substring(0,1).toUpperCase() || 'M';
                 finalMemberUsers.push({
                     id: memberId, name: name,
                     avatarUrl: `https://placehold.co/100x100.png?text=${memberInitial}`,
-                    status: "Offline"
+                    status: "Offline" // Or try to get from a global user list if available
                 });
             }
         } else {
+            // If no active direct chat, this member is invalid for group creation
             invalidMemberDisplayNames.push(name);
         }
     }
@@ -255,13 +261,13 @@ export default function ChatPage() {
     if (invalidMemberDisplayNames.length > 0) {
         toast({
             title: "Gagal Membuat Grup",
-            description: `Pengguna berikut tidak dapat ditambahkan: ${invalidMemberDisplayNames.join(", ")}. Anda harus memiliki chat langsung yang aktif dengan mereka.`,
+            description: `Pengguna berikut tidak dapat ditambahkan karena Anda tidak memiliki chat langsung yang aktif dengan mereka: ${invalidMemberDisplayNames.join(", ")}.`,
             variant: "destructive",
         });
         return;
     }
     
-    if (finalMemberUsers.length < 2 && memberNames.length > 0) { // Need at least one *other* validated member
+    if (finalMemberUsers.length < 2 && memberDisplayNames.length > 0) { 
         toast({
             title: "Gagal Membuat Grup",
             description: "Tidak ada anggota valid yang dapat ditambahkan selain diri Anda.",
@@ -269,10 +275,10 @@ export default function ChatPage() {
         });
         return;
     }
-    if (finalMemberUsers.length < 2) { // If only currentUser ended up in finalMemberUsers
+     if (finalMemberUsers.length < 2) { 
          toast({
             title: "Anggota Diperlukan",
-            description: "Harap tambahkan minimal satu anggota lain.",
+            description: "Harap tambahkan minimal satu anggota lain yang valid.",
             variant: "destructive",
         });
         return;
@@ -378,8 +384,8 @@ export default function ChatPage() {
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected) {
          return {
           ...chat,
-          lastMessage: chat.type === 'direct' ? `Activity in chat with ${chat.name}` : `Activity in ${chat.name}`, // Generic update for other chats
-          lastMessageTimestamp: newMessage.timestamp, // Use current message's timestamp to bump it up
+          lastMessage: chat.type === 'direct' ? `Aktivitas di chat dengan ${chat.name}` : `Aktivitas di ${chat.name}`, 
+          lastMessageTimestamp: newMessage.timestamp, 
          };
       }
       return chat;
@@ -416,7 +422,7 @@ export default function ChatPage() {
         return c;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
-    
+    // No toast for deleting message as per user request
   }, [setAllMessages, setChats]);
 
   const handleRequestEditMessageInInput = useCallback((messageToEdit: Message) => {
@@ -536,12 +542,12 @@ export default function ChatPage() {
         if (chat.id === chatId) {
           return {
             ...chat,
-            lastMessage: "Semua pesan telah dihapus.",
+            lastMessage: "Semua pesan telah dihapus.", // This will be the indicator for the current user
             lastMessageTimestamp: now,
             lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: now },
             clearedTimestamp: { 
               ...(chat.clearedTimestamp || {}),
-              [currentUser.id]: now,
+              [currentUser.id]: now, // Record when this user cleared the chat
             }
           };
         }
@@ -574,6 +580,7 @@ export default function ChatPage() {
         return; 
     }
 
+    // Check for active direct chat with the user to be added
     const potentialDirectChatIdParts = [currentUser.id, newUserId].sort();
     const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
     const existingDirectChat = chats.find(c => c.id === potentialDirectChatId);
@@ -581,29 +588,29 @@ export default function ChatPage() {
     let userObjectToAdd: User;
 
     if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected) {
+        // User has an active direct chat, proceed to get their details
         const foundUser = existingDirectChat.participants.find(p => p.id === newUserId);
         if (!foundUser) {
-            toast({ title: "Error Internal", description: `Tidak dapat menemukan detail untuk ${userName}.`, variant: "destructive" });
+             // This case should ideally not happen if IDs are consistent from name
+            toast({ title: "Error Internal", description: `Tidak dapat menemukan detail untuk ${userName}. Coba mulai chat langsung dulu.`, variant: "destructive" });
             return;
         }
         userObjectToAdd = foundUser;
-    } else if (existingDirectChat) { 
-        let reason = "status chat langsung tidak aktif";
-        if (existingDirectChat.pendingApprovalFromUserId === newUserId) reason = `permintaan chat Anda kepada ${userName} masih tertunda`;
-        else if (existingDirectChat.pendingApprovalFromUserId === currentUser.id) reason = `Anda belum menerima permintaan chat dari ${userName}`;
-        else if (existingDirectChat.isRejected) reason = `chat langsung dengan ${userName} sebelumnya ditolak`;
-        
-        toast({ title: "Penambahan Gagal", description: `Tidak dapat menambahkan ${userName} karena ${reason}.`, variant: "destructive" });
-        return;
-    } else { 
-        toast({ title: "Penambahan Gagal", description: `Anda harus memiliki chat langsung yang aktif dengan ${userName} sebelum menambahkannya ke grup.`, variant: "destructive" });
+    } else {
+        let reason = "Anda harus memiliki chat langsung yang aktif dengannya terlebih dahulu.";
+        if (existingDirectChat) { // Direct chat exists but is not active
+            if (existingDirectChat.pendingApprovalFromUserId === newUserId) reason = `permintaan chat Anda kepada ${userName} masih tertunda.`;
+            else if (existingDirectChat.pendingApprovalFromUserId === currentUser.id) reason = `Anda belum menerima permintaan chat dari ${userName}.`;
+            else if (existingDirectChat.isRejected) reason = `chat langsung dengan ${userName} sebelumnya ditolak.`;
+        }
+        toast({ title: "Penambahan Gagal", description: `Tidak dapat menambahkan ${userName}. ${reason}`, variant: "destructive" });
         return;
     }
     
     const now = Date.now();
     setChats(prevChats => {
       const currentChatToUpdate = prevChats.find(c => c.id === chatIdToAddTo);
-      if (!currentChatToUpdate) return prevChats;
+      if (!currentChatToUpdate) return prevChats; // Should not happen
 
       const updatedParticipants = [...currentChatToUpdate.participants, userObjectToAdd];
       const updatedLastReadBy = { ...(currentChatToUpdate.lastReadBy || {}), [userObjectToAdd.id]: 0 };
@@ -779,6 +786,7 @@ export default function ChatPage() {
         onOpenChange={setIsNewGroupChatDialogOpen}
         onCreateChat={handleCreateGroupChat}
         currentUserId={currentUser?.id}
+        chats={chats} // Pass chats
       />
       <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}

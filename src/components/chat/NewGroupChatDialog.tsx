@@ -4,7 +4,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useState } from "react"; // Added useState
+import { useState, useEffect, useMemo } from "react";
+import type { User, Chat } from "@/types"; // Added Chat
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,13 +17,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Badge } from "@/components/ui/badge"; // Added Badge
-import { useToast } from "@/hooks/use-toast"; // Added useToast
-import { Plus, X } from "lucide-react"; // Added Plus and X icons
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, X } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area"; // Added ScrollArea
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Added Popover
 
-// Updated Zod schema: only groupName is managed by react-hook-form for main submission
 const groupChatFormSchema = z.object({
-  groupName: z.string().min(2, "Group name must be at least 2 characters.").max(30, "Group name is too long."),
+  groupName: z.string().min(2, "Nama grup minimal 2 karakter.").max(30, "Nama grup terlalu panjang."),
 });
 
 type GroupChatFormValues = z.infer<typeof groupChatFormSchema>;
@@ -31,56 +33,108 @@ interface NewGroupChatDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onCreateChat: (groupName: string, memberNames: string[]) => void;
-  currentUserId: string | undefined; // Used to prevent adding self
+  currentUserId: string | undefined;
+  chats: Chat[]; // Added chats prop
 }
 
-export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, currentUserId }: NewGroupChatDialogProps) {
+export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, currentUserId, chats }: NewGroupChatDialogProps) {
   const { toast } = useToast();
   const [currentMemberNameInput, setCurrentMemberNameInput] = useState('');
   const [addedMembers, setAddedMembers] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<User[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const form = useForm<GroupChatFormValues>({
     resolver: zodResolver(groupChatFormSchema),
     defaultValues: { groupName: "" },
   });
 
-  const handleAddMemberToList = () => {
-    const nameToAdd = currentMemberNameInput.trim();
-    const currentUserName = currentUser?.name?.trim(); // Assuming currentUser is available or passed if needed for name comparison
+  // Memoize the list of users current user has active direct chats with
+  const activeDirectContacts = useMemo(() => {
+    if (!currentUserId || !chats) return [];
+    const contacts: User[] = [];
+    chats.forEach(chat => {
+      if (chat.type === 'direct' && !chat.pendingApprovalFromUserId && !chat.isRejected) {
+        const otherParticipant = chat.participants.find(p => p.id !== currentUserId);
+        if (otherParticipant) {
+          contacts.push(otherParticipant);
+        }
+      }
+    });
+    return contacts.filter((contact, index, self) =>
+      index === self.findIndex((c) => c.id === contact.id) // Ensure unique contacts
+    );
+  }, [chats, currentUserId]);
+
+  useEffect(() => {
+    if (currentMemberNameInput.trim() === "") {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const filteredSuggestions = activeDirectContacts
+      .filter(contact =>
+        contact.name.toLowerCase().includes(currentMemberNameInput.toLowerCase()) &&
+        !addedMembers.map(am => am.toLowerCase()).includes(contact.name.toLowerCase())
+      );
+
+    setSuggestions(filteredSuggestions);
+    setShowSuggestions(filteredSuggestions.length > 0);
+
+  }, [currentMemberNameInput, activeDirectContacts, addedMembers]);
+
+
+  const handleAddMemberToList = (nameFromInput?: string) => {
+    const nameToAdd = (nameFromInput || currentMemberNameInput).trim();
 
     if (!nameToAdd) return;
 
-    if (currentUserId && nameToAdd.toLowerCase() === currentUserId.toLowerCase()) {
+    if (currentUserId && nameToAdd.toLowerCase() === (localStorage.getItem(LS_USER_KEY) ? JSON.parse(localStorage.getItem(LS_USER_KEY)!).name.toLowerCase() : '')) {
       toast({ title: "Info", description: "Anda otomatis termasuk dalam grup." });
       setCurrentMemberNameInput('');
       return;
     }
-     // Check against current user's display name if available (and if currentUserId itself is a display name)
-    if (currentUserName && nameToAdd.toLowerCase() === currentUserName.toLowerCase()) {
-        toast({ title: "Info", description: "Anda otomatis termasuk dalam grup." });
-        setCurrentMemberNameInput('');
-        return;
-    }
-
 
     if (addedMembers.map(m => m.toLowerCase()).includes(nameToAdd.toLowerCase())) {
       toast({ title: "Info", description: `${nameToAdd} sudah ditambahkan.` });
+      setCurrentMemberNameInput('');
       return;
     }
     
-    // Basic validation for member name format, similar to other name inputs
-    if (!/^[a-zA-Z0-9\s_']+$/.test(nameToAdd)) {
-        toast({ title: "Nama Tidak Valid", description: "Nama anggota hanya boleh berisi huruf, angka, spasi, garis bawah, dan apostrof.", variant: "destructive" });
-        return;
-    }
-    if (nameToAdd.length < 2 || nameToAdd.length > 50) {
-        toast({ title: "Nama Tidak Valid", description: "Nama anggota harus antara 2 dan 50 karakter.", variant: "destructive" });
+    // Basic validation for member name format
+    if (!/^[a-zA-Z0-9\s_']+$/.test(nameToAdd) || nameToAdd.length < 2 || nameToAdd.length > 50) {
+        toast({ title: "Nama Tidak Valid", description: "Nama anggota harus antara 2 dan 50 karakter, dan hanya boleh berisi huruf, angka, spasi, garis bawah, dan apostrof.", variant: "destructive" });
         return;
     }
 
+    // Check if this user is an active direct contact
+    const isActiveContact = activeDirectContacts.some(contact => contact.name.toLowerCase() === nameToAdd.toLowerCase());
+    if (!isActiveContact) {
+        toast({
+            title: "Penambahan Gagal",
+            description: `Tidak dapat menambahkan ${nameToAdd}. Anda harus memiliki chat langsung yang aktif dengan pengguna ini.`,
+            variant: "destructive",
+        });
+        return;
+    }
 
     setAddedMembers([...addedMembers, nameToAdd]);
-    setCurrentMemberNameInput(''); // Clear input after adding
+    setCurrentMemberNameInput('');
+    setShowSuggestions(false);
+  };
+
+  const handleSelectSuggestion = (suggestedUser: User) => {
+    // Directly add the suggested user's name
+     if (addedMembers.map(m => m.toLowerCase()).includes(suggestedUser.name.toLowerCase())) {
+      toast({ title: "Info", description: `${suggestedUser.name} sudah ditambahkan.` });
+      setCurrentMemberNameInput('');
+      setShowSuggestions(false);
+      return;
+    }
+    setAddedMembers([...addedMembers, suggestedUser.name]);
+    setCurrentMemberNameInput('');
+    setShowSuggestions(false);
   };
 
   const handleRemoveMemberFromList = (nameToRemove: string) => {
@@ -89,36 +143,34 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
 
   function onSubmit(data: GroupChatFormValues) {
     if (addedMembers.length === 0) {
-      toast({ title: "Anggota Diperlukan", description: "Harap tambahkan minimal satu anggota.", variant: "destructive" });
+      toast({ title: "Anggota Diperlukan", description: "Harap tambahkan minimal satu anggota yang valid.", variant: "destructive" });
       return;
     }
     onCreateChat(data.groupName, addedMembers);
     form.reset({ groupName: "" });
     setAddedMembers([]);
     setCurrentMemberNameInput('');
+    setShowSuggestions(false);
     onOpenChange(false);
   }
   
-  // Get current user object if needed for more complex logic, for now, only currentUserId (string) is used.
-  // This part is illustrative if `currentUser` object was passed and needed.
-  // For now, `currentUserId` (string) is sufficient for the self-add check.
-  const currentUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('simplicchat_user') || 'null') : null;
-
+  const LS_USER_KEY = "simplicchat_user"; // Define if not globally available
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-        if (!open) { // Reset states if dialog is closed externally
+        if (!open) { 
             form.reset({ groupName: "" });
             setAddedMembers([]);
             setCurrentMemberNameInput('');
+            setShowSuggestions(false);
         }
         onOpenChange(open);
     }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>New Group Chat</DialogTitle>
+          <DialogTitle>Buat Grup Chat Baru</DialogTitle>
           <DialogDescription>
-            Create a new group chat with multiple users.
+            Buat grup chat baru dengan beberapa pengguna. Anda hanya bisa menambahkan pengguna yang sudah memiliki chat langsung aktif dengan Anda.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -128,9 +180,9 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
               name="groupName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Group Name</FormLabel>
+                  <FormLabel>Nama Grup</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Project Team" {...field} autoFocus />
+                    <Input placeholder="e.g., Tim Proyek" {...field} autoFocus />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -138,30 +190,67 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
             />
             
             <FormItem>
-              <FormLabel>Add Members</FormLabel>
-              <div className="flex space-x-2">
-                <FormControl>
-                  <Input
-                    placeholder="Enter member name and press Enter or + "
-                    value={currentMemberNameInput}
-                    onChange={(e) => setCurrentMemberNameInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleAddMemberToList();
-                      }
-                    }}
-                  />
-                </FormControl>
-                <Button type="button" onClick={handleAddMemberToList} size="icon" aria-label="Add member">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+              <FormLabel>Tambah Anggota</FormLabel>
+              <Popover open={showSuggestions && suggestions.length > 0} onOpenChange={setShowSuggestions}>
+                <PopoverTrigger asChild>
+                  <div className="flex space-x-2">
+                    <FormControl>
+                      <Input
+                        placeholder="Ketik nama pengguna..."
+                        value={currentMemberNameInput}
+                        onChange={(e) => {
+                            setCurrentMemberNameInput(e.target.value);
+                            if (e.target.value.trim() !== "") setShowSuggestions(true); else setShowSuggestions(false);
+                        }}
+                        onFocus={() => {
+                            if (currentMemberNameInput.trim() !== "" && suggestions.length > 0) setShowSuggestions(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            if (!showSuggestions || suggestions.length === 0) { // If no suggestions, try to add input directly
+                                handleAddMemberToList();
+                            } else if (suggestions.length > 0) { // If suggestions, maybe select first one or let user choose
+                                // For now, let's just attempt to add what's typed
+                                handleAddMemberToList();
+                            }
+                          }
+                           if (e.key === 'Escape') {
+                               setShowSuggestions(false);
+                           }
+                        }}
+                      />
+                    </FormControl>
+                    <Button type="button" onClick={() => handleAddMemberToList()} size="icon" aria-label="Tambah anggota">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-[calc(theme(space.96)-theme(space.12))] p-0" side="bottom" align="start">
+                  <ScrollArea className="max-h-40">
+                    {suggestions.length > 0 ? (
+                      <div className="py-1">
+                        {suggestions.map(user => (
+                          <div
+                            key={user.id}
+                            className="px-3 py-2 text-sm hover:bg-accent cursor-pointer"
+                            onClick={() => handleSelectSuggestion(user)}
+                          >
+                            {user.name}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                       currentMemberNameInput.trim() !== "" && <p className="p-3 text-sm text-muted-foreground">Pengguna tidak ditemukan atau sudah ditambahkan.</p>
+                    )}
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
             </FormItem>
 
             {addedMembers.length > 0 && (
               <FormItem className="mt-3">
-                <FormLabel>Members to be added:</FormLabel>
+                <FormLabel>Anggota yang akan ditambahkan:</FormLabel>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {addedMembers.map(name => (
                     <Badge key={name} variant="secondary" className="flex items-center gap-1 pr-1">
@@ -172,7 +261,7 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
                         size="icon"
                         className="h-5 w-5 p-0.5 hover:bg-muted-foreground/20 rounded-full"
                         onClick={() => handleRemoveMemberFromList(name)}
-                        aria-label={`Remove ${name}`}
+                        aria-label={`Hapus ${name}`}
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -182,18 +271,18 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
               </FormItem>
             )}
              {addedMembers.length === 0 && (
-                 <p className="text-xs text-muted-foreground pt-1">No members added yet (besides yourself).</p>
+                 <p className="text-xs text-muted-foreground pt-1">Belum ada anggota yang ditambahkan (selain diri Anda).</p>
              )}
-
 
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => {
                   form.reset({ groupName: "" });
                   setAddedMembers([]);
                   setCurrentMemberNameInput('');
+                  setShowSuggestions(false);
                   onOpenChange(false); 
-                }}>Cancel</Button>
-              <Button type="submit">Create Group</Button>
+                }}>Batal</Button>
+              <Button type="submit">Buat Grup</Button>
             </DialogFooter>
           </form>
         </Form>
@@ -201,5 +290,3 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
     </Dialog>
   );
 }
-
-    
