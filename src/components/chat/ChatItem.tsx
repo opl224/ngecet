@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
-import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert } from "lucide-react";
+import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert, ShieldOff, Clock } from "lucide-react"; // Added Clock
 
 interface ChatItemProps {
   chat: Chat & { calculatedUnreadCount?: number };
@@ -17,7 +17,7 @@ interface ChatItemProps {
   onAcceptChat: (chatId: string) => void;
   onRejectChat: (chatId: string) => void;
   onDeleteChatPermanently: (chatId: string) => void;
-  // onUnblockUser prop removed as it's handled in ChatView
+  onUnblockUser: (chatId: string) => void;
 }
 
 export function ChatItem({
@@ -28,6 +28,7 @@ export function ChatItem({
   onAcceptChat,
   onRejectChat,
   onDeleteChatPermanently,
+  onUnblockUser,
 }: ChatItemProps) {
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
@@ -56,10 +57,12 @@ export function ChatItem({
   let showDeleteAction = false;
   let specialStatusText: string | null = null;
   const calculatedUnreadCount = chat.calculatedUnreadCount || 0;
+  let showPendingClockIcon = false;
 
 
   if (chat.type === "direct") {
     if (chat.blockedByUser === currentUser.id) {
+        specialStatusText = `Anda memblokir ${name}.`;
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
         specialStatusText = `${name} mungkin memblokir Anda.`;
@@ -68,13 +71,14 @@ export function ChatItem({
       statusTimestamp = chat.requestTimestamp;
       showAcceptRejectActions = true;
     } else if (chat.pendingApprovalFromUserId) {
-      specialStatusText = `Permintaan dikirim. Menunggu ${name}...`;
+      // specialStatusText = `Permintaan dikirim. Menunggu ${name}...`; // Removed this line
+      showPendingClockIcon = true; // Show clock icon instead
       statusTimestamp = chat.requestTimestamp;
     } else if (chat.isRejected) {
       if (chat.rejectedByUserId === currentUser.id) {
         specialStatusText = `Anda menolak permintaan dari ${name}.`;
       } else {
-        specialStatusText = `${name} menolak permintaan Anda.`;
+        specialStatusText = `${name} menolak permintaan anda.`;
       }
       statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
       showDeleteAction = true;
@@ -91,6 +95,8 @@ export function ChatItem({
   let statusMessage: React.ReactNode = null;
   if (specialStatusText) {
     statusMessage = specialStatusText;
+  } else if (showPendingClockIcon && !chat.isRejected) {
+    // No status message needed if clock icon is shown for pending sent requests
   } else if (chat.type === "group" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
      statusMessage = `${chat.participants.length} anggota`;
   } else if (chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
@@ -126,16 +132,21 @@ export function ChatItem({
         </Avatar>
         <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex justify-between items-center">
-            <h4 className={cn(
-                "font-semibold text-sm truncate",
-                chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
-                chat.isRejected && "text-destructive",
-                chat.blockedByUser === currentUser.id && "text-destructive flex items-center"
+            <div className="flex items-center">
+              {showPendingClockIcon && !chat.isRejected && (
+                <Clock className="h-4 w-4 mr-1.5 text-sidebar-foreground/70 shrink-0" />
               )}
-            >
-              {chat.blockedByUser === currentUser.id && <ShieldAlert className="h-4 w-4 mr-1.5 shrink-0" />}
-              {name}
-            </h4>
+              <h4 className={cn(
+                  "font-semibold text-sm truncate",
+                  chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
+                  chat.isRejected && "text-destructive",
+                  chat.blockedByUser === currentUser.id && "text-destructive flex items-center"
+                )}
+              >
+                {chat.blockedByUser === currentUser.id && <ShieldAlert className="h-4 w-4 mr-1.5 shrink-0" />}
+                {name}
+              </h4>
+            </div>
             {(() => {
               if (!specialStatusText && calculatedUnreadCount > 0) {
                 return (
@@ -144,25 +155,32 @@ export function ChatItem({
                   </Badge>
                 );
               }
-              if (!specialStatusText && calculatedUnreadCount === 0 && statusTimestamp) {
-                if (chat.type === 'direct' && !chat.blockedByUser) {
-                  const status = otherParticipantStatus || "Offline";
-                  const isOnline = status === "Online";
-                  return (
-                    <div className="flex items-center space-x-1.5 shrink-0 ml-2">
-                      <span className={cn(
-                        "h-2 w-2 rounded-full block",
-                        isOnline ? "bg-green-500" : "bg-sidebar-foreground/30"
-                      )}></span>
-                      <span className="text-xs text-sidebar-foreground/70">{status}</span>
-                    </div>
-                  );
-                } else if (chat.type === 'group') {
-                  return (
-                    <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
-                      {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
-                    </span>
-                  );
+              if (!specialStatusText && !showPendingClockIcon && statusTimestamp && chat.type === 'direct' && !chat.blockedByUser) {
+                const status = otherParticipantStatus || "Offline";
+                const isOnline = status === "Online";
+                return (
+                  <div className="flex items-center space-x-1.5 shrink-0 ml-2">
+                    <span className={cn(
+                      "h-2 w-2 rounded-full block",
+                      isOnline ? "bg-green-500" : "bg-sidebar-foreground/30"
+                    )}></span>
+                    <span className="text-xs text-sidebar-foreground/70">{status}</span>
+                  </div>
+                );
+              }
+              if (statusTimestamp && (!specialStatusText || (showPendingClockIcon && !chat.isRejected && chat.type === 'direct'))) {
+                if (!specialStatusText && !showPendingClockIcon && chat.type === 'group') {
+                     return (
+                        <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
+                          {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
+                        </span>
+                      );
+                } else if (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) {
+                    return (
+                        <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
+                          {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
+                        </span>
+                      );
                 }
               }
               return null;
@@ -206,7 +224,18 @@ export function ChatItem({
             </Button>
         </div>
       )}
-      {/* Unblock button removed from here */}
+      {chat.type === "direct" && chat.blockedByUser === currentUser.id && (
+        <div className="mt-2 flex justify-end space-x-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => { e.stopPropagation(); onUnblockUser(chat.id); }}
+            className="text-green-600 border-green-500 hover:bg-green-500/10 hover:text-green-700 focus:border-green-600 focus:bg-green-500/10"
+          >
+            <ShieldOff className="mr-1 h-4 w-4" /> Buka Blokir
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

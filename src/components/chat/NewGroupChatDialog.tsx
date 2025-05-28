@@ -207,7 +207,7 @@ export function NewGroupChatDialog({
                 <FormItem>
                   <FormLabel>Nama Grup</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Tim Proyek" {...field} autoFocus />
+                    <Input placeholder="Masukkan nama grup" {...field} autoFocus />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -311,9 +311,6 @@ export function NewGroupChatDialog({
                 </div>
               </FormItem>
             )}
-             {addedMembers.length === 0 && (
-                 <p className="text-xs text-muted-foreground pt-1">Belum ada anggota yang ditambahkan (selain diri Anda).</p>
-             )}
 
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => {
