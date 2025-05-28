@@ -25,7 +25,7 @@ interface ChatListProps {
   onAcceptChat: (chatId: string) => void;
   onRejectChat: (chatId: string) => void;
   onDeleteChatPermanently: (chatId: string) => void;
-  onUnblockUser: (chatId: string) => void;
+  // onUnblockUser prop is no longer passed down to ChatItem directly
 }
 
 export function ChatList({
@@ -39,7 +39,6 @@ export function ChatList({
   onAcceptChat,
   onRejectChat,
   onDeleteChatPermanently,
-  onUnblockUser,
 }: ChatListProps) {
   const [activeFilter, setActiveFilter] = useState<'direct' | 'group' | null>(null);
 
@@ -54,14 +53,14 @@ export function ChatList({
   const sortedChatsWithUnread = [...visibleChats]
     .map(chat => {
       if (!currentUser) return { ...chat, calculatedUnreadCount: 0 };
-      
+
       const lastReadTimestamp = chat.lastReadBy?.[currentUser.id] || 0;
       const messagesInChat = allMessages[chat.id] || [];
-      
+
       const unreadMessagesCount = messagesInChat.filter(
         msg => msg.senderId !== currentUser.id && msg.timestamp > lastReadTimestamp
       ).length;
-      
+
       return { ...chat, calculatedUnreadCount: unreadMessagesCount };
     })
     .sort((a, b) => {
@@ -80,11 +79,11 @@ export function ChatList({
   });
 
   const getEmptyStateMessage = () => {
-    if (!currentUser) return "Loading user..."; 
+    if (!currentUser) return "Loading user...";
     if (activeFilter === 'direct' && filteredChats.length === 0) return "Belum ada pesan langsung!";
     if (activeFilter === 'group' && filteredChats.length === 0) return "Belum ada grup!";
     if (visibleChats.length === 0) return "Tambah pesan untuk saling berinteraksi";
-    return "Tidak ada chat yang cocok dengan filter saat ini."; 
+    return "Tidak ada chat yang cocok dengan filter saat ini.";
   };
 
 
@@ -115,13 +114,13 @@ export function ChatList({
               <ChatItem
                 key={chat.id}
                 chat={chat}
-                currentUser={currentUser!} 
+                currentUser={currentUser!}
                 onSelectChat={onSelectChat}
                 isActive={selectedChatId === chat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser}
                 onAcceptChat={onAcceptChat}
                 onRejectChat={onRejectChat}
                 onDeleteChatPermanently={onDeleteChatPermanently}
-                onUnblockUser={onUnblockUser}
+                // onUnblockUser is no longer passed here
               />
             ))
           ) : (

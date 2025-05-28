@@ -81,12 +81,11 @@ export function ChatView({
 
   const handleCancelEditClick = useCallback(() => {
     onCancelEditMessage();
-    // setNewMessage(replyingToMessage ? "" : ""); // Keep input if was replying
   }, [onCancelEditMessage]);
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); 
+    setNewMessage("");
   }, []);
 
 
@@ -110,12 +109,11 @@ export function ChatView({
   }, [editingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
-  // Effect for handling message editing state
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
       if (replyingToMessage && replyingToMessage.chatId !== editingMessageDetails.chatId) {
-        setReplyingToMessage(null); 
+        setReplyingToMessage(null);
       }
       setTimeout(() => {
         messageInputRef.current?.focus();
@@ -126,40 +124,32 @@ export function ChatView({
         }
       }, 0);
     }
-    // else if (!replyingToMessage) { // Clear input if not editing and not replying
-    //   setNewMessage("");
-    // }
-  }, [editingMessageDetails]); // Removed replyingToMessage dependency here to avoid clearing input when starting reply from edit mode
+  }, [editingMessageDetails, replyingToMessage]);
 
 
-   // Effect for handling chat switching
    useEffect(() => {
-    // Reset message input and reply/edit state when chat.id changes,
-    // but only if not currently editing a message from the *new* chat
-    // and not currently replying to a message from the *new* chat.
     if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
         (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
         setNewMessage("");
     }
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-        onCancelEditMessage(); // Cancel edit if it was for the previous chat
+        onCancelEditMessage();
     }
     if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
-      setReplyingToMessage(null); // Cancel reply if it was for the previous chat
-      setNewMessage(""); // Also clear input field when reply is cancelled due to chat switch
+      setReplyingToMessage(null);
+      setNewMessage("");
     }
 
-    // Auto-resize textarea
     if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto'; 
-        if (messageInputRef.current.value || newMessage) { 
+        messageInputRef.current.style.height = 'auto';
+        if (messageInputRef.current.value || newMessage) {
           const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
           messageInputRef.current.style.height = `${newHeight}px`;
         } else {
-          messageInputRef.current.style.height = 'auto'; // Reset to default if empty
+          messageInputRef.current.style.height = 'auto';
         }
     }
-  }, [chat.id, onCancelEditMessage]); // Removed editingMessageDetails and replyingToMessage, newMessage to avoid loops here
+  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage, newMessage]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -187,7 +177,7 @@ export function ChatView({
     if(!isChatActive) return;
     if (editingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); 
+    setNewMessage("");
     setTimeout(() => messageInputRef.current?.focus(), 0);
   }, [isChatActive, editingMessageDetails, onCancelEditMessage]);
 
@@ -201,7 +191,7 @@ export function ChatView({
         name: otherParticipantName,
         avatarUrl: otherParticipantAvatar,
         Icon: UserIcon,
-        description: `Direct message with ${otherParticipantName}`,
+        description: `Status: ${otherParticipantStatus}`,
         status: otherParticipantStatus,
         otherParticipantObject: otherParticipant
       };
@@ -220,20 +210,27 @@ export function ChatView({
 
   const displayDetails = getChatDisplayDetails;
 
-  let chatOverlayMessage = null;
+  let chatOverlayMessage: { icon: React.ReactNode; title: string; text: React.ReactNode } | null = null;
   if (chat.type === 'direct') {
     const otherUserName = displayDetails.name === "Direct Chat" ? "pengguna ini" : displayDetails.name;
-    if (chat.blockedByUser === currentUser.id) {
+    if (chat.blockedByUser === currentUser.id && onUnblockUser) {
         chatOverlayMessage = {
             icon: <ShieldAlert className="w-16 h-16 text-destructive mb-4" />,
             title: "Pengguna Diblokir",
-            text: `Anda telah memblokir ${otherUserName}. Buka blokir untuk melanjutkan.`,
+            text: (
+              <div className="flex flex-col items-center">
+                <p className="mb-3">{`Anda telah memblokir ${otherUserName}.`}</p>
+                <Button onClick={() => onUnblockUser(chat.id)} variant="outline" className="text-green-600 border-green-500 hover:bg-green-500/10 hover:text-green-700 focus:border-green-600 focus:bg-green-500/10">
+                  <ShieldOff className="mr-2 h-4 w-4" /> Buka Blokir
+                </Button>
+              </div>
+            ),
         };
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
          chatOverlayMessage = {
             icon: <Lock className="w-16 h-16 text-muted-foreground mb-4" />,
             title: "Interaksi Terbatas",
-            text: `Anda tidak dapat berinteraksi dengan ${otherUserName} saat ini.`,
+            text: `Anda tidak dapat berinteraksi dengan ${otherUserName} saat ini. Pengguna ini mungkin telah memblokir Anda.`,
         };
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) {
       chatOverlayMessage = {
@@ -268,12 +265,7 @@ export function ChatView({
   };
 
   const userClearedTimestamp = chat.clearedTimestamp?.[currentUser.id] || 0;
-  const displayedMessages = messages.filter(msg => {
-    // if (chat.type === 'direct' && chat.blockedByUser === currentUser.id && msg.senderId !== currentUser.id) {
-    //     return false; 
-    // } // Logic moved to overlay message, messages should still be in array for potential unblock
-    return msg.timestamp > userClearedTimestamp;
-  });
+  const displayedMessages = messages.filter(msg => msg.timestamp > userClearedTimestamp);
 
   const sortedParticipants = useMemo(() => {
     if (!chat.participants) return [];
@@ -285,10 +277,10 @@ export function ChatView({
 
       if (isAAdmin && !isBAdmin) return -1;
       if (!isAAdmin && isBAdmin) return 1;
-      
-      if (isACurrentUser && !isAAdmin && !isBCurrentUser) return -1; 
-      if (!isACurrentUser && isBCurrentUser && !isBAdmin) return 1; 
-      
+
+      if (isACurrentUser && !isAAdmin && !isBCurrentUser) return -1;
+      if (!isACurrentUser && isBCurrentUser && !isBAdmin) return 1;
+
       return (a.name || '').localeCompare(b.name || '');
     });
   }, [chat.participants, chat.createdByUserId, currentUser.id]);
@@ -494,7 +486,7 @@ export function ChatView({
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4 z-10">
                 {chatOverlayMessage.icon}
                 <h3 className="text-xl font-semibold mb-2">{chatOverlayMessage.title}</h3>
-                <p className="text-muted-foreground">{chatOverlayMessage.text}</p>
+                <div className="text-muted-foreground">{chatOverlayMessage.text}</div>
             </div>
         )}
         <div className={cn("p-4 space-y-0 mb-4 flex-1", chatOverlayMessage && "blur-sm pointer-events-none")}>
@@ -506,7 +498,7 @@ export function ChatView({
             const senderToDisplay : User = sender || {
               id: msg.senderId,
               name: msg.senderName,
-              avatarUrl: undefined, // Default avatar will be handled by MessageBubble
+              avatarUrl: undefined,
               status: "Offline"
             };
 
@@ -603,5 +595,3 @@ export function ChatView({
     </div>
   );
 }
-
-    

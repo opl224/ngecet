@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
-import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert, ShieldOff } from "lucide-react";
+import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert } from "lucide-react";
 
 interface ChatItemProps {
   chat: Chat & { calculatedUnreadCount?: number };
@@ -17,7 +17,7 @@ interface ChatItemProps {
   onAcceptChat: (chatId: string) => void;
   onRejectChat: (chatId: string) => void;
   onDeleteChatPermanently: (chatId: string) => void;
-  onUnblockUser: (chatId: string) => void; 
+  // onUnblockUser prop removed as it's handled in ChatView
 }
 
 export function ChatItem({
@@ -28,7 +28,6 @@ export function ChatItem({
   onAcceptChat,
   onRejectChat,
   onDeleteChatPermanently,
-  onUnblockUser,
 }: ChatItemProps) {
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
@@ -44,18 +43,17 @@ export function ChatItem({
         avatarUrl: chat.avatarUrl,
         initials: (groupName.substring(0, 2) || "GR").toUpperCase(),
         Icon: Users,
-        otherParticipantStatus: null, 
+        otherParticipantStatus: null,
       };
     }
   };
 
   const { name, avatarUrl, initials, Icon, otherParticipantStatus } = getChatDisplayDetails();
   const otherParticipantNameDisplay = (chat.type === 'direct' && chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id)?.name) || name || "Seseorang";
-  
+
   let statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
   let showAcceptRejectActions = false;
   let showDeleteAction = false;
-  let showUnblockAction = false; 
   let specialStatusText: string | null = null;
   const calculatedUnreadCount = chat.calculatedUnreadCount || 0;
 
@@ -63,13 +61,12 @@ export function ChatItem({
   if (chat.type === "direct") {
     if (chat.blockedByUser === currentUser.id) {
         specialStatusText = `Anda memblokir ${otherParticipantNameDisplay}.`;
-        showUnblockAction = true;
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
         specialStatusText = `${name} mungkin memblokir Anda.`;
     } else if (chat.pendingApprovalFromUserId === currentUser.id) {
       specialStatusText = `${otherParticipantNameDisplay} ingin memulai chat.`;
-      statusTimestamp = chat.requestTimestamp; 
+      statusTimestamp = chat.requestTimestamp;
       showAcceptRejectActions = true;
     } else if (chat.pendingApprovalFromUserId) {
       specialStatusText = `Permintaan dikirim. Menunggu ${name}...`;
@@ -91,7 +88,7 @@ export function ChatItem({
   };
 
   const isItemActiveInList = isActive && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser;
-  
+
   let statusMessage: React.ReactNode = null;
   if (specialStatusText) {
     statusMessage = specialStatusText;
@@ -108,8 +105,8 @@ export function ChatItem({
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
         ( (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
-          (chat.isRejected && !isActive) || 
-          (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive) 
+          (chat.isRejected && !isActive) ||
+          (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive)
         ) && "opacity-70"
       )}
     >
@@ -149,7 +146,7 @@ export function ChatItem({
                 );
               }
               if (!specialStatusText && calculatedUnreadCount === 0 && statusTimestamp) {
-                if (chat.type === 'direct' && !chat.blockedByUser) { 
+                if (chat.type === 'direct' && !chat.blockedByUser) {
                   const status = otherParticipantStatus || "Offline";
                   const isOnline = status === "Online";
                   return (
@@ -161,7 +158,7 @@ export function ChatItem({
                       <span className="text-xs text-sidebar-foreground/70">{status}</span>
                     </div>
                   );
-                } else if (chat.type === 'group') { 
+                } else if (chat.type === 'group') {
                   return (
                     <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
                       {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
@@ -198,11 +195,11 @@ export function ChatItem({
           </Button>
         </div>
       )}
-      {showDeleteAction && ( 
+      {showDeleteAction && (
         <div className="mt-2 flex justify-end space-x-2">
             <Button
                 size="sm"
-                variant="destructive" 
+                variant="destructive"
                 className="bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground"
                 onClick={(e) => { e.stopPropagation(); onDeleteChatPermanently(chat.id); }}
             >
@@ -210,20 +207,7 @@ export function ChatItem({
             </Button>
         </div>
       )}
-      {showUnblockAction && onUnblockUser && (
-        <div className="mt-2 flex justify-end space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={(e) => { e.stopPropagation(); onUnblockUser(chat.id); }}
-            className="text-green-600 border-green-500 hover:bg-green-500/10 hover:text-green-700 focus:border-green-600 focus:bg-green-500/10"
-          >
-            <ShieldOff className="mr-1 h-4 w-4" /> Buka Blokir
-          </Button>
-        </div>
-      )}
+      {/* Unblock button removed from here */}
     </div>
   );
 }
-
-    
