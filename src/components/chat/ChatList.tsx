@@ -95,7 +95,7 @@ export function ChatList({
             <Button
               variant="default"
               size="icon"
-              className="rounded-full h-14 w-14 shadow-lg"
+              className="rounded-full h-12 w-12 shadow-lg" // Changed from h-14 w-14
               aria-label="New Chat"
             >
               <Plus className="h-6 w-6" />
