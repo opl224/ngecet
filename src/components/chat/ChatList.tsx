@@ -2,10 +2,11 @@
 "use client";
 
 import type { Chat, User, Message } from "@/types";
+import { useState } from "react"; // Added useState
 import { ChatItem } from "./ChatItem";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Plus, MessageSquarePlus, Users } from "lucide-react"; // Added Plus
+import { Plus, MessageSquarePlus, Users } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,17 +39,19 @@ export function ChatList({
   onRejectChat,
   onDeleteChatPermanently,
 }: ChatListProps) {
+  const [activeFilter, setActiveFilter] = useState<'direct' | 'group' | null>(null);
+
   if (!currentUser) {
     return <div className="p-4 text-sm text-sidebar-foreground/70">Loading user...</div>;
   }
 
   const visibleChats = chats.filter(chat =>
-    chat.participants.some(participant => participant.id === currentUser.id)
+    chat.participants.some(participant => typeof participant === 'object' && participant.id === currentUser.id)
   );
 
   const sortedChatsWithUnread = [...visibleChats]
     .map(chat => {
-      if (!currentUser) return { ...chat, calculatedUnreadCount: 0 }; // Should not happen due to filter above
+      if (!currentUser) return { ...chat, calculatedUnreadCount: 0 };
       
       const lastReadTimestamp = chat.lastReadBy?.[currentUser.id] || 0;
       const messagesInChat = allMessages[chat.id] || [];
@@ -61,24 +64,57 @@ export function ChatList({
     })
     .sort((a, b) => {
       const tsA = a.lastMessageTimestamp || a.requestTimestamp || 0;
-      const tsB = b.lastMessageTimestamp || a.requestTimestamp || 0;
+      const tsB = b.lastMessageTimestamp || b.requestTimestamp || 0; // Corrected: b.requestTimestamp
       return tsB - tsA;
     });
 
+  const handleFilterClick = (filter: 'direct' | 'group') => {
+    setActiveFilter(prevFilter => prevFilter === filter ? null : filter);
+  };
+
+  const filteredChats = sortedChatsWithUnread.filter(chat => {
+    if (!activeFilter) return true; // Show all if no filter is active
+    return chat.type === activeFilter;
+  });
+
+  const getEmptyStateMessage = () => {
+    if (!currentUser) return "Loading user..."; // Should not happen if currentUser check above is effective
+    if (activeFilter === 'direct') return "No direct chats found. Try a different filter or start a new direct message!";
+    if (activeFilter === 'group') return "No group chats found. Try a different filter or start a new group chat!";
+    if (visibleChats.length === 0) return "No chats yet. Start a new conversation or wait for requests!";
+    return "No chats match the current filter."; // Fallback if filters applied to an existing list yield no results
+  };
+
+
   return (
-    <div className="flex flex-col h-full relative"> {/* Added relative */}
-      <div className="p-4 border-b border-sidebar-border flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-sidebar-foreground">Chats</h3>
-        {/* DropdownMenu for new chat removed from here */}
+    <div className="flex flex-col h-full relative">
+      <div className="p-4 border-b border-sidebar-border flex items-center space-x-2">
+        {/* Replaced H3 with filter buttons */}
+        <Button
+          variant={activeFilter === 'direct' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => handleFilterClick('direct')}
+          className="flex-1 h-9" // Added h-9 for consistent height
+        >
+          Direct
+        </Button>
+        <Button
+          variant={activeFilter === 'group' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => handleFilterClick('group')}
+          className="flex-1 h-9" // Added h-9 for consistent height
+        >
+          Groups
+        </Button>
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-1">
-          {sortedChatsWithUnread.length > 0 ? (
-            sortedChatsWithUnread.map((chat) => (
+          {filteredChats.length > 0 ? (
+            filteredChats.map((chat) => (
               <ChatItem
                 key={chat.id}
                 chat={chat}
-                currentUser={currentUser}
+                currentUser={currentUser!} // currentUser is checked above
                 onSelectChat={onSelectChat}
                 isActive={selectedChatId === chat.id && !chat.pendingApprovalFromUserId && !chat.isRejected}
                 onAcceptChat={onAcceptChat}
@@ -88,7 +124,7 @@ export function ChatList({
             ))
           ) : (
             <div className="p-4 text-center text-sm text-sidebar-foreground/70">
-              No chats yet. Start a new conversation or wait for requests!
+              {getEmptyStateMessage()}
             </div>
           )}
         </div>
@@ -99,7 +135,7 @@ export function ChatList({
             <Button
               variant="default"
               size="icon"
-              className="rounded-full h-12 w-12 shadow-lg" // Changed from h-14 w-14
+              className="rounded-full h-12 w-12 shadow-lg"
               aria-label="New Chat"
             >
               <Plus className="h-6 w-6" />
