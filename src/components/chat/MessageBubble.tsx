@@ -1,7 +1,7 @@
 
 "use client";
 
-import * as React from "react"; // Added this line
+import * as React from "react";
 import type { Message, User, ChatType, Chat } from "@/types";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
@@ -56,7 +56,7 @@ export function MessageBubble({
   const senderInitial = senderDetails.name ? senderDetails.name.substring(0, 1).toUpperCase() : "?";
 
   let isReadByAtLeastOneOther = false;
-  if (isCurrentUserMessage && chat.lastReadBy) {
+  if (isCurrentUserMessage && chat.lastReadBy && message.timestamp) {
     const messageTimestamp = message.timestamp;
     if (chat.type === 'direct') {
       const otherParticipant = chat.participants.find(p => p.id !== senderDetails.id);
@@ -80,7 +80,7 @@ export function MessageBubble({
   }
 
   interface BubbleContentLayoutProps extends HTMLAttributes<HTMLDivElement> {
-    children: React.ReactNode;
+    children?: React.ReactNode; // Make children optional if not always needed
   }
 
   const BubbleContentLayout = React.forwardRef<HTMLDivElement, BubbleContentLayoutProps>(
@@ -88,7 +88,7 @@ export function MessageBubble({
     <div
       ref={ref}
       className={cn(
-        "shadow-sm flex flex-col px-3 py-4 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative", // Changed py-3 to py-4
+        "shadow-sm flex flex-col px-3 py-4 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative",
         isCurrentUserMessage
           ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl"
           : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
@@ -109,7 +109,7 @@ export function MessageBubble({
               </span>
           </div>
       ) : isCurrentUserMessage && chatType === 'direct' ? (
-        null // No "Anda" or sender name for direct messages from self, unless specifically requested.
+         null // No "Anda" for direct messages from self
       ) : null}
 
 
@@ -228,24 +228,26 @@ export function MessageBubble({
 
   return (
     <div className={cn(
-      "flex w-full items-start group",
+      "flex w-full items-start group mb-3",
       isCurrentUserMessage ? "justify-end" : "justify-start"
     )}>
       {isCurrentUserMessage ? (
         <>
-          <SenderActionButtons className="order-1 mr-1 self-center" />
-          <BubbleContentLayout className="order-2 mr-2">
-            {/* Content rendered inside BubbleContentLayout */}
-          </BubbleContentLayout>
-           {chatType === 'group' && <UserAvatarComponent className="order-3 ml-0 self-start" />}
+          {/* Order 1: Action Buttons */}
+          <SenderActionButtons className="order-1 mr-1 self-start" />
+          {/* Order 2: Bubble Content */}
+          <BubbleContentLayout className="order-2 mr-2" />
+          {/* Order 3: Avatar (only for group chats) */}
+          {chatType === 'group' && <UserAvatarComponent className="order-3 ml-0 self-start" />}
         </>
       ) : (
         <>
+          {/* Avatar (only for group chats) */}
           {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
-          <BubbleContentLayout className={cn(chatType === 'direct' && "ml-0", "mr-1")}>
-             {/* Content rendered inside BubbleContentLayout */}
-          </BubbleContentLayout>
-          <ReceiverActionButton className="self-center" />
+          {/* Bubble Content */}
+          <BubbleContentLayout className={cn(chatType === 'direct' ? "ml-0" : "", "mr-1")} />
+          {/* Action Button */}
+          <ReceiverActionButton className="ml-1 self-start" />
         </>
       )}
     </div>
