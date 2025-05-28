@@ -47,14 +47,13 @@ export function MessageBubble({
   const senderAvatarUrl = senderDetails.avatarUrl;
   const senderInitial = senderDetails.name ? senderDetails.name.substring(0, 1).toUpperCase() : "?";
 
-  const BubbleContent = () => (
+  const BubbleContentLayout = () => (
     <div className={cn(
       "shadow-sm flex flex-col px-3 py-2 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg",
       isCurrentUserMessage
-        ? "ml-auto bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl rounded-br-md" // ml-auto pushes this and subsequent items to the right
+        ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl rounded-br-md" // Removed ml-auto
         : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl rounded-bl-md border" 
     )}>
-      {/* Sender Name (inside bubble) */}
       <div className={cn(
           "text-xs font-semibold mb-0.5",
           isCurrentUserMessage ? "text-primary-foreground/90" : "text-primary"
@@ -63,7 +62,6 @@ export function MessageBubble({
           {isCurrentUserMessage && <span className="ml-1 font-normal text-primary-foreground/70">(Anda)</span>}
       </div>
 
-      {/* Reply Block (if any) */}
       {message.replyToMessageId && message.replyToMessageSenderName && message.replyToMessageContent && (
         <div className={cn(
           "mb-1.5 pt-1 pb-1 pl-2 pr-1 rounded",
@@ -83,10 +81,8 @@ export function MessageBubble({
         </div>
       )}
 
-      {/* Message Content */}
       <p className="whitespace-pre-wrap break-words">{message.content}</p>
 
-      {/* Timestamp and Edited Status */}
       <div className={cn(
           "flex items-center mt-1",
           isCurrentUserMessage ? "justify-end" : "justify-start" 
@@ -107,6 +103,7 @@ export function MessageBubble({
     </div>
   );
 
+
   const SenderActionButtons = () => (
     onDeleteMessage && onEditMessage && onReplyMessage && (
       <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0">
@@ -117,23 +114,27 @@ export function MessageBubble({
               <span className="sr-only">Opsi pesan</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align={isCurrentUserMessage ? "end" : "start"}>
             <DropdownMenuItem onClick={handleReply}>
               <Undo2 size={14} className="mr-2" />
               Balas
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleEdit}>
-              <Edit3 size={14} className="mr-2" />
-              Edit Pesan
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={handleDelete}
-              className="text-destructive hover:!bg-destructive/10 focus:!bg-destructive/10 focus:!text-destructive"
-            >
-              <Trash2 size={14} className="mr-2" />
-              Hapus
-            </DropdownMenuItem>
+            {isCurrentUserMessage && (
+              <>
+                <DropdownMenuItem onClick={handleEdit}>
+                  <Edit3 size={14} className="mr-2" />
+                  Edit Pesan
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleDelete}
+                  className="text-destructive hover:!bg-destructive/10 focus:!bg-destructive/10 focus:!text-destructive"
+                >
+                  <Trash2 size={14} className="mr-2" />
+                  Hapus
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -143,32 +144,47 @@ export function MessageBubble({
   const ReceiverActionButton = () => (
     onReplyMessage && (
       <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0">
-        <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-muted-foreground hover:text-primary" aria-label="Reply to message" onClick={handleReply}>
-          <Undo2 size={16} />
-        </Button>
+         <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-muted-foreground hover:text-primary">
+              <MoreVertical size={16} />
+              <span className="sr-only">Opsi pesan</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={handleReply}>
+              <Undo2 size={14} className="mr-2" />
+              Balas
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     )
   );
 
-  const UserAvatar = () => (
-    <Avatar className="h-8 w-8 shrink-0 mt-1">
+  const UserAvatarComponent = () => (
+    <Avatar className="h-8 w-8 shrink-0 self-start mt-1"> {/* Added self-start and mt-1 for alignment */}
       <AvatarImage src={senderAvatarUrl} alt={senderName} data-ai-hint="person" />
       <AvatarFallback>{senderInitial}</AvatarFallback>
     </Avatar>
   );
 
   return (
-    <div className={cn("flex w-full group mb-3 items-start gap-2.5")}>
+    <div className={cn(
+        "flex w-full group mb-3 items-start gap-2.5", // items-start for better vertical alignment with avatar
+        isCurrentUserMessage && "justify-end"
+      )}
+    >
       {isCurrentUserMessage ? (
         <>
           <SenderActionButtons />
-          <BubbleContent />
-          <UserAvatar />
+          <BubbleContentLayout />
+          <UserAvatarComponent />
         </>
       ) : (
         <>
-          <UserAvatar />
-          <BubbleContent />
+          <UserAvatarComponent />
+          <BubbleContentLayout />
           <ReceiverActionButton />
         </>
       )}
