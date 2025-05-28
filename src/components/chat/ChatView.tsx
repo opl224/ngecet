@@ -3,7 +3,7 @@
 
 import type { Chat, Message, User, ChatType } from "@/types";
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import Image from "next/image"; // Import next/image
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -73,7 +73,8 @@ export function ChatView({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
-  const prevChatIdRef = useRef<string | undefined>(chat.id);
+  const prevChatIdRef = useRef<string | undefined>(undefined);
+  const prevEditingMessageDetailsRef = useRef<Message | null>(null);
 
 
   const isChatEffectivelyBlocked = chat.type === 'direct' &&
@@ -93,7 +94,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); // Clear input when reply is cancelled
+    setNewMessage("");
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -129,19 +130,19 @@ export function ChatView({
       }
       setTimeout(() => {
         if (messageInputRef.current) {
+          if (messageInputRef.current.value !== propsEditingMessageDetails.content) {
+             messageInputRef.current.value = propsEditingMessageDetails.content;
+          }
+          const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
+          messageInputRef.current.style.height = `${newHeight}px`;
           messageInputRef.current.focus();
           const len = propsEditingMessageDetails.content.length;
           messageInputRef.current.selectionStart = len;
           messageInputRef.current.selectionEnd = len;
-          
-          if (messageInputRef.current.value !== propsEditingMessageDetails.content) {
-            messageInputRef.current.value = propsEditingMessageDetails.content;
-          }
-          const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
-          messageInputRef.current.style.height = `${newHeight}px`;
         }
       }, 50);
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
+      // Logic to reset input height when editing is cancelled for the current chat.
       if (messageInputRef.current && !replyingToMessage ) {
           messageInputRef.current.style.height = 'auto';
       }
@@ -153,25 +154,29 @@ export function ChatView({
   // Effect for handling chat switches (resetting input, focus)
  useEffect(() => {
     let chatJustSwitched = false;
-    if (prevChatIdRef.current !== chat.id) {
+    if (prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id) {
       chatJustSwitched = true;
       setNewMessage("");
       setReplyingToMessage(null);
 
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
-        onCancelEditMessage(); // Cancel edit if it was for a different chat
+        onCancelEditMessage();
       }
     }
     prevChatIdRef.current = chat.id;
 
-    if (chatJustSwitched && messageInputRef.current) {
+    if (messageInputRef.current) { // This check should be outside the chatJustSwitched block for height reset
+      // Reset height if not editing THIS chat or not replying
       if (!propsEditingMessageDetails || propsEditingMessageDetails.chatId !== chat.id) {
-          messageInputRef.current.style.height = 'auto'; // Reset height
+         if(!replyingToMessage) { // Only reset height if not replying
+            messageInputRef.current.style.height = 'auto';
+         }
       }
     }
 
     if (isChatActive && messageInputRef.current && chatJustSwitched) {
        setTimeout(() => {
+        // Ensure not trying to focus if another effect (like edit mode) will also try to focus
         const currentEditingForThisChat = propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id;
         if (!currentEditingForThisChat && !replyingToMessage) {
           messageInputRef.current?.focus();
@@ -207,7 +212,7 @@ export function ChatView({
     if(!isChatActive) return;
     if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); 
+    setNewMessage("");
     setTimeout(() => messageInputRef.current?.focus(), 50);
   }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
@@ -289,7 +294,7 @@ export function ChatView({
     setNewMessage(event.target.value);
     if (messageInputRef.current) {
       messageInputRef.current.style.height = 'auto';
-      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); // Max height 120px
+      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
       messageInputRef.current.style.height = `${newHeight}px`;
     }
   };
@@ -307,9 +312,17 @@ export function ChatView({
 
       if (isAAdmin && !isBAdmin) return -1;
       if (!isAAdmin && isBAdmin) return 1;
-
-      if (isACurrentUser && !isBCurrentUser && !isAAdmin) return -1;
-      if (!isACurrentUser && isBCurrentUser && !isBAdmin) return 1;
+      
+      if (isACurrentUser && !isBCurrentUser) { // currentUser (not admin) comes after admin
+        if(isAAdmin) return 1; // if A is admin, B (currentUser) comes after
+        if(isBAdmin) return -1; // if B is admin, A (currentUser) comes after B. This case handled above.
+        return -1; // A (currentUser) comes before B (non-admin, non-currentUser)
+      }
+      if (!isACurrentUser && isBCurrentUser) { // B is currentUser (not admin)
+         if(isBAdmin) return -1; // if B is admin, A comes after. This case handled above.
+         if(isAAdmin) return 1; // if A is admin, B (currentUser) comes after A.
+        return 1; // B (currentUser) comes before A (non-admin, non-currentUser)
+      }
       
       return (a.name || '').localeCompare(b.name || '');
     });
@@ -351,7 +364,7 @@ export function ChatView({
 
           <div className="flex items-center space-x-1">
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0">
+              <Button variant="ghost" size="icon" className="shrink-0 ml-2">
                 <Info className="h-5 w-5" />
                 <span className="sr-only">Info Detail Chat</span>
               </Button>
@@ -437,7 +450,7 @@ export function ChatView({
                     </Button>
                 )}
               </div>
-            ) : ( // Group chat
+            ) : ( 
               <div className="text-center pt-4">
                  <Avatar className="h-24 w-24 mx-auto mb-3">
                     <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Group Avatar'} data-ai-hint="group abstract large"/>
@@ -446,7 +459,9 @@ export function ChatView({
                     </AvatarFallback>
                 </Avatar>
                 <SheetTitle className="text-2xl">{displayDetails.name}</SheetTitle>
-                <SheetDescription className="text-base">{displayDetails.description}</SheetDescription>
+                <SheetDescription className="text-base">
+                  {`Group Chat - ${chat.participants?.length || 0} anggota`}
+                </SheetDescription>
               </div>
             )}
           </SheetHeader>
@@ -549,7 +564,7 @@ export function ChatView({
              <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-75">
               <Image
                 src="https://placehold.co/300x200.png"
-                alt="No messages yet"
+                alt="Belum ada pesan"
                 width={300}
                 height={200}
                 className="mb-4 rounded-lg"
@@ -562,7 +577,7 @@ export function ChatView({
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-75">
                <Image
                 src="https://placehold.co/300x200.png"
-                alt="Chat inactive"
+                alt="Chat tidak aktif"
                 width={300}
                 height={200}
                 className="mb-4 rounded-lg"
@@ -641,4 +656,3 @@ export function ChatView({
     </div>
   );
 }
-
