@@ -10,7 +10,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { Users, User as UserIcon, Check, X, Trash2 } from "lucide-react";
 
 interface ChatItemProps {
-  chat: Chat & { calculatedUnreadCount?: number }; // Expect calculatedUnreadCount
+  chat: Chat & { calculatedUnreadCount?: number };
   currentUser: User;
   onSelectChat: (chat: Chat) => void;
   isActive: boolean;
@@ -34,7 +34,7 @@ export function ChatItem({
       const nameForDisplay = otherParticipant?.name || chat.name || "";
       const avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
       const initials = (nameForDisplay ? nameForDisplay.substring(0, 2) : "??").toUpperCase();
-      return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials, Icon: UserIcon };
+      return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials, Icon: UserIcon, otherParticipantStatus: otherParticipant?.status };
     } else {
       const groupName = chat.name || "Unnamed Group";
       return {
@@ -42,25 +42,26 @@ export function ChatItem({
         avatarUrl: chat.avatarUrl,
         initials: (groupName.substring(0, 2) || "GR").toUpperCase(),
         Icon: Users,
+        otherParticipantStatus: null, // Not applicable for groups in this context
       };
     }
   };
 
-  const { name, avatarUrl, initials, Icon } = getChatDisplayDetails();
-  const otherParticipant = chat.type === 'direct' ? chat.participants.find(p => p.id !== currentUser.id) : null;
-
+  const { name, avatarUrl, initials, Icon, otherParticipantStatus } = getChatDisplayDetails();
+  
   let statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
   let showAcceptRejectActions = false;
   let showDeleteAction = false;
   let specialStatusText: string | null = null;
-  const unreadCount = chat.calculatedUnreadCount || 0;
+  const calculatedUnreadCount = chat.calculatedUnreadCount || 0;
 
 
   if (chat.type === "direct") {
-    const otherParticipantName = (typeof otherParticipant === 'object' ? otherParticipant?.name : null) || name || "Seseorang";
+    const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
+    const otherParticipantNameDisplay = otherParticipant?.name || name || "Seseorang";
     if (chat.pendingApprovalFromUserId === currentUser.id) {
-      specialStatusText = `${otherParticipantName} ingin memulai chat.`;
-      statusTimestamp = chat.requestTimestamp;
+      specialStatusText = `${otherParticipantNameDisplay} ingin memulai chat.`;
+      statusTimestamp = chat.requestTimestamp; // Use request timestamp for sorting/display
       showAcceptRejectActions = true;
     } else if (chat.pendingApprovalFromUserId) {
       specialStatusText = `Permintaan dikirim. Menunggu ${name}...`;
@@ -71,6 +72,7 @@ export function ChatItem({
       } else {
         specialStatusText = `${name} menolak permintaan Anda.`;
       }
+      // Use lastMessageTimestamp for rejected state as it's set upon rejection
       statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
       showDeleteAction = true;
     }
@@ -83,7 +85,6 @@ export function ChatItem({
 
   const isItemActiveInList = isActive && !chat.pendingApprovalFromUserId && !chat.isRejected;
   
-
   let statusMessage: React.ReactNode = null;
   if (specialStatusText) {
     statusMessage = specialStatusText;
@@ -91,10 +92,8 @@ export function ChatItem({
      statusMessage = `${chat.participants.length} anggota`;
   } else if (chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
      statusMessage = "Mulai percakapan";
-  } else if (!chat.lastMessage && !specialStatusText) {
-    statusMessage = "Belum ada pesan";
   }
-  
+  // If chat.lastMessage exists and no specialStatusText, statusMessage remains null here, so nothing on the second line.
 
   return (
     <div
@@ -102,7 +101,7 @@ export function ChatItem({
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
         ( (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) ||
-          (chat.isRejected && !isActive)
+          (chat.isRejected && !isActive) // Dim if rejected AND not the currently selected (active) chat
         ) && "opacity-70"
       )}
     >
@@ -130,17 +129,39 @@ export function ChatItem({
             >
               {name}
             </h4>
-            {!specialStatusText ? (
-              unreadCount > 0 ? (
-                <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0 ml-2">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </Badge>
-              ) : statusTimestamp ? (
-                <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
-                  {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
-                </span>
-              ) : null
-            ) : null}
+            {/* Top-right element: Unread badge, Online/Offline status, or Timestamp */}
+            {(() => {
+              if (!specialStatusText && calculatedUnreadCount > 0) {
+                return (
+                  <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0 ml-2">
+                    {calculatedUnreadCount > 9 ? '9+' : calculatedUnreadCount}
+                  </Badge>
+                );
+              }
+              if (!specialStatusText && calculatedUnreadCount === 0) {
+                if (chat.type === 'direct') {
+                  const status = otherParticipantStatus || "Offline";
+                  const isOnline = status === "Online";
+                  return (
+                    <div className="flex items-center space-x-1.5 shrink-0 ml-2">
+                      <span className={cn(
+                        "h-2 w-2 rounded-full block",
+                        isOnline ? "bg-green-500" : "bg-sidebar-foreground/30"
+                      )}></span>
+                      <span className="text-xs text-sidebar-foreground/70">{status}</span>
+                    </div>
+                  );
+                } else if (chat.type === 'group' && statusTimestamp) {
+                  return (
+                    <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
+                      {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
+                    </span>
+                  );
+                }
+              }
+              // If specialStatusText is present, or other conditions aren't met, show nothing in this slot.
+              return null;
+            })()}
           </div>
           {statusMessage && (
             <p className="text-xs text-sidebar-foreground/70 truncate overflow-hidden">
@@ -168,11 +189,11 @@ export function ChatItem({
           </Button>
         </div>
       )}
-      {showDeleteAction && (
+      {showDeleteAction && ( // This applies if chat.isRejected is true
         <div className="mt-2 flex justify-end space-x-2">
             <Button
                 size="sm"
-                variant="destructive"
+                variant="destructive" // Standard destructive button
                 className="bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground"
                 onClick={(e) => { e.stopPropagation(); onDeleteChatPermanently(chat.id); }}
             >
@@ -183,3 +204,5 @@ export function ChatItem({
     </div>
   );
 }
+
+    
