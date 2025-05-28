@@ -8,16 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, MessageSquarePlus, ShieldAlert, ShieldOff, Send, Palette, Sun, Moon, Laptop } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, MessageSquarePlus, ShieldAlert, ShieldOff, Send } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -143,11 +143,8 @@ export function ChatView({
         }
       }, 50);
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
-      // This condition might be part of what clears the input when it shouldn't.
-      // We clear the input mainly when the chat ID changes, handled in the next useEffect.
-      // If not replying, reset height.
-      if (messageInputRef.current && !replyingToMessage) {
-        messageInputRef.current.style.height = 'auto';
+      if (messageInputRef.current && !replyingToMessage ) {
+          messageInputRef.current.style.height = 'auto';
       }
     }
     prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
@@ -163,13 +160,11 @@ export function ChatView({
         messageInputRef.current.style.height = 'auto';
       }
       setReplyingToMessage(null);
-      // If editing message details belong to the PREVIOUS chat, cancel edit.
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
         onCancelEditMessage(); 
       }
     }
     
-    // Focus input if chat is active, just switched, and not starting an edit for THIS chat, and not replying.
     if (isChatActive && messageInputRef.current && 
         (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
       setTimeout(() => {
@@ -220,7 +215,7 @@ export function ChatView({
     if(!isChatActive) return;
     if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); // Clear input when starting a reply
+    setNewMessage(""); 
     setTimeout(() => messageInputRef.current?.focus(), 50);
   }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
@@ -322,7 +317,9 @@ export function ChatView({
       if (!isACreator && isBCreator) return 1;
       
       if (isACurrentUser && !isBCurrentUser) {
-        return isACreator ? -1 : 1; // If current user is also creator, they still come first among non-creators
+         // If current user is also creator, they still come first among non-creators.
+         // Otherwise, non-creator current user comes after admin.
+        return isACreator ? -1 : 1;
       }
       if (!isACurrentUser && isBCurrentUser) {
         return isBCreator ? 1 : -1;
@@ -335,7 +332,7 @@ export function ChatView({
 
   return (
     <div className="flex flex-col flex-1 bg-background overflow-hidden">
-      <Sheet>
+      <Dialog>
         <header className="p-4 border-b flex items-center justify-between shadow-sm">
           <div className="flex items-center space-x-1 flex-1 min-w-0">
             {onGoBack && (
@@ -344,7 +341,7 @@ export function ChatView({
                 <span className="sr-only">Kembali</span>
               </Button>
             )}
-            <SheetTrigger asChild>
+            <DialogTrigger asChild>
               <div className="flex items-center space-x-3 cursor-pointer group flex-1 min-w-0">
                 <Avatar className="h-10 w-10 shrink-0">
                   <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Chat Avatar'} data-ai-hint={chat.type === 'group' ? 'group abstract' : 'person abstract'}/>
@@ -363,7 +360,7 @@ export function ChatView({
                   </p>
                 </div>
               </div>
-            </SheetTrigger>
+            </DialogTrigger>
           </div>
 
           <div className="flex items-center space-x-1">
@@ -419,8 +416,8 @@ export function ChatView({
           </div>
         </header>
 
-        <SheetContent>
-          <SheetHeader className="mb-4 pb-2">
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="mb-4 pb-2">
             {chat.type === 'direct' && displayDetails.otherParticipantObject ? (
               <div className="flex flex-col items-center text-center space-y-3 pt-4">
                 <Avatar className="h-24 w-24">
@@ -429,13 +426,13 @@ export function ChatView({
                     <displayDetails.Icon className="h-12 w-12 text-muted-foreground" />
                   </AvatarFallback>
                 </Avatar>
-                <SheetTitle className="text-2xl">{displayDetails.name}</SheetTitle>
-                <SheetDescription className="text-base">
+                <DialogTitle className="text-2xl">{displayDetails.name}</DialogTitle>
+                <DialogDescription className="text-base">
                   <span className={cn("font-medium", isChatActive && displayDetails.status === "Online" ? "text-green-500" : "text-muted-foreground")}>
                     {isChatActive ? (displayDetails.status || "Offline")
                       : (chat.blockedByUser === currentUser.id ? "Diblokir oleh Anda" : "Tidak Aktif")}
                   </span>
-                </SheetDescription>
+                </DialogDescription>
               </div>
             ) : chat.type === 'group' ? ( 
               <div className="text-center pt-4">
@@ -445,20 +442,19 @@ export function ChatView({
                         <displayDetails.Icon className="h-12 w-12 text-muted-foreground" />
                     </AvatarFallback>
                 </Avatar>
-                <SheetTitle className="text-2xl">{displayDetails.name}</SheetTitle>
-                 <SheetDescription className="text-base">
+                <DialogTitle className="text-2xl">{displayDetails.name}</DialogTitle>
+                 <DialogDescription className="text-base">
                    {`Group Chat - ${chat.participants?.length || 0} anggota`}
-                </SheetDescription>
+                </DialogDescription>
               </div>
             ) : null}
-          </SheetHeader>
+          </DialogHeader>
           
           {chat.type === 'direct' && onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
-              <div className="py-2">
-                  <DropdownMenuSeparator />
+              <div className="py-2 border-t">
                   <Button
                       variant="outline"
-                      className="w-full mt-3"
+                      className="w-full mt-4"
                       onClick={() => onStartGroupWithUser(displayDetails.otherParticipantObject!)}
                       disabled={!!chat.blockedByUser}
                   >
@@ -469,8 +465,8 @@ export function ChatView({
           )}
 
           {chat.type === 'group' && (
-            <div className="py-2">
-              <div className="flex justify-between items-center mb-2 px-1">
+            <div className="py-2 border-t">
+              <div className="flex justify-between items-center mb-2 px-1 pt-2">
                   <h4 className="font-semibold text-sm">Anggota</h4>
                   {isChatActive && chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerAddUserToGroup && (
                       <Button variant="outline" size="sm" onClick={onTriggerAddUserToGroup}>
@@ -478,7 +474,7 @@ export function ChatView({
                       </Button>
                   )}
               </div>
-              <ScrollArea className="h-[calc(100vh-420px)]"> {}
+              <ScrollArea className="h-[calc(100vh-500px)] sm:h-[calc(100vh-450px)] md:max-h-[300px]"> {}
                 <ul className="space-y-1 text-sm">
                   {sortedParticipants.map(participantUser => {
                     const isCurrentUserInList = participantUser.id === currentUser.id;
@@ -523,10 +519,22 @@ export function ChatView({
                   })}
                 </ul>
               </ScrollArea>
+                {isChatActive && chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerDeleteGroup && (
+                    <div className="mt-4 pt-4 border-t">
+                        <Button
+                            variant="destructive"
+                            className="w-full"
+                            onClick={() => onTriggerDeleteGroup(chat.id)}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Hapus Grup Ini
+                        </Button>
+                    </div>
+                )}
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <ScrollArea className="flex-1" viewportRef={viewportRef} ref={scrollAreaRef}>
         <div className="p-4 flex-1">
