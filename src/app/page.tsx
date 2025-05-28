@@ -11,6 +11,7 @@ import { ChatView } from "@/components/chat/ChatView";
 import { WelcomeMessage } from "@/components/chat/WelcomeMessage";
 import { NewDirectChatDialog } from "@/components/chat/NewDirectChatDialog";
 import { NewGroupChatDialog } from "@/components/chat/NewGroupChatDialog";
+import { EditMessageDialog } from "@/components/chat/EditMessageDialog"; // Import the new dialog
 import {
   SidebarProvider,
   Sidebar,
@@ -42,6 +43,11 @@ export default function ChatPage() {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [isNewDirectChatDialogOpen, setIsNewDirectChatDialogOpen] = useState(false);
   const [isNewGroupChatDialogOpen, setIsNewGroupChatDialogOpen] = useState(false);
+  
+  // State for EditMessageDialog
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [isEditMessageDialogOpen, setIsEditMessageDialogOpen] = useState(false);
+
 
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
@@ -80,7 +86,6 @@ export default function ChatPage() {
     };
 
     const participantsArray: User[] = [currentUser, recipientUser].sort((a, b) => a.id.localeCompare(b.id));
-    // const chatParticipantIds = participantsArray.map(p => p.id); // No longer used for ID generation directly
     const chatId = `direct_${participantsArray.map(p=>p.id).join("_")}`;
 
 
@@ -111,7 +116,7 @@ export default function ChatPage() {
       requestTimestamp: now,
       lastMessage: "Permintaan chat dikirim...",
       lastMessageTimestamp: now,
-      lastReadBy: { // Initialize lastReadBy
+      lastReadBy: { 
         [currentUser.id]: now, 
         [recipientUser.id]: 0,  
       },
@@ -137,7 +142,7 @@ export default function ChatPage() {
             rejectedByUserId: undefined,
             lastMessage: "Permintaan chat diterima.",
             lastMessageTimestamp: now,
-            lastReadBy: { // Update lastReadBy for current user
+            lastReadBy: { 
               ...(chat.lastReadBy || {}),
               [currentUser!.id]: now, 
             },
@@ -171,7 +176,7 @@ export default function ChatPage() {
             rejectedByUserId: currentUser?.id,
             lastMessage: "Permintaan chat ditolak.",
             lastMessageTimestamp: now,
-            lastReadBy: { // Update lastReadBy for current user
+            lastReadBy: { 
               ...(chat.lastReadBy || {}),
               [currentUser!.id]: now, 
             },
@@ -206,23 +211,23 @@ export default function ChatPage() {
     });
 
     const allParticipantUsers: User[] = [currentUser];
-    const initialLastReadBy: Record<string, number> = { [currentUser.id]: Date.now() }; // Initialize for current user
+    const initialLastReadBy: Record<string, number> = { [currentUser.id]: Date.now() }; 
 
     memberUsers.forEach(memberUser => {
       if (!allParticipantUsers.find(p => p.id === memberUser.id)) {
         allParticipantUsers.push(memberUser);
       }
-      initialLastReadBy[memberUser.id] = 0; // Initialize for other members
+      initialLastReadBy[memberUser.id] = 0; 
     });
 
     const newChat: Chat = {
       id: chatId,
       type: "group",
       name: groupName,
-      participants: allParticipantUsers, // Store full user objects
+      participants: allParticipantUsers, 
       lastMessageTimestamp: Date.now(),
       avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`,
-      lastReadBy: initialLastReadBy, // Assign initialized lastReadBy
+      lastReadBy: initialLastReadBy, 
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
@@ -292,12 +297,10 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       } else if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected) {
-        // For other active chats, update their last message timestamp and generic last message
         return {
           ...chat,
-          lastMessage: "Aktivitas baru",
+          lastMessage: "Aktivitas baru", // Generic message for other active chats
           lastMessageTimestamp: newMessage.timestamp,
-          // lastReadBy for other users in this chat is not updated here by sender
         };
       }
       return chat;
@@ -337,53 +340,51 @@ export default function ChatPage() {
     toast({ title: "Pesan Dihapus", description: "Pesan telah berhasil dihapus.", variant: "destructive" });
   }, [setAllMessages, setChats, toast]);
 
-  const handleEditMessage = useCallback((messageToEdit: Message) => {
+  // Renamed from handleEditMessage to avoid conflict with dialog trigger
+  const handleTriggerEditMessageDialog = useCallback((messageToEdit: Message) => {
     if (!currentUser || messageToEdit.senderId !== currentUser.id) {
       toast({ title: "Gagal Edit", description: "Anda hanya bisa mengedit pesan Anda sendiri.", variant: "destructive" });
       return;
     }
-    const newContentPrompt = window.prompt("Edit pesan Anda:", messageToEdit.content);
+    setEditingMessage(messageToEdit);
+    setIsEditMessageDialogOpen(true);
+  }, [currentUser, toast]);
 
-    if (newContentPrompt === null) {
-      toast({ title: "Edit Dibatalkan", description: "Operasi edit dibatalkan atau prompt ditutup.", variant: "default" });
-      return;
+  const handleSaveEditedMessage = useCallback((messageId: string, newContent: string) => {
+    if (!currentUser) return;
+
+    const originalMessage = allMessages[editingMessage!.chatId]?.find(msg => msg.id === messageId);
+    if (!originalMessage) {
+        toast({ title: "Edit Gagal", description: "Pesan asli tidak ditemukan.", variant: "destructive" });
+        return;
     }
-    if (newContentPrompt.trim() === "") {
+     if (newContent.trim() === "") {
       toast({ title: "Edit Gagal", description: "Konten pesan tidak boleh kosong.", variant: "destructive" });
-      return;
-    }
-    if (newContentPrompt === messageToEdit.content) {
-      toast({ title: "Info Pesan", description: "Konten pesan tidak berubah." });
-      return;
+      return; // Do not proceed with empty content
     }
 
-    const newContent = newContentPrompt;
+
     const editedTimestamp = Date.now();
-    
     let latestMessageDetailsForChat: { content: string; timestamp: number } | null = null;
 
     setAllMessages(prevAllMessages => {
-      const chatMessages = (prevAllMessages[messageToEdit.chatId] || []).map(msg =>
-        msg.id === messageToEdit.id ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg
+      const chatMessages = (prevAllMessages[originalMessage.chatId] || []).map(msg =>
+        msg.id === messageId ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg
       );
-      // Ensure messages are sorted by their potentially new timestamp after edit
       const sortedChatMessages = [...chatMessages].sort((a, b) => a.timestamp - b.timestamp);
       
       if (sortedChatMessages.length > 0) {
         const lastMsg = sortedChatMessages[sortedChatMessages.length - 1];
         latestMessageDetailsForChat = { content: lastMsg.content, timestamp: lastMsg.timestamp };
       } else {
-        // This case should ideally not happen if we're editing a message,
-        // as it implies the chat became empty after an edit, which is odd.
-        // But for safety, handle it.
         latestMessageDetailsForChat = null; 
       }
-      return { ...prevAllMessages, [messageToEdit.chatId]: sortedChatMessages };
+      return { ...prevAllMessages, [originalMessage.chatId]: sortedChatMessages };
     });
       
     setChats(prevChats => {
       const updatedChats = prevChats.map(chat => {
-        if (chat.id === messageToEdit.chatId) {
+        if (chat.id === originalMessage.chatId) {
           if (latestMessageDetailsForChat) {
             return { 
               ...chat, 
@@ -391,8 +392,6 @@ export default function ChatPage() {
               lastMessageTimestamp: latestMessageDetailsForChat.timestamp 
             };
           } else {
-             // Fallback if for some reason latestMessageDetailsForChat is null
-             // (e.g., all messages were deleted, which shouldn't happen from an edit)
              const fallbackMsg = (chat.type === 'direct' && (chat.pendingApprovalFromUserId || chat.isRejected) ? (chat.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan");
              const fallbackTs = (chat.requestTimestamp || chat.lastMessageTimestamp || Date.now());
              return { 
@@ -404,12 +403,14 @@ export default function ChatPage() {
         }
         return chat;
       });
-      // Re-sort all chats as lastMessageTimestamp might have changed for the edited chat
       return updatedChats.sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
 
     toast({ title: "Pesan Diedit", description: "Pesan Anda telah berhasil diperbarui." });
-  }, [currentUser, setAllMessages, setChats, toast]);
+    setEditingMessage(null); // Clear editing state
+    setIsEditMessageDialogOpen(false); // Close dialog
+  }, [currentUser, allMessages, setAllMessages, setChats, toast, editingMessage]);
+
 
   const handleDeleteChatPermanently = useCallback((chatId: string) => {
     setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
@@ -524,7 +525,7 @@ export default function ChatPage() {
               messages={allMessages[selectedChat.id] || []}
               currentUser={currentUser}
               onSendMessage={handleSendMessage}
-              onEditMessage={handleEditMessage}
+              onEditMessage={handleTriggerEditMessageDialog} // Use the dialog trigger
               onDeleteMessage={handleDeleteMessage}
             />
           ) : (
@@ -545,10 +546,13 @@ export default function ChatPage() {
         onCreateChat={handleCreateGroupChat}
         currentUserId={currentUser?.id}
       />
+      <EditMessageDialog
+        isOpen={isEditMessageDialogOpen}
+        onOpenChange={setIsEditMessageDialogOpen}
+        messageToEdit={editingMessage}
+        onSaveEdit={handleSaveEditedMessage}
+      />
     </SidebarProvider>
   );
 }
     
-
-    
-
