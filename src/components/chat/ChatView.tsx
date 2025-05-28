@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Chat, Message, User, ChatType } from "@/types"; // Added ChatType
+import type { Chat, Message, User, ChatType } from "@/types";
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -75,10 +75,32 @@ export function ChatView({
     }
   }, [messages, chat.id]);
 
+  // Effect for handling Escape key to go back
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (editingMessageDetails) {
+          handleCancelEditClick();
+        } else if (replyingToMessage) {
+          handleCancelReplyClick();
+        } else if (onGoBack) {
+          onGoBack();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [editingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
+
+
+  // Effect for handling message editing state
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      if (replyingToMessage) { // If editing, cancel any ongoing reply
+      if (replyingToMessage) {
         setReplyingToMessage(null);
       }
       setTimeout(() => {
@@ -89,23 +111,25 @@ export function ChatView({
           messageInputRef.current.selectionEnd = len;
         }
       }, 0);
-    } else if (!replyingToMessage) { // Only clear if not editing AND not replying
-      setNewMessage("");
+    } else if (!replyingToMessage) {
+      // Only clear if not editing AND not replying,
+      // and newMessage is not empty (to avoid clearing during initial empty state)
+      if(newMessage !== "") setNewMessage("");
     }
-  }, [editingMessageDetails, replyingToMessage]);
+  }, [editingMessageDetails]); // Removed replyingToMessage, newMessage from deps
 
-
+  // Effect for resetting states when chat.id changes
   useEffect(() => {
-    // Reset states when chat.id changes
-    if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
-        (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
-      setNewMessage("");
+    // Reset states when chat.id changes, but only if not currently editing/replying to a message from the *new* chat
+    if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id)) {
+      onCancelEditMessage(); // Cancel any ongoing edit if it's for a different chat
     }
     if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
       setReplyingToMessage(null);
     }
-    if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-      onCancelEditMessage();
+     // Always clear the new message input when chat.id changes, unless an edit for the current chat is in progress
+    if (!editingMessageDetails || editingMessageDetails.chatId !== chat.id) {
+        setNewMessage("");
     }
 
     if (messageInputRef.current) {
@@ -127,31 +151,31 @@ export function ChatView({
         onSendMessage(newMessage.trim(), replyingToMessage);
         setReplyingToMessage(null);
       }
-      setNewMessage(""); // Clear input after send/edit in both cases
+      setNewMessage(""); 
 
       if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto'; // Reset height after send/edit
+        messageInputRef.current.style.height = 'auto'; 
       }
     }
   };
 
   const handleReplyToMessageInView = useCallback((messageToReply: Message) => {
     if(!isChatActive) return;
-    if (editingMessageDetails) onCancelEditMessage();
+    if (editingMessageDetails) onCancelEditMessage(); // Cancel edit if replying
     setReplyingToMessage(messageToReply);
-    setNewMessage("");
+    setNewMessage(""); // Clear input for reply
     setTimeout(() => messageInputRef.current?.focus(), 0);
   }, [isChatActive, editingMessageDetails, onCancelEditMessage]);
 
   const handleCancelEditClick = useCallback(() => {
     onCancelEditMessage();
-    setNewMessage(replyingToMessage ? "" : "");
+    setNewMessage(replyingToMessage ? "" : ""); // If still replying, keep input for reply, otherwise clear
   }, [onCancelEditMessage, replyingToMessage]);
 
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage("");
+    setNewMessage(""); // Clear input when reply is cancelled
   }, []);
 
 
@@ -168,7 +192,7 @@ export function ChatView({
         description: `Direct message with ${otherParticipantName}`,
         status: otherParticipantStatus
       };
-    } else { // group chat
+    } else { 
       const groupName = chat.name || "Unnamed Group";
       return {
         name: groupName,
@@ -228,13 +252,13 @@ export function ChatView({
       const isAAdmin = a.id === chat.createdByUserId;
       const isBAdmin = b.id === chat.createdByUserId;
 
-      if (isAAdmin && !isACurrentUser) return -1;
-      if (isBAdmin && !isBCurrentUser) return 1;
+      if (isAAdmin && !isACurrentUser) return -1; 
+      if (isBAdmin && !isBCurrentUser) return 1;  
       
-      if (isAAdmin && isACurrentUser) return -1;
+      if (isAAdmin && isACurrentUser) return -1; 
       if (isBAdmin && isBCurrentUser) return 1;
       
-      if (isACurrentUser) return -1;
+      if (isACurrentUser) return -1; 
       if (isBCurrentUser) return 1;
       
       return (a.name || '').localeCompare(b.name || '');
@@ -337,7 +361,7 @@ export function ChatView({
                   </span> (Simulated)
                 </SheetDescription>
               </div>
-            ) : ( // Group Chat
+            ) : ( 
               <div className="text-center pt-4">
                  <Avatar className="h-24 w-24 mx-auto mb-3">
                     <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Group Avatar'} data-ai-hint="group abstract large"/>
@@ -467,7 +491,7 @@ export function ChatView({
                 </>
               ) : replyingToMessage && (
                 <>
-                  <span className="font-medium">Membalas {replyingToMessage.senderName}:</span>
+                  <span className="font-medium">{replyingToMessage.senderName}</span>
                   <p className="italic truncate text-xs">
                     "{replyingToMessage.content.length > 70 ? replyingToMessage.content.substring(0, 70) + "..." : replyingToMessage.content}"
                   </p>
@@ -510,14 +534,7 @@ export function ChatView({
                 e.preventDefault();
                 handleSubmit(e);
               }
-               if (e.key === 'Escape') {
-                 e.preventDefault();
-                if (editingMessageDetails) {
-                  handleCancelEditClick();
-                } else if (replyingToMessage) {
-                  handleCancelReplyClick();
-                }
-              }
+              // Escape key is handled by the global useEffect now
             }}
           />
           <Button type="submit" size="icon" aria-label="Send message" disabled={!newMessage.trim() || !isChatActive} className="self-end">
