@@ -53,7 +53,7 @@ export function MessageBubble({
   const senderInitial = senderDetails.name ? senderDetails.name.substring(0, 1).toUpperCase() : "?";
 
   let isReadByAtLeastOneOther = false;
-  if (isCurrentUserMessage && chat.lastReadBy) { // Ensure lastReadBy exists
+  if (isCurrentUserMessage && chat.lastReadBy) {
     const messageTimestamp = message.timestamp;
     if (chat.type === 'direct') {
       const otherParticipant = chat.participants.find(p => p.id !== senderDetails.id);
@@ -76,16 +76,15 @@ export function MessageBubble({
     }
   }
 
-
-  const BubbleContentLayout = ({ className }: { className?: string }) => (
+  const BubbleContentLayout = ({ className: bubbleClassName }: { className?: string }) => (
     <div className={cn(
       "shadow-sm flex flex-col px-3 py-2 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative", 
       isCurrentUserMessage
         ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl"
         : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
-      className
+      bubbleClassName
     )}>
-      {((isCurrentUserMessage && chatType === 'group') || (!isCurrentUserMessage && chatType === 'group')) ? (
+      {((isCurrentUserMessage && chatType === 'group')) ? (
           <div className={cn(
               "text-xs font-semibold mb-0.5",
               isCurrentUserMessage ? "text-primary-foreground/90" : "text-accent-foreground" 
@@ -94,9 +93,14 @@ export function MessageBubble({
           </div>
       ) : isCurrentUserMessage && chatType === 'direct' ? (
           <div className={cn("text-xs font-semibold mb-0.5 text-primary-foreground/90")}>
-            Anda
+            {/* No "Anda" for direct messages from current user */}
+          </div>
+      ) : (!isCurrentUserMessage && chatType === 'group') ? (
+          <div className={cn("text-xs font-semibold mb-0.5 text-accent-foreground")}>
+              <span>{senderName}</span>
           </div>
       ) : null}
+
 
       {message.replyToMessageId && message.replyToMessageSenderName && message.replyToMessageContent && (
         <div className={cn(
@@ -139,7 +143,7 @@ export function MessageBubble({
             {isReadByAtLeastOneOther ? (
               <CheckCheck size={14} className="text-blue-500" />
             ) : (
-              <Check size={14} className="text-primary-foreground/70" /> 
+              <Check size={14} className={cn(chatType === 'group' ? "text-primary-foreground/70" : "text-primary-foreground/70")} /> 
             )}
           </span>
         )}
@@ -189,7 +193,7 @@ export function MessageBubble({
 
   const ReceiverActionButton = ({ className }: { className?: string }) => (
     onReplyMessage && (
-      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0", className)}>
+      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-start shrink-0", className)}>
          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-muted-foreground hover:text-primary">
@@ -221,15 +225,15 @@ export function MessageBubble({
         // My messages
         <div className="flex w-full justify-end items-start group mb-3">
           <SenderActionButtons className="mr-1 order-1 self-center" />
-          <BubbleContentLayout className="order-2 mr-2" />
-          {chatType === 'group' && <UserAvatarComponent className="order-3 self-start" />}
+          <BubbleContentLayout className="mr-2 order-2" />
+          {chatType === 'group' && <UserAvatarComponent className="ml-0 order-3 self-start" />}
         </div>
       ) : (
-        // Others' messages
+        // Others' messages (Incoming)
         <div className="flex w-full justify-start items-start group mb-3">
           {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
-          <BubbleContentLayout className={cn(chatType === 'group' ? "mr-1" : "ml-0", "flex-1")} />
-          <ReceiverActionButton className="ml-1 self-center" />
+          <BubbleContentLayout className={cn(chatType === 'group' ? "mr-1" : "ml-0")} />
+          <ReceiverActionButton className="ml-1 self-start" />
         </div>
       )}
     </>
