@@ -58,14 +58,19 @@ export function ChatView({
     }
   }, [messages, chat.id]);
 
+  // Effect to handle populating input when editing starts or clearing when edit ends/cancels
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
       setReplyingToMessage(null); // Ensure reply mode is off when edit mode starts
       messageInputRef.current?.focus();
-    } else if (!replyingToMessage) { 
-      // Clear newMessage only if not editing AND not replying
-      setNewMessage("");
+    } else { 
+      // This 'else' block runs when editingMessageDetails becomes null (edit finished or cancelled)
+      // OR when the component mounts and editingMessageDetails is initially null.
+      // We only want to clear newMessage if we are also not in reply mode.
+      if (!replyingToMessage) {
+        setNewMessage("");
+      }
     }
 
     if (messageInputRef.current && !editingMessageDetails) {
@@ -74,29 +79,21 @@ export function ChatView({
   }, [editingMessageDetails, replyingToMessage]);
 
 
-   // Reset input dan mode reply/edit ketika chat berubah
+   // Effect to reset input and interaction states when the active chat (chat.id) changes.
    useEffect(() => {
-    // Hanya kosongkan newMessage jika tidak sedang dalam mode edit untuk chat saat ini
-    // DAN tidak sedang dalam mode membalas pesan di chat saat ini.
-    if ((!editingMessageDetails || (editingMessageDetails && editingMessageDetails.chatId !== chat.id)) && !replyingToMessage) {
-      setNewMessage("");
-    }
-    
-    // Selalu reset mode balasan ketika chat berubah, kecuali jika kita baru memulai mode edit.
-    if (!editingMessageDetails) {
-      setReplyingToMessage(null);
-    }
+    setNewMessage(""); // Clear message input for the new chat
+    setReplyingToMessage(null); // Clear any active reply context
 
-    // Jika sedang mengedit pesan dari chat lain, batalkan mode edit.
+    // If an edit was active for a message NOT in the new chat, cancel it.
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-      onCancelEditMessage(); 
+      onCancelEditMessage(); // This callback should set editingMessageDetails to null in the parent
     }
     
-    // Reset tinggi textarea
+    // Reset textarea height
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
+  }, [chat.id, onCancelEditMessage]); // editingMessageDetails is implicitly handled via onCancelEditMessage if it changes
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -108,12 +105,12 @@ export function ChatView({
     if (newMessage.trim()) {
       if (editingMessageDetails) {
         onSaveEditedMessage(editingMessageDetails.id, newMessage.trim());
+        // newMessage will be cleared by the useEffect reacting to editingMessageDetails becoming null
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
         setReplyingToMessage(null); // Clear reply state after sending
         setNewMessage(""); // Clear input after sending regular message
       }
-      // `setNewMessage("")` for edit mode is handled by useEffect reacting to `editingMessageDetails` becoming null
       
       if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto'; 
@@ -131,7 +128,7 @@ export function ChatView({
   
   const handleCancelEditClick = () => {
     onCancelEditMessage();
-    // useEffect reacting to editingMessageDetails becoming null will clear newMessage
+    // useEffect reacting to editingMessageDetails becoming null will clear newMessage (if not replying)
   };
 
   const getChatDisplayDetails = () => {
