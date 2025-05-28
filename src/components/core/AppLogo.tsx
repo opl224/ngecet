@@ -21,7 +21,7 @@ export function AppLogo({ className, ...props }: AppLogoProps) {
     >
       <Image
         src={logoSrc}
-        alt="SimplicChat Logo"
+        alt="Ngecet Logo"
         layout="fill"
         objectFit="contain" // Or "cover", depending on how you want the image to fit
       />

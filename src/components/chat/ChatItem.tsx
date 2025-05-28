@@ -60,7 +60,6 @@ export function ChatItem({
 
   if (chat.type === "direct") {
     if (chat.blockedByUser === currentUser.id) {
-        specialStatusText = `Anda memblokir ${otherParticipantNameDisplay}.`;
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
         specialStatusText = `${name} mungkin memblokir Anda.`;

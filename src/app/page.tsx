@@ -116,7 +116,7 @@ export default function ChatPage() {
     if (existingChat) {
       setSelectedChat(existingChat);
       if (existingChat.blockedByUser === currentUser.id) {
-        toast({ title: "Diblokir", description: `Anda telah memblokir ${recipientName}. Buka blokir untuk melanjutkan.`, variant: "destructive" });
+        // toast({ title: "Chat Diblokir", description: `Anda telah memblokir ${recipientName}. Buka blokir untuk melanjutkan.`, variant: "destructive" });
         return;
       }
       if (existingChat.blockedByUser === recipientUser.id) {
@@ -260,7 +260,8 @@ export default function ChatPage() {
             let reason = `Anda tidak memiliki chat langsung yang aktif dengan mereka`;
             if (existingDirectChat?.blockedByUser === currentUser.id) reason = `Anda telah memblokir mereka`;
             else if (existingDirectChat?.blockedByUser === memberId) reason = `Mereka telah memblokir Anda`;
-            else if (existingDirectChat?.pendingApprovalFromUserId) reason = `permintaan chat dengan mereka masih tertunda`;
+            else if (existingDirectChat?.pendingApprovalFromUserId === memberId) reason = `permintaan chat Anda kepada mereka masih tertunda`;
+            else if (existingDirectChat?.pendingApprovalFromUserId === currentUser.id) reason = `Anda belum menerima permintaan chat dari mereka`;
             else if (existingDirectChat?.isRejected) reason = `chat dengan mereka sebelumnya ditolak`;
 
             invalidMemberDisplayNames.push(`${name} (${reason})`);
@@ -327,7 +328,7 @@ export default function ChatPage() {
 
   const handleSelectChat = useCallback((chat: Chat) => {
     if (chat.type === "direct" && chat.blockedByUser === currentUser?.id) {
-        toast({ title: "Chat Diblokir", description: "Anda telah memblokir pengguna ini. Buka blokir untuk melanjutkan." });
+        // toast({ title: "Chat Diblokir", description: "Anda telah memblokir pengguna ini. Buka blokir untuk melanjutkan." }); // Removed this toast
     } else if (chat.type === "direct" && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
         toast({ title: "Interaksi Terbatas", description: "Anda tidak dapat berinteraksi dalam chat ini saat ini." });
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
@@ -405,7 +406,7 @@ export default function ChatPage() {
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
          return {
           ...chat,
-          lastMessage: chat.type === 'direct' ? `Aktivitas baru di chat dengan ${chat.participants.find(p=>p.id !== currentUser.id)?.name || 'seseorang'}` : `Aktivitas baru di ${chat.name}`,
+          lastMessage: `Aktivitas baru di ${chat.type === 'direct' ? (chat.participants.find(p=>p.id !== currentUser.id)?.name || 'seseorang') : chat.name}`,
           lastMessageTimestamp: newMessage.timestamp,
          };
       }
@@ -840,7 +841,7 @@ export default function ChatPage() {
              <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
                 <div className="flex items-center gap-2 shrink-0 mr-2">
                     <AppLogo className="h-7 w-7 text-primary" />
-                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground">SimplicChat</h1>
+                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground">Ngecet</h1>
                 </div>
                 <div className="flex items-center gap-2">
                     {currentUser && (
@@ -988,9 +989,9 @@ export default function ChatPage() {
       <AlertDialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Tentang SimplicChat</AlertDialogTitle>
+            <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground pt-2">
-              SimplicChat adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
+              Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
               Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
               Dibangun dengan Next.js, React, ShadCN UI, Tailwind CSS, dan Genkit.
             </AlertDialogDescription>
