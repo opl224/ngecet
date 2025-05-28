@@ -58,16 +58,13 @@ export function MessageBubble({
         : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
       className
     )}>
-      { (isCurrentUserMessage || chatType === 'group') && (
+      {/* Display sender name or "Anda" only for group chats */}
+      { chatType === 'group' && (
           <div className={cn(
               "text-xs font-semibold mb-0.5",
               isCurrentUserMessage ? "text-primary-foreground/90" : "text-primary"
           )}>
-              {isCurrentUserMessage ? (
-                  <span className="font-normal text-primary-foreground/70">Anda</span>
-              ) : ( 
-                chatType === 'group' && <span>{senderName}</span> 
-              )}
+              {isCurrentUserMessage ? "Anda" : <span>{senderName}</span>}
           </div>
       )}
 
@@ -185,19 +182,15 @@ export function MessageBubble({
       {isCurrentUserMessage ? (
         // My messages
         <div className="flex w-full justify-end items-start group mb-3">
+          {chatType === 'group' && <UserAvatarComponent className="ml-2 order-3 self-start" />}
           <SenderActionButtons className="mr-1 order-1 self-center" />
           <BubbleContentLayout className="mr-2 order-2" />
-          {chatType === 'group' && (
-            <UserAvatarComponent className="ml-0 order-3 self-start" />
-          )}
         </div>
       ) : (
         // Others' messages
         <div className="flex w-full justify-start items-start group mb-3">
-          {chatType === 'group' && (
-            <UserAvatarComponent className="mr-2 self-start" />
-          )}
-          <BubbleContentLayout className={chatType === 'group' ? "mr-1" : ""} />
+          {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
+          <BubbleContentLayout className={cn(chatType === 'group' ? "mr-1" : "", "ml-0")} />
           <ReceiverActionButton className="ml-1 self-center" />
         </div>
       )}
