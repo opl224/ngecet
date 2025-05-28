@@ -75,11 +75,10 @@ export function ChatView({
     }
   }, [messages, chat.id]);
 
-  // Effect to handle starting/ending edit mode
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      if (replyingToMessage) { // if replying and edit starts, cancel reply mode
+      if (replyingToMessage) {
         setReplyingToMessage(null);
       }
       setTimeout(() => {
@@ -90,28 +89,29 @@ export function ChatView({
           messageInputRef.current.selectionEnd = len;
         }
       }, 0);
-    } else if (!replyingToMessage) { // Only clear if not in reply mode
+    } else if (!replyingToMessage) {
       setNewMessage("");
     }
   }, [editingMessageDetails, replyingToMessage]);
 
-
-  // Effect to handle chat changes (e.g., switching chats)
   useEffect(() => {
+    // Reset states when chat.id changes, but be careful not to interfere with edit/reply flows
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-      onCancelEditMessage();
+      onCancelEditMessage(); // Cancel edit if chat switched during edit
     }
     if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
-        setReplyingToMessage(null);
+        setReplyingToMessage(null); // Cancel reply if chat switched
     }
     
+    // Only clear newMessage if not entering edit mode for the current chat
+    // and not in reply mode for the current chat.
     if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
         (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
       setNewMessage("");
     }
 
     if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto';
+        messageInputRef.current.style.height = 'auto'; // Reset height on chat change
     }
   }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
 
@@ -132,7 +132,7 @@ export function ChatView({
       }
 
       if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto';
+        messageInputRef.current.style.height = 'auto'; // Reset height after send/edit
       }
     }
   };
@@ -160,8 +160,8 @@ export function ChatView({
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
       const otherParticipant = chat.participants?.find(p => p.id !== currentUser.id);
-      const otherParticipantName = otherParticipant?.name || chat.name || "Direct Chat";
-      const otherParticipantAvatar = otherParticipant?.avatarUrl || chat.avatarUrl;
+      const otherParticipantName = otherParticipant?.name || "Direct Chat";
+      const otherParticipantAvatar = otherParticipant?.avatarUrl || chat.avatarUrl; // Fallback to chat.avatarUrl if participant not found
       const otherParticipantStatus = otherParticipant?.status || "Offline";
       return {
         name: otherParticipantName,
@@ -170,14 +170,14 @@ export function ChatView({
         description: `Direct message with ${otherParticipantName}`,
         status: otherParticipantStatus
       };
-    } else {
+    } else { // group chat
       const groupName = chat.name || "Unnamed Group";
       return {
         name: groupName,
         avatarUrl: chat.avatarUrl,
         Icon: Users,
         description: `Group Chat - ${chat.participants?.length || 0} anggota`,
-        status: null
+        status: null // No single status for a group
       };
     }
   };
@@ -189,7 +189,7 @@ export function ChatView({
     const otherUserName = displayDetails.name === "Direct Chat" ? "pengguna ini" : displayDetails.name;
     if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) {
       chatOverlayMessage = {
-        icon: <SendHorizonal className="w-16 h-16 text-muted-foreground mb-4" />,
+        icon: <SendHorizonal className="w-16 h-16 text-muted-foreground mb-4" />, // Changed from Send
         title: "Menunggu Persetujuan",
         text: `Permintaan chat Anda kepada ${otherUserName} sedang menunggu persetujuan.`,
       };
@@ -214,7 +214,7 @@ export function ChatView({
     setNewMessage(event.target.value);
     if (messageInputRef.current) {
       messageInputRef.current.style.height = 'auto';
-      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120)
+      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120) // Max height of 120px
       messageInputRef.current.style.height = `${newHeight}px`;
     }
   };
@@ -230,16 +230,16 @@ export function ChatView({
       const isACurrentUser = a.id === currentUser.id;
       const isBCurrentUser = b.id === currentUser.id;
 
-      if (isAAdmin && !isACurrentUser) return -1; // Admin first (not current user)
+      if (isAAdmin && !isACurrentUser) return -1; 
       if (isBAdmin && !isBCurrentUser) return 1;
 
-      if (isAAdmin && isACurrentUser) return -1; // Current user who is admin (should be first)
+      if (isAAdmin && isACurrentUser) return -1; 
       if (isBAdmin && isBCurrentUser) return 1;
       
-      if (isACurrentUser) return -1; // Current user (not admin) next
+      if (isACurrentUser) return -1; 
       if (isBCurrentUser) return 1;
       
-      return (a.name || '').localeCompare(b.name || ''); // Then sort by name
+      return (a.name || '').localeCompare(b.name || '');
     });
   }, [chat.participants, chat.createdByUserId, currentUser.id]);
 
@@ -339,7 +339,7 @@ export function ChatView({
                   </span> (Simulated)
                 </SheetDescription>
               </div>
-            ) : (
+            ) : ( // Group Chat
               <div className="text-center pt-4">
                  <Avatar className="h-24 w-24 mx-auto mb-3">
                     <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Group Avatar'} data-ai-hint="group abstract large"/>
@@ -348,7 +348,7 @@ export function ChatView({
                     </AvatarFallback>
                 </Avatar>
                 <SheetTitle className="text-2xl">{displayDetails.name}</SheetTitle>
-                <SheetDescription className="text-base">{displayDetails.description}</SheetDescription>
+                <SheetDescription className="text-base">{`Group Chat - ${chat.participants?.length || 0} anggota`}</SheetDescription>
               </div>
             )}
           </SheetHeader>
@@ -416,17 +416,31 @@ export function ChatView({
                 <p className="text-muted-foreground">{chatOverlayMessage.text}</p>
             </div>
         )}
-        <div className={cn("p-4 space-y-4 mb-4 flex-1", chatOverlayMessage && "blur-sm pointer-events-none")}>
-          {displayedMessages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              isCurrentUserMessage={msg.senderId === currentUser.id}
-              onReplyMessage={isChatActive ? handleReplyToMessageInView : undefined}
-              onEditMessage={isChatActive ? onRequestEditMessage : undefined}
-              onDeleteMessage={isChatActive ? onDeleteMessage : undefined}
-            />
-          ))}
+        <div className={cn("p-4 space-y-0 mb-4 flex-1", chatOverlayMessage && "blur-sm pointer-events-none")}>
+          {displayedMessages.map((msg) => {
+            const sender = msg.senderId === currentUser.id
+              ? currentUser
+              : chat.participants.find(p => p.id === msg.senderId);
+            
+            const senderToDisplay : User = sender || { 
+              id: msg.senderId, 
+              name: msg.senderName, 
+              avatarUrl: undefined, // Fallback if user not in participants list
+              status: "Offline" 
+            };
+
+            return (
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                isCurrentUserMessage={msg.senderId === currentUser.id}
+                senderDetails={senderToDisplay}
+                onReplyMessage={isChatActive ? handleReplyToMessageInView : undefined}
+                onEditMessage={isChatActive ? onRequestEditMessage : undefined}
+                onDeleteMessage={isChatActive ? onDeleteMessage : undefined}
+              />
+            );
+          })}
           {displayedMessages.length === 0 && isChatActive && (
             <div className="text-center text-muted-foreground py-10">
               No messages yet. Be the first to send one!
@@ -515,4 +529,3 @@ export function ChatView({
     </div>
   );
 }
-
