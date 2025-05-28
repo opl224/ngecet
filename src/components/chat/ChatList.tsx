@@ -79,8 +79,8 @@ export function ChatList({
 
   const getEmptyStateMessage = () => {
     if (!currentUser) return "Loading user..."; // Should not happen if currentUser check above is effective
-    if (activeFilter === 'direct') return "No direct chats found. Try a different filter or start a new direct message!";
-    if (activeFilter === 'group') return "No group chats found. Try a different filter or start a new group chat!";
+    if (activeFilter === 'direct') return "Belum ada pesan";
+    if (activeFilter === 'group') return "Kamu belum mempunyai grup";
     if (visibleChats.length === 0) return "No chats yet. Start a new conversation or wait for requests!";
     return "No chats match the current filter."; // Fallback if filters applied to an existing list yield no results
   };
