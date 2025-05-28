@@ -2,7 +2,7 @@
 "use client";
 
 import type { Chat, Message, User } from "@/types";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -78,8 +78,8 @@ export function ChatView({
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      if (replyingToMessage) {
-        setReplyingToMessage(null); // Cancel reply if starting to edit
+      if (replyingToMessage) { // Cancel reply if starting to edit
+        setReplyingToMessage(null);
       }
       setTimeout(() => {
         messageInputRef.current?.focus();
@@ -89,20 +89,19 @@ export function ChatView({
           messageInputRef.current.selectionEnd = len;
         }
       }, 0);
-    } else if (!replyingToMessage) { // Only clear if not replying and not editing
-        setNewMessage("");
+    } else if (!replyingToMessage) { // Only clear if not actively replying
+      setNewMessage("");
     }
   }, [editingMessageDetails, replyingToMessage]);
 
 
   useEffect(() => {
-    // Reset states when chat.id changes
-    // but be careful not to interfere with edit/reply flows for the *new* chat
-    if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-      onCancelEditMessage(); // Cancel edit if it was for a different chat
+    // Reset states when chat.id changes, carefully
+    if ((editingMessageDetails && editingMessageDetails.chatId !== chat.id)) {
+      onCancelEditMessage();
     }
     if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
-        setReplyingToMessage(null); // Cancel reply if it was for a different chat
+        setReplyingToMessage(null);
     }
     
     // Clear newMessage only if not in edit/reply mode for the *current* chat
@@ -112,7 +111,7 @@ export function ChatView({
     }
 
     if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto'; // Reset height on chat change
+        messageInputRef.current.style.height = 'auto';
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat.id, onCancelEditMessage]);
@@ -129,8 +128,8 @@ export function ChatView({
         onSaveEditedMessage(editingMessageDetails.id, newMessage.trim());
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
-        setReplyingToMessage(null); // Clear reply context after sending
-        setNewMessage(""); // Clear input after sending
+        setReplyingToMessage(null);
+        setNewMessage(""); 
       }
 
       if (messageInputRef.current) {
@@ -141,14 +140,15 @@ export function ChatView({
 
   const handleReplyToMessageInView = (messageToReply: Message) => {
     if(!isChatActive) return;
-    if (editingMessageDetails) onCancelEditMessage(); // Cancel edit if starting to reply
+    if (editingMessageDetails) onCancelEditMessage(); 
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); // Clear current input for reply
+    setNewMessage(""); 
     setTimeout(() => messageInputRef.current?.focus(), 0);
   };
 
   const handleCancelEditClick = () => {
     onCancelEditMessage();
+    setNewMessage(replyingToMessage ? "" : ""); // Clear input or set to reply context if any
   };
 
   const getChatDisplayDetails = () => {
@@ -216,7 +216,7 @@ export function ChatView({
   const userClearedTimestamp = chat.clearedTimestamp?.[currentUser.id] || 0;
   const displayedMessages = messages.filter(msg => msg.timestamp > userClearedTimestamp);
 
-  const sortedParticipants = React.useMemo(() => {
+  const sortedParticipants = useMemo(() => {
     if (!chat.participants) return [];
     return [...chat.participants].sort((a, b) => {
       if (a.id === chat.createdByUserId) return -1; // Admin comes first
@@ -502,3 +502,4 @@ export function ChatView({
   );
 }
 
+    
