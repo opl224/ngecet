@@ -42,9 +42,13 @@ export function ChatList({
     return <div className="p-4 text-sm text-sidebar-foreground/70">Loading user...</div>;
   }
 
-  const sortedChatsWithUnread = [...chats]
+  const visibleChats = chats.filter(chat =>
+    chat.participants.some(participant => participant.id === currentUser.id)
+  );
+
+  const sortedChatsWithUnread = [...visibleChats]
     .map(chat => {
-      if (!currentUser) return { ...chat, calculatedUnreadCount: 0 };
+      if (!currentUser) return { ...chat, calculatedUnreadCount: 0 }; // Should not happen due to filter above
       
       const lastReadTimestamp = chat.lastReadBy?.[currentUser.id] || 0;
       const messagesInChat = allMessages[chat.id] || [];
@@ -57,7 +61,7 @@ export function ChatList({
     })
     .sort((a, b) => {
       const tsA = a.lastMessageTimestamp || a.requestTimestamp || 0;
-      const tsB = b.lastMessageTimestamp || b.requestTimestamp || 0;
+      const tsB = b.lastMessageTimestamp || a.requestTimestamp || 0;
       return tsB - tsA;
     });
 
