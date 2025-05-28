@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock } from "lucide-react"; // Removed unused Send icon
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -109,7 +109,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     const otherUserName = displayDetails.name === "Direct Chat" ? "pengguna ini" : displayDetails.name;
     if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) {
       chatOverlayMessage = {
-        icon: <SendHorizonal className="w-16 h-16 text-muted-foreground mb-4" />, // Changed to SendHorizonal
+        icon: <SendHorizonal className="w-16 h-16 text-muted-foreground mb-4" />,
         title: "Menunggu Persetujuan",
         text: `Permintaan chat Anda kepada ${otherUserName} sedang menunggu persetujuan.`,
       };
@@ -135,14 +135,13 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     if (messageInputRef.current) {
       messageInputRef.current.style.height = 'auto'; // Reset height
       const newHeight = Math.min(messageInputRef.current.scrollHeight, 120) // Max 120px
-      // Ensure minimum height is at least that of a single line input, e.g., 40px, but scrollHeight should handle this
-      messageInputRef.current.style.height = `${newHeight}px`; 
+      messageInputRef.current.style.height = `${newHeight}px`;
     }
   };
 
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col flex-1 bg-background overflow-hidden">
       <Sheet>
         <header className="p-4 border-b flex items-center justify-between shadow-sm">
           <SheetTrigger asChild>
@@ -227,7 +226,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
         </SheetContent>
       </Sheet>
 
-      <ScrollArea className="flex-1 p-4 relative" viewportRef={viewportRef} ref={scrollAreaRef}>
+      <ScrollArea className="flex-1 relative" viewportRef={viewportRef} ref={scrollAreaRef}>
         {chatOverlayMessage && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4 z-10">
                 {chatOverlayMessage.icon}
@@ -235,7 +234,7 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
                 <p className="text-muted-foreground">{chatOverlayMessage.text}</p>
             </div>
         )}
-        <div className={cn("space-y-4 mb-4", chatOverlayMessage && "blur-sm pointer-events-none")}>
+        <div className={cn("p-4 space-y-4 mb-4", chatOverlayMessage && "blur-sm pointer-events-none")}>
           {messages.map((msg) => (
             <MessageBubble
               key={msg.id}
@@ -301,3 +300,5 @@ export function ChatView({ chat, messages, currentUser, onSendMessage, onEditMes
     </div>
   );
 }
+
+    
