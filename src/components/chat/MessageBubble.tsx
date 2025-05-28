@@ -51,15 +51,18 @@ export function MessageBubble({
     <div className={cn(
       "shadow-sm flex flex-col px-3 py-2 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg",
       isCurrentUserMessage
-        ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl rounded-br-md" // Removed ml-auto
-        : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl rounded-bl-md border" 
+        ? "bg-primary text-primary-foreground rounded-l-xl rounded-bl-xl rounded-tr-md ml-auto" // Added ml-auto back here for right alignment
+        : "bg-card text-card-foreground rounded-r-xl rounded-br-xl rounded-tl-md border" 
     )}>
       <div className={cn(
           "text-xs font-semibold mb-0.5",
           isCurrentUserMessage ? "text-primary-foreground/90" : "text-primary"
       )}>
-          <span>{senderName}</span>
-          {isCurrentUserMessage && <span className="ml-1 font-normal text-primary-foreground/70">(Anda)</span>}
+          {isCurrentUserMessage ? (
+            <span className="font-normal text-primary-foreground/70">(Anda)</span>
+          ) : (
+            <span>{senderName}</span>
+          )}
       </div>
 
       {message.replyToMessageId && message.replyToMessageSenderName && message.replyToMessageContent && (
@@ -114,27 +117,23 @@ export function MessageBubble({
               <span className="sr-only">Opsi pesan</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align={isCurrentUserMessage ? "end" : "start"}>
+          <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={handleReply}>
               <Undo2 size={14} className="mr-2" />
               Balas
             </DropdownMenuItem>
-            {isCurrentUserMessage && (
-              <>
-                <DropdownMenuItem onClick={handleEdit}>
-                  <Edit3 size={14} className="mr-2" />
-                  Edit Pesan
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleDelete}
-                  className="text-destructive hover:!bg-destructive/10 focus:!bg-destructive/10 focus:!text-destructive"
-                >
-                  <Trash2 size={14} className="mr-2" />
-                  Hapus
-                </DropdownMenuItem>
-              </>
-            )}
+            <DropdownMenuItem onClick={handleEdit}>
+              <Edit3 size={14} className="mr-2" />
+              Edit Pesan
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={handleDelete}
+              className="text-destructive hover:!bg-destructive/10 focus:!bg-destructive/10 focus:!text-destructive"
+            >
+              <Trash2 size={14} className="mr-2" />
+              Hapus
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -163,7 +162,7 @@ export function MessageBubble({
   );
 
   const UserAvatarComponent = () => (
-    <Avatar className="h-8 w-8 shrink-0 self-start mt-1"> {/* Added self-start and mt-1 for alignment */}
+    <Avatar className="h-8 w-8 shrink-0 self-start mt-1">
       <AvatarImage src={senderAvatarUrl} alt={senderName} data-ai-hint="person" />
       <AvatarFallback>{senderInitial}</AvatarFallback>
     </Avatar>
@@ -171,14 +170,14 @@ export function MessageBubble({
 
   return (
     <div className={cn(
-        "flex w-full group mb-3 items-start gap-2.5", // items-start for better vertical alignment with avatar
-        isCurrentUserMessage && "justify-end"
+        "flex w-full group mb-3 items-start gap-2.5", 
+        isCurrentUserMessage && "justify-end" // This will push the entire row to the right for current user messages
       )}
     >
       {isCurrentUserMessage ? (
         <>
           <SenderActionButtons />
-          <BubbleContentLayout />
+          <BubbleContentLayout /> 
           <UserAvatarComponent />
         </>
       ) : (
