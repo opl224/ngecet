@@ -72,6 +72,7 @@ export function ChatView({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
+  const prevChatIdRef = useRef<string | undefined>();
 
   const isChatEffectivelyBlocked = chat.type === 'direct' &&
                                  (chat.blockedByUser === currentUser.id ||
@@ -80,12 +81,13 @@ export function ChatView({
   const isChatActive = chat.type === 'group' || (!chat.pendingApprovalFromUserId && !chat.isRejected && !isChatEffectivelyBlocked);
 
   const handleCancelEditClick = useCallback(() => {
-    onCancelEditMessage();
+    onCancelEditMessage(); // Sets editingMessageDetails to null in parent
+    setNewMessage("");     // Clears local input
   }, [onCancelEditMessage]);
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage("");
+    setNewMessage("");     // Clears local input
   }, []);
 
 
@@ -109,6 +111,7 @@ export function ChatView({
   }, [editingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
+  // Effect for handling message editing state (populating input, focusing)
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
@@ -116,41 +119,44 @@ export function ChatView({
         setReplyingToMessage(null);
       }
       setTimeout(() => {
-        messageInputRef.current?.focus();
         if (messageInputRef.current) {
-          const len = messageInputRef.current.value.length;
+          messageInputRef.current.focus();
+          const len = editingMessageDetails.content.length; // Use content from details
           messageInputRef.current.selectionStart = len;
           messageInputRef.current.selectionEnd = len;
+          // Adjust height after populating for edit
+          messageInputRef.current.style.height = 'auto';
+          const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
+          messageInputRef.current.style.height = `${newHeight}px`;
         }
       }, 0);
     }
-  }, [editingMessageDetails, replyingToMessage]);
+    // Clearing newMessage when editingMessageDetails becomes null is handled by
+    // handleCancelEditClick or by the chat switch effect.
+  }, [editingMessageDetails, replyingToMessage]); // Added replyingToMessage as it's read
 
 
-   useEffect(() => {
-    if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
-        (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
-        setNewMessage("");
+  // Effect for handling chat switches and initial height adjustment
+  useEffect(() => {
+    if (prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id) {
+      // Chat has actually switched from a previous one.
+      setNewMessage(""); 
+      setReplyingToMessage(null); 
+      if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
+        onCancelEditMessage(); 
+      }
     }
-    if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-        onCancelEditMessage();
-    }
-    if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
-      setReplyingToMessage(null);
-      setNewMessage("");
-    }
+    prevChatIdRef.current = chat.id;
 
+    // Initial height adjustment or when content changes not via direct typing (e.g. edit mode start)
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
-        if (messageInputRef.current.value || newMessage) {
-          const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
-          messageInputRef.current.style.height = `${newHeight}px`;
-        } else {
-          messageInputRef.current.style.height = 'auto';
+        if (messageInputRef.current.value) { 
+            const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
+            messageInputRef.current.style.height = `${newHeight}px`;
         }
     }
-  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage, newMessage]);
-
+  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]); // Dependencies for chat switch logic and reading edit/reply state
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,7 +183,7 @@ export function ChatView({
     if(!isChatActive) return;
     if (editingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage("");
+    setNewMessage(""); // Clear input for reply text
     setTimeout(() => messageInputRef.current?.focus(), 0);
   }, [isChatActive, editingMessageDetails, onCancelEditMessage]);
 
@@ -221,7 +227,7 @@ export function ChatView({
               <div className="flex flex-col items-center">
                 <p className="mb-3">{`Anda telah memblokir ${otherUserName}.`}</p>
                 <Button onClick={() => onUnblockUser(chat.id)} variant="outline" className="text-green-600 border-green-500 hover:bg-green-500/10 hover:text-green-700 focus:border-green-600 focus:bg-green-500/10">
-                  <ShieldOff className="mr-2 h-4 w-4" /> Buka Blokir
+                  <ShieldOff className="mr-2 h-4 w-4" /> Buka Blokir Pengguna
                 </Button>
               </div>
             ),
@@ -275,10 +281,10 @@ export function ChatView({
       const isAAdmin = a.id === chat.createdByUserId;
       const isBAdmin = b.id === chat.createdByUserId;
 
-      if (isAAdmin && !isBAdmin) return -1;
+      if (isAAdmin && !isBAdmin) return -1; // Admin comes first
       if (!isAAdmin && isBAdmin) return 1;
 
-      if (isACurrentUser && !isAAdmin && !isBCurrentUser) return -1;
+      if (isACurrentUser && !isBCurrentUser && !isAAdmin) return -1; // Current user (not admin) comes after admin
       if (!isACurrentUser && isBCurrentUser && !isBAdmin) return 1;
 
       return (a.name || '').localeCompare(b.name || '');
@@ -392,7 +398,7 @@ export function ChatView({
                 <SheetDescription className="text-base">
                   <span className={cn("font-medium", isChatActive && displayDetails.status === "Online" ? "text-green-500" : "text-muted-foreground")}>
                     {isChatActive ? (displayDetails.status || "Offline")
-                      : (chat.blockedByUser === currentUser.id ? "Diblokir oleh pengguna" : "Tidak Aktif")}
+                      : (chat.blockedByUser === currentUser.id ? "Diblokir oleh Anda" : "Tidak Aktif")}
                   </span>
                 </SheetDescription>
                 {displayDetails.otherParticipantObject && onStartGroupWithUser && isChatActive && (
@@ -403,7 +409,6 @@ export function ChatView({
                         disabled={!!chat.blockedByUser}
                     >
                         <Users className="mr-2 h-4 w-4" />
-                        <DropdownMenuSeparator/>
                         Buat grup dengan {displayDetails.name}
                     </Button>
                 )}
@@ -596,3 +601,6 @@ export function ChatView({
     </div>
   );
 }
+
+
+    
