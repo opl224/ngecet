@@ -63,7 +63,7 @@ export function ChatView({
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
       setReplyingToMessage(null); // Ensure reply mode is off when edit mode starts
-      messageInputRef.current?.focus();
+      messageInputRef.current?.focus(); // Focus on input
     } else { 
       // This 'else' block runs when editingMessageDetails becomes null (edit finished or cancelled)
       // OR when the component mounts and editingMessageDetails is initially null.
@@ -76,24 +76,29 @@ export function ChatView({
     if (messageInputRef.current && !editingMessageDetails) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [editingMessageDetails, replyingToMessage]);
+  }, [editingMessageDetails]); // Removed replyingToMessage to avoid re-triggering when reply starts
 
 
    // Effect to reset input and interaction states when the active chat (chat.id) changes.
    useEffect(() => {
-    setNewMessage(""); // Clear message input for the new chat
-    setReplyingToMessage(null); // Clear any active reply context
-
-    // If an edit was active for a message NOT in the new chat, cancel it.
-    if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-      onCancelEditMessage(); // This callback should set editingMessageDetails to null in the parent
+    // Only reset if not entering edit mode for the current chat OR not in reply mode
+    if (!editingMessageDetails || editingMessageDetails.chatId !== chat.id) {
+        if (!replyingToMessage) {
+            setNewMessage(""); 
+        }
+    }
+    if (!replyingToMessage) { // Always clear reply context on chat change
+        setReplyingToMessage(null); 
     }
     
-    // Reset textarea height
+    if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
+      onCancelEditMessage(); 
+    }
+    
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [chat.id, onCancelEditMessage]); // editingMessageDetails is implicitly handled via onCancelEditMessage if it changes
+  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -123,7 +128,7 @@ export function ChatView({
     if (editingMessageDetails) onCancelEditMessage(); 
     setReplyingToMessage(messageToReply);
     setNewMessage(""); // Clear input when starting a reply
-    messageInputRef.current?.focus();
+    messageInputRef.current?.focus(); // Focus on input
   };
   
   const handleCancelEditClick = () => {
