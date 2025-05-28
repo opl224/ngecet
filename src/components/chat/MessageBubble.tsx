@@ -4,7 +4,7 @@
 import type { Message, User, ChatType } from "@/types";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
-import { id as idLocale } from 'date-fns/locale/id'; // Import Indonesian locale
+import { id as idLocale } from 'date-fns/locale/id';
 import { Undo2, MoreVertical, Edit3, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,10 +56,8 @@ export function MessageBubble({
       isCurrentUserMessage
         ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl"
         : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
-      isCurrentUserMessage ? 'ml-auto' : '', // Push to right if current user message
       className
     )}>
-      {/* Sender Name / "Anda" Display */}
       { (isCurrentUserMessage || chatType === 'group') && (
           <div className={cn(
               "text-xs font-semibold mb-0.5",
@@ -68,8 +66,7 @@ export function MessageBubble({
               {isCurrentUserMessage ? (
                   <span className="font-normal text-primary-foreground/70">Anda</span>
               ) : ( 
-                // This part is only reached if chatType === 'group' AND !isCurrentUserMessage
-                <span>{senderName}</span>
+                chatType === 'group' && <span>{senderName}</span> 
               )}
           </div>
       )}
@@ -101,12 +98,12 @@ export function MessageBubble({
       )}>
         {message.isEdited && (
            <span className={cn(
-              "text-[10px] italic mr-2", // Smaller font for "edited"
+              "text-[10px] italic mr-2",
               isCurrentUserMessage ? "text-primary-foreground/70" : "text-muted-foreground/70"
           )}>(edited)</span>
         )}
         <p className={cn(
-            "text-[10px]", // Smaller font for timestamp
+            "text-[10px]",
             isCurrentUserMessage ? "text-primary-foreground/70" : "text-muted-foreground/70"
         )}>
           {format(new Date(message.timestamp), "HH:mm", { locale: idLocale })}
@@ -177,7 +174,7 @@ export function MessageBubble({
   );
 
   const UserAvatarComponent = ({ className }: { className?: string }) => (
-    <Avatar className={cn("h-8 w-8 shrink-0 self-start mt-1", className)}>
+    <Avatar className={cn("h-8 w-8 shrink-0 self-start", className)}>
       <AvatarImage src={senderAvatarUrl} alt={senderName} data-ai-hint="person" />
       <AvatarFallback>{senderInitial}</AvatarFallback>
     </Avatar>
@@ -188,17 +185,17 @@ export function MessageBubble({
       {isCurrentUserMessage ? (
         // My messages
         <div className="flex w-full justify-end items-start group mb-3">
-          <SenderActionButtons className="mr-1 self-center" />
-          <BubbleContentLayout className="mr-2" />
+          <SenderActionButtons className="mr-1 order-1 self-center" />
+          <BubbleContentLayout className="mr-2 order-2" />
           {chatType === 'group' && (
-            <UserAvatarComponent />
+            <UserAvatarComponent className="ml-0 order-3 self-start" />
           )}
         </div>
       ) : (
         // Others' messages
         <div className="flex w-full justify-start items-start group mb-3">
           {chatType === 'group' && (
-            <UserAvatarComponent className="mr-2" />
+            <UserAvatarComponent className="mr-2 self-start" />
           )}
           <BubbleContentLayout className={chatType === 'group' ? "mr-1" : ""} />
           <ReceiverActionButton className="ml-1 self-center" />
@@ -207,5 +204,4 @@ export function MessageBubble({
     </>
   );
 }
-
     
