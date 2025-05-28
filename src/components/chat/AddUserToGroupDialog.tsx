@@ -16,8 +16,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, useFormField } from "@/components/ui/form";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 
@@ -50,6 +50,7 @@ export function AddUserToGroupDialog({
 
   const [suggestions, setSuggestions] = useState<User[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   const activeDirectContacts = useMemo(() => {
     if (!currentUserObj || !chats) return [];
@@ -71,7 +72,12 @@ export function AddUserToGroupDialog({
     const currentInput = form.getValues("userName");
     if (currentInput.trim() === "") {
       setSuggestions([]);
-      setShowSuggestions(false);
+      // Don't hide suggestions immediately if input is focused, allow seeing "no results"
+      if (isInputFocused) {
+        setShowSuggestions(true);
+      } else {
+        setShowSuggestions(false);
+      }
       return;
     }
 
@@ -79,8 +85,8 @@ export function AddUserToGroupDialog({
       contact.name.toLowerCase().includes(currentInput.toLowerCase())
     );
     setSuggestions(filteredSuggestions);
-    setShowSuggestions(filteredSuggestions.length > 0 && currentInput.length > 0);
-  }, [form.watch("userName"), activeDirectContacts, form]);
+    setShowSuggestions(true); // Show suggestions if there's input
+  }, [form.watch("userName"), activeDirectContacts, form, isInputFocused]);
 
 
   function onSubmit(data: AddUserFormValues) {
@@ -90,13 +96,14 @@ export function AddUserToGroupDialog({
     }
     onAddUser(data.userName);
     form.reset();
-    onOpenChange(false);
     setShowSuggestions(false);
+    onOpenChange(false);
   }
 
   const handleSelectSuggestion = (suggestedUser: User) => {
     form.setValue("userName", suggestedUser.name, { shouldValidate: true });
     setShowSuggestions(false);
+    setIsInputFocused(false); // Lose focus after selection
   };
 
   return (
@@ -104,6 +111,7 @@ export function AddUserToGroupDialog({
       if (!open) {
         form.reset();
         setShowSuggestions(false);
+        setIsInputFocused(false);
       }
       onOpenChange(open);
     }}>
@@ -119,38 +127,71 @@ export function AddUserToGroupDialog({
             <FormField
               control={form.control}
               name="userName"
-              render={({ field }) => {
-                const { formItemId, error: fieldError } = useFormField(); // Get RHF item ID and error status
-                return (
-                  <FormItem>
-                    <FormLabel>Nama Pengguna</FormLabel>
-                    <Popover open={showSuggestions && suggestions.length > 0} onOpenChange={setShowSuggestions}>
-                      <PopoverTrigger asChild>
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nama Pengguna</FormLabel>
+                  <Popover open={isInputFocused && showSuggestions} onOpenChange={(open) => {
+                    // This onOpenChange for Popover might not be needed if we control via isInputFocused and showSuggestions
+                    if (!open) {
+                        //setShowSuggestions(false); // Handled by onBlur or selection
+                    }
+                  }}>
+                    <PopoverAnchor asChild>
+                      <FormControl>
                         <Input
-                          id={formItemId} // Assign id for label association
                           placeholder="e.g., Alex Ray"
-                          {...field} // Spread RHF field props (value, onChange, onBlur, etc.)
+                          {...field}
                           autoFocus
                           onFocus={() => {
-                            if (field.value.trim() !== "" && suggestions.length > 0) setShowSuggestions(true);
+                            setIsInputFocused(true);
+                            setShowSuggestions(true); // Show suggestions on focus if input has value
+                             if (form.getValues("userName").trim() !== "") {
+                                const filtered = activeDirectContacts.filter(contact =>
+                                  contact.name.toLowerCase().includes(form.getValues("userName").toLowerCase())
+                                );
+                                setSuggestions(filtered);
+                             } else {
+                               setSuggestions(activeDirectContacts); // Show all active contacts if input is empty on focus
+                             }
+                          }}
+                          onBlur={() => {
+                            // Delay hiding suggestions to allow click on popover content
+                            setTimeout(() => {
+                                if (!form.getFieldState("userName").isDirty) { // Check if popover is not the target
+                                   // setIsInputFocused(false); // this causes popover to close before click
+                                }
+                            }, 150);
                           }}
                           onKeyDown={(e) => {
                             if (e.key === 'Escape') {
                                 setShowSuggestions(false);
+                                setIsInputFocused(false);
+                                (e.target as HTMLElement).blur();
                             }
                           }}
-                          aria-invalid={!!fieldError} // Set aria-invalid based on RHF error state
                         />
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[calc(theme(space.96)-theme(space.12))] p-0" side="bottom" align="start">
+                      </FormControl>
+                    </PopoverAnchor>
+                    {isInputFocused && showSuggestions && (
+                      <PopoverContent
+                        className="w-[calc(theme(space.96)-theme(space.12))] p-0"
+                        side="bottom"
+                        align="start"
+                        onOpenAutoFocus={(e) => e.preventDefault()} // Prevent content from stealing focus
+                        onInteractOutside={() => {
+                           setIsInputFocused(false);
+                           setShowSuggestions(false);
+                        }}
+                      >
                          <ScrollArea className="max-h-40">
-                          {suggestions.length > 0 ? (
+                          {(suggestions.length > 0 || field.value.trim() === "") && activeDirectContacts.length > 0 ? (
                             <div className="py-1">
-                              {suggestions.map(user => (
+                              {(field.value.trim() === "" ? activeDirectContacts : suggestions).map(user => (
                                 <div
                                   key={user.id}
                                   className="px-3 py-2 text-sm hover:bg-accent cursor-pointer"
                                   onClick={() => handleSelectSuggestion(user)}
+                                  onMouseDown={(e) => e.preventDefault()} // Prevent onBlur from firing on Input
                                 >
                                   {user.name}
                                 </div>
@@ -159,16 +200,17 @@ export function AddUserToGroupDialog({
                           ) : (
                              field.value.trim() !== "" && <p className="p-3 text-sm text-muted-foreground">Pengguna tidak ditemukan atau tidak memiliki chat aktif.</p>
                           )}
+                          {activeDirectContacts.length === 0 && <p className="p-3 text-sm text-muted-foreground">Tidak ada kontak aktif untuk disarankan.</p>}
                         </ScrollArea>
                       </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
+                    )}
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { form.reset(); setShowSuggestions(false); onOpenChange(false); }}>Batal</Button>
+              <Button type="button" variant="outline" onClick={() => { form.reset(); setShowSuggestions(false); setIsInputFocused(false); onOpenChange(false); }}>Batal</Button>
               <Button type="submit">Tambah Pengguna</Button>
             </DialogFooter>
           </form>
