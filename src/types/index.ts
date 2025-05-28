@@ -28,14 +28,13 @@ export interface Chat {
   participants: User[];
   lastMessage?: string;
   lastMessageTimestamp?: number;
-  // unreadCount?: number; // Removed: will be calculated dynamically
   avatarUrl?: string; // For group chats or direct chat partner avatar
 
-  // Fields for chat request system
-  pendingApprovalFromUserId?: string; // ID of the user whose approval is awaited
+  pendingApprovalFromUserId?: string; 
   isRejected?: boolean;
-  rejectedByUserId?: string; // ID of the user who rejected
-  requestTimestamp?: number; // Timestamp of the initial request
+  rejectedByUserId?: string; 
+  requestTimestamp?: number; 
 
-  lastReadBy?: Record<string, number>; // ADDED: maps userId to timestamp of last read
+  lastReadBy?: Record<string, number>; 
+  clearedTimestamp?: Record<string, number>; // ADDED: userId -> timestamp when user cleared their view
 }

@@ -37,7 +37,7 @@ interface ChatViewProps {
   onCancelEditMessage: () => void;
   onDeleteMessage: (messageId: string, chatId: string) => void;
   onGoBack?: () => void;
-  onDeleteAllMessagesInChat: (chatId: string) => void; // New prop
+  onDeleteAllMessagesInChat: (chatId: string) => void; 
 }
 
 export function ChatView({
@@ -68,10 +68,10 @@ export function ChatView({
     }
   }, [messages, chat.id]);
 
-  useEffect(() => {
+ useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      if (replyingToMessage) { // If starting to edit, cancel any active reply
+      if (replyingToMessage) { 
         setReplyingToMessage(null);
       }
       setTimeout(() => {
@@ -83,12 +83,10 @@ export function ChatView({
         }
       }, 0);
     } else {
-      // Only clear newMessage if not in reply mode
       if (!replyingToMessage) {
         setNewMessage("");
       }
     }
-     // Auto-adjust height when edit mode ends or on initial load without edit mode
     if (messageInputRef.current && !editingMessageDetails) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -96,25 +94,22 @@ export function ChatView({
 
 
   useEffect(() => {
-    // This effect specifically handles resets when the chat.id (active chat) changes.
-    if (!editingMessageDetails || (editingMessageDetails && editingMessageDetails.chatId !== chat.id)) {
-      if (!replyingToMessage || (replyingToMessage && replyingToMessage.chatId !== chat.id)) {
-        setNewMessage("");
-      }
-    }
-    
-    if (!replyingToMessage || (replyingToMessage && replyingToMessage.chatId !== chat.id)) { 
-        setReplyingToMessage(null); 
-    }
-    
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
       onCancelEditMessage(); 
+    }
+    if (replyingToMessage && replyingToMessage.chatId !== chat.id) { 
+        setReplyingToMessage(null); 
+    }
+    // Only clear newMessage if not in edit mode for the current chat AND not in reply mode for the current chat
+    if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) && 
+        (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
+      setNewMessage("");
     }
     
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [chat.id, onCancelEditMessage]);
+  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -211,6 +206,9 @@ export function ChatView({
       messageInputRef.current.style.height = `${newHeight}px`;
     }
   };
+  
+  const userClearedTimestamp = chat.clearedTimestamp?.[currentUser.id] || 0;
+  const displayedMessages = messages.filter(msg => msg.timestamp > userClearedTimestamp);
 
 
   return (
@@ -251,7 +249,7 @@ export function ChatView({
                 <span className="sr-only">Info Detail Chat</span>
               </Button>
             </SheetTrigger>
-             {isChatActive && onGoBack && ( // Only show dropdown if chat is active and onGoBack is available
+             {isChatActive && ( 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="shrink-0">
@@ -260,10 +258,12 @@ export function ChatView({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={onGoBack}>
-                            <LogOut className="mr-2 h-4 w-4" />
-                            <span>Tutup Chat</span>
-                        </DropdownMenuItem>
+                        {onGoBack && (
+                             <DropdownMenuItem onClick={onGoBack}>
+                                <LogOut className="mr-2 h-4 w-4" />
+                                <span>Tutup Chat</span>
+                            </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                         onClick={() => onDeleteAllMessagesInChat(chat.id)}
                         className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10"
@@ -342,7 +342,7 @@ export function ChatView({
             </div>
         )}
         <div className={cn("p-4 space-y-4 mb-4", chatOverlayMessage && "blur-sm pointer-events-none")}>
-          {messages.map((msg) => (
+          {displayedMessages.map((msg) => (
             <MessageBubble
               key={msg.id}
               message={msg}
@@ -352,12 +352,12 @@ export function ChatView({
               onDeleteMessage={isChatActive ? onDeleteMessage : undefined}
             />
           ))}
-          {messages.length === 0 && isChatActive && (
+          {displayedMessages.length === 0 && isChatActive && (
             <div className="text-center text-muted-foreground py-10">
               No messages yet. Be the first to send one!
             </div>
           )}
-           {messages.length === 0 && !isChatActive && !chatOverlayMessage && ( 
+           {displayedMessages.length === 0 && !isChatActive && !chatOverlayMessage && ( 
             <div className="text-center text-muted-foreground py-10">
               Chat ini tidak aktif.
             </div>

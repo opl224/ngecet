@@ -124,6 +124,7 @@ export default function ChatPage() {
         [currentUser.id]: now, 
         [recipientUser.id]: 0,  
       },
+      clearedTimestamp: {},
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
@@ -232,6 +233,7 @@ export default function ChatPage() {
       lastMessageTimestamp: Date.now(),
       avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`,
       lastReadBy: initialLastReadBy, 
+      clearedTimestamp: {},
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
@@ -304,14 +306,10 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       } else if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected) {
-         // For other active chats, update last message timestamp and a generic last message
-         // This ensures they sort to the top if 'unreadCount' logic relies on it implicitly or if user just wants to see recent activity
         return {
           ...chat,
-          lastMessage: "Aktivitas baru", // Or you could use newMessage.content if you want to show the actual last message content
+          lastMessage: "Aktivitas baru", 
           lastMessageTimestamp: newMessage.timestamp,
-           // lastReadBy for OTHER chats for the CURRENT USER is NOT updated here.
-           // It's only updated when the current user OPENS that other chat.
         };
       }
       return chat;
@@ -348,7 +346,6 @@ export default function ChatPage() {
         return c;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
-    // Toast for delete message removed as per user request
   }, [setAllMessages, setChats]);
 
   const handleRequestEditMessageInInput = useCallback((messageToEdit: Message) => {
@@ -379,7 +376,6 @@ export default function ChatPage() {
       const chatMessages = (prevAllMessages[editingMessageDetails!.chatId] || []).map(msg =>
         msg.id === messageId ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg
       );
-      // Important: Re-sort messages by timestamp after an edit
       const sortedChatMessages = [...chatMessages].sort((a, b) => a.timestamp - b.timestamp);
       
       if (sortedChatMessages.length > 0) {
@@ -401,7 +397,6 @@ export default function ChatPage() {
               lastMessageTimestamp: latestMessageDetailsForChat.timestamp 
             };
           } else {
-             // Fallback if all messages in the chat were deleted and then one was "edited" (though this case is less likely with current UI flow)
              const fallbackMsg = (chat.type === 'direct' && (chat.pendingApprovalFromUserId || chat.isRejected) ? (chat.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan");
              const fallbackTs = (chat.requestTimestamp || chat.lastMessageTimestamp || Date.now());
              return { 
@@ -467,10 +462,11 @@ export default function ChatPage() {
   const handleDeleteAllMessagesInChat = useCallback((chatId: string) => {
     if (!currentUser) return;
 
-    setAllMessages(prev => ({
-      ...prev,
-      [chatId]: [], // Clear messages for this chat
-    }));
+    // Instead of clearing allMessages[chatId], we update the clearedTimestamp for the current user.
+    // setAllMessages(prev => ({
+    //   ...prev,
+    //   [chatId]: [], 
+    // }));
 
     const now = Date.now();
     setChats(prevChats =>
@@ -478,16 +474,20 @@ export default function ChatPage() {
         if (chat.id === chatId) {
           return {
             ...chat,
-            lastMessage: "Semua pesan telah dihapus.",
+            lastMessage: "Semua pesan telah dihapus.", // This message will be shown in ChatItem
             lastMessageTimestamp: now,
             lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: now },
+            clearedTimestamp: { // Set/update the cleared timestamp for the current user
+              ...(chat.clearedTimestamp || {}),
+              [currentUser.id]: now,
+            }
           };
         }
         return chat;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0))
     );
-    toast({ title: "Pesan Dihapus", description: "Semua pesan dalam chat ini telah dihapus." });
-  }, [currentUser, setAllMessages, setChats, toast]);
+    toast({ title: "Tampilan Pesan Dikosongkan", description: "Riwayat pesan sebelumnya dalam chat ini telah disembunyikan untuk Anda." });
+  }, [currentUser, setChats, toast]);
 
 
   if (!isClient) {
