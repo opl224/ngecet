@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -80,7 +80,7 @@ export function ChatView({
      if (messageInputRef.current && !editingMessageDetails) { // Reset tinggi hanya jika tidak dalam mode edit
         messageInputRef.current.style.height = 'auto';
     }
-  }, [editingMessageDetails]);
+  }, [editingMessageDetails, newMessage]); // Tambahkan newMessage sebagai dependensi
 
   // Reset input dan mode reply/edit ketika chat berubah
    useEffect(() => {
@@ -294,7 +294,7 @@ export function ChatView({
               message={msg}
               isCurrentUserMessage={msg.senderId === currentUser.id}
               onReplyMessage={isChatActive ? handleReplyToMessageInView : undefined}
-              onEditMessage={isChatActive ? onRequestEditMessage : undefined} // Menggunakan onRequestEditMessage
+              onEditMessage={isChatActive ? onRequestEditMessage : undefined} 
               onDeleteMessage={isChatActive ? onDeleteMessage : undefined}
             />
           ))}
@@ -383,5 +383,7 @@ export function ChatView({
     </div>
   );
 }
+
+    
 
     
