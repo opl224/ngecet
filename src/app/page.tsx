@@ -307,12 +307,11 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       } else if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected) {
+        // Untuk chat lain yang aktif, kita akan tetap memperbarui lastMessage dan lastMessageTimestamp
+        // agar mereka ter-sortir ke atas dan bisa memicu perhitungan unread count yang benar
         return {
           ...chat,
-          // lastReadBy is NOT updated for other chats here.
-          // This will effectively make them "unread" if the current user is a participant.
-          // We also update lastMessage and timestamp to reflect new activity for sorting
-          lastMessage: "Aktivitas baru", 
+          lastMessage: "Aktivitas baru", // Atau bisa juga konten pesan jika diinginkan
           lastMessageTimestamp: newMessage.timestamp 
         };
       }
@@ -350,7 +349,7 @@ export default function ChatPage() {
         return c;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
-    toast({ title: "Pesan Dihapus", description: "Pesan telah berhasil dihapus.", variant: "destructive" });
+    // toast({ title: "Pesan Dihapus", description: "Pesan telah berhasil dihapus.", variant: "destructive" });
   }, [setAllMessages, setChats, toast]);
 
   const handleRequestEditMessageInInput = useCallback((messageToEdit: Message) => {
