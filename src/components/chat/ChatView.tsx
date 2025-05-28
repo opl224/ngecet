@@ -79,8 +79,8 @@ export function ChatView({
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      if (replyingToMessage) {
-        setReplyingToMessage(null); // Cancel reply mode if edit mode starts
+      if (replyingToMessage) { // if replying and edit starts, cancel reply mode
+        setReplyingToMessage(null);
       }
       setTimeout(() => {
         messageInputRef.current?.focus();
@@ -93,27 +93,25 @@ export function ChatView({
     } else if (!replyingToMessage) { // Only clear if not in reply mode
       setNewMessage("");
     }
-  }, [editingMessageDetails]); // Removed replyingToMessage from dependencies
+  }, [editingMessageDetails, replyingToMessage]);
+
 
   // Effect to handle chat changes (e.g., switching chats)
   useEffect(() => {
-    // Reset input and reply/edit state when chat ID changes
-    // but only if the edit/reply state is not for the current chat
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-      onCancelEditMessage(); // This will set editingMessageDetails to null
+      onCancelEditMessage();
     }
     if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
         setReplyingToMessage(null);
     }
     
-    // If not editing this chat and not replying to a message in this chat, clear input
     if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
         (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
       setNewMessage("");
     }
 
     if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto'; // Reset height
+        messageInputRef.current.style.height = 'auto';
     }
   }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
 
@@ -178,7 +176,7 @@ export function ChatView({
         name: groupName,
         avatarUrl: chat.avatarUrl,
         Icon: Users,
-        description: `${chat.participants?.length || 0} members: ${chat.participants?.map(p => p.name || 'Unknown').join(', ') || ''}`,
+        description: `Group Chat - ${chat.participants?.length || 0} anggota`,
         status: null
       };
     }
@@ -191,7 +189,7 @@ export function ChatView({
     const otherUserName = displayDetails.name === "Direct Chat" ? "pengguna ini" : displayDetails.name;
     if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) {
       chatOverlayMessage = {
-        icon: <SendHorizonal className="w-16 h-16 text-muted-foreground mb-4" />, // Changed from Send
+        icon: <SendHorizonal className="w-16 h-16 text-muted-foreground mb-4" />,
         title: "Menunggu Persetujuan",
         text: `Permintaan chat Anda kepada ${otherUserName} sedang menunggu persetujuan.`,
       };
@@ -232,12 +230,15 @@ export function ChatView({
       const isACurrentUser = a.id === currentUser.id;
       const isBCurrentUser = b.id === currentUser.id;
 
-      if (isAAdmin && !isACurrentUser) return -1; // Admin first
+      if (isAAdmin && !isACurrentUser) return -1; // Admin first (not current user)
       if (isBAdmin && !isBCurrentUser) return 1;
-      if (isAAdmin && isACurrentUser) return -1; // Admin who is current user
+
+      if (isAAdmin && isACurrentUser) return -1; // Current user who is admin (should be first)
       if (isBAdmin && isBCurrentUser) return 1;
+      
       if (isACurrentUser) return -1; // Current user (not admin) next
       if (isBCurrentUser) return 1;
+      
       return (a.name || '').localeCompare(b.name || ''); // Then sort by name
     });
   }, [chat.participants, chat.createdByUserId, currentUser.id]);
@@ -415,7 +416,7 @@ export function ChatView({
                 <p className="text-muted-foreground">{chatOverlayMessage.text}</p>
             </div>
         )}
-        <div className={cn("p-4 space-y-4 mb-4", chatOverlayMessage && "blur-sm pointer-events-none")}>
+        <div className={cn("p-4 space-y-4 mb-4 flex-1", chatOverlayMessage && "blur-sm pointer-events-none")}>
           {displayedMessages.map((msg) => (
             <MessageBubble
               key={msg.id}
@@ -514,3 +515,4 @@ export function ChatView({
     </div>
   );
 }
+
