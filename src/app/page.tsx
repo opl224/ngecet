@@ -886,7 +886,6 @@ export default function ChatPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
                     <InfoIcon className="mr-2 h-4 w-4" />
                     <span>Tentang Aplikasi</span>
