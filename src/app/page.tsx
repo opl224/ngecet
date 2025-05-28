@@ -11,7 +11,6 @@ import { ChatView } from "@/components/chat/ChatView";
 import { WelcomeMessage } from "@/components/chat/WelcomeMessage";
 import { NewDirectChatDialog } from "@/components/chat/NewDirectChatDialog";
 import { NewGroupChatDialog } from "@/components/chat/NewGroupChatDialog";
-// import { EditMessageDialog } from "@/components/chat/EditMessageDialog"; // Dialog ini tidak digunakan lagi
 import {
   SidebarProvider,
   Sidebar,
@@ -22,7 +21,15 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { LogOut, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LogOut, Trash2, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -305,7 +312,7 @@ export default function ChatPage() {
           // lastReadBy is NOT updated for other chats here.
           // This will effectively make them "unread" if the current user is a participant.
           // We also update lastMessage and timestamp to reflect new activity for sorting
-          lastMessage: "Aktivitas baru", // Or use actual content if preferred for all chats
+          lastMessage: "Aktivitas baru", 
           lastMessageTimestamp: newMessage.timestamp 
         };
       }
@@ -488,7 +495,6 @@ export default function ChatPage() {
                     <SidebarTrigger className="md:hidden" />
                 </div>
              </div>
-            {/* Full UserProfileForm removed from here as it's now compact in the header */}
           </SidebarHeader>
           <SidebarContent className="p-0">
             <ChatList
@@ -504,15 +510,27 @@ export default function ChatPage() {
               onDeleteChatPermanently={handleDeleteChatPermanently}
             />
           </SidebarContent>
-          <SidebarFooter className="p-2 border-t border-sidebar-border space-y-1">
-             <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground" onClick={() => handleLogout(false)}>
-                <LogOut className="h-4 w-4" />
-                Logout (Simpan Data)
-             </Button>
-             <Button variant="ghost" className="w-full justify-start gap-2 text-destructive hover:text-destructive-foreground hover:bg-destructive/10 focus:text-destructive-foreground focus:bg-destructive/10" onClick={() => handleLogout(true)}>
-                <Trash2 className="h-4 w-4" />
-                Logout & Hapus Data
-             </Button>
+          <SidebarFooter className="p-2 border-t border-sidebar-border">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground">
+                  <Settings className="h-4 w-4" />
+                  Pengaturan & Logout
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel>Opsi Akun</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleLogout(false)}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Logout (Simpan Data)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>Logout & Hapus Data</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarFooter>
         </Sidebar>
 
@@ -555,8 +573,8 @@ export default function ChatPage() {
         onCreateChat={handleCreateGroupChat}
         currentUserId={currentUser?.id}
       />
-      {/* EditMessageDialog tidak dirender lagi */}
     </SidebarProvider>
   );
 }
     
+
