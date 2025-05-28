@@ -30,11 +30,13 @@ export interface Chat {
   lastMessageTimestamp?: number;
   avatarUrl?: string; // For group chats or direct chat partner avatar
 
-  pendingApprovalFromUserId?: string; 
+  pendingApprovalFromUserId?: string;
   isRejected?: boolean;
-  rejectedByUserId?: string; 
-  requestTimestamp?: number; 
+  rejectedByUserId?: string;
+  requestTimestamp?: number;
 
-  lastReadBy?: Record<string, number>; 
-  clearedTimestamp?: Record<string, number>; // ADDED: userId -> timestamp when user cleared their view
+  lastReadBy?: Record<string, number>;
+  clearedTimestamp?: Record<string, number>;
+  createdByUserId?: string; // ADDED: ID of the user who created the group
 }
+

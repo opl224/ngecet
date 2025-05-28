@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2 } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus } from "lucide-react"; // Added UserPlus
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -37,7 +37,8 @@ interface ChatViewProps {
   onCancelEditMessage: () => void;
   onDeleteMessage: (messageId: string, chatId: string) => void;
   onGoBack?: () => void;
-  onDeleteAllMessagesInChat: (chatId: string) => void; 
+  onDeleteAllMessagesInChat: (chatId: string) => void;
+  onTriggerAddUserToGroup?: () => void; // Added prop
 }
 
 export function ChatView({
@@ -51,7 +52,8 @@ export function ChatView({
   onCancelEditMessage,
   onDeleteMessage,
   onGoBack,
-  onDeleteAllMessagesInChat
+  onDeleteAllMessagesInChat,
+  onTriggerAddUserToGroup, // Destructure prop
 }: ChatViewProps) {
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState("");
@@ -71,8 +73,8 @@ export function ChatView({
  useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      if (replyingToMessage) { 
-        setReplyingToMessage(null);
+      if (replyingToMessage) {
+        setReplyingToMessage(null); // Cancel reply mode if edit mode starts
       }
       setTimeout(() => {
         messageInputRef.current?.focus();
@@ -82,32 +84,32 @@ export function ChatView({
           messageInputRef.current.selectionEnd = len;
         }
       }, 0);
-    } else {
-      if (!replyingToMessage) {
-        setNewMessage("");
-      }
+    } else if (!replyingToMessage) { // Only clear newMessage if not in edit AND not in reply
+      setNewMessage("");
     }
-    if (messageInputRef.current && !editingMessageDetails) {
+    // Auto-adjust height on edit mode start/end or reply mode end
+    if (messageInputRef.current && (!editingMessageDetails || !replyingToMessage)) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [editingMessageDetails, replyingToMessage]);
+  }, [editingMessageDetails, replyingToMessage]); // Added replyingToMessage
 
 
   useEffect(() => {
+    // This effect handles resets when the chat ID changes
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-      onCancelEditMessage(); 
+      onCancelEditMessage();
     }
-    if (replyingToMessage && replyingToMessage.chatId !== chat.id) { 
-        setReplyingToMessage(null); 
+    if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
+        setReplyingToMessage(null);
     }
     // Only clear newMessage if not in edit mode for the current chat AND not in reply mode for the current chat
-    if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) && 
+    if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
         (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
       setNewMessage("");
     }
-    
+
     if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto';
+        messageInputRef.current.style.height = 'auto'; // Reset height for new chat
     }
   }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
 
@@ -124,9 +126,9 @@ export function ChatView({
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
         setReplyingToMessage(null);
-        setNewMessage(""); 
+        setNewMessage("");
       }
-      
+
       if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
       }
@@ -135,12 +137,12 @@ export function ChatView({
 
   const handleReplyToMessageInView = (messageToReply: Message) => {
     if(!isChatActive) return;
-    if (editingMessageDetails) onCancelEditMessage(); 
+    if (editingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); 
+    setNewMessage(""); // Clear input for reply
     setTimeout(() => messageInputRef.current?.focus(), 0);
   };
-  
+
   const handleCancelEditClick = () => {
     onCancelEditMessage();
   };
@@ -202,11 +204,11 @@ export function ChatView({
     setNewMessage(event.target.value);
     if (messageInputRef.current) {
       messageInputRef.current.style.height = 'auto';
-      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120) 
+      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120)
       messageInputRef.current.style.height = `${newHeight}px`;
     }
   };
-  
+
   const userClearedTimestamp = chat.clearedTimestamp?.[currentUser.id] || 0;
   const displayedMessages = messages.filter(msg => msg.timestamp > userClearedTimestamp);
 
@@ -241,7 +243,7 @@ export function ChatView({
               </div>
             </SheetTrigger>
           </div>
-          
+
           <div className="flex items-center space-x-1">
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="shrink-0">
@@ -249,7 +251,7 @@ export function ChatView({
                 <span className="sr-only">Info Detail Chat</span>
               </Button>
             </SheetTrigger>
-             {isChatActive && ( 
+             {isChatActive && (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="shrink-0">
@@ -278,7 +280,7 @@ export function ChatView({
         </header>
 
         <SheetContent>
-          <SheetHeader className="mb-4">
+          <SheetHeader className="mb-4 pb-2 border-b">
             {chat.type === 'direct' ? (
               <div className="flex flex-col items-center text-center space-y-3 pt-4">
                 <Avatar className="h-24 w-24">
@@ -307,9 +309,16 @@ export function ChatView({
               </div>
             )}
           </SheetHeader>
-          <div className="py-2 border-t">
-            <h4 className="font-semibold mb-2 text-sm px-1">Participants</h4>
-            <ScrollArea className="h-[calc(100vh-280px)]">
+          <div className="py-2">
+            <div className="flex justify-between items-center mb-2 px-1">
+                <h4 className="font-semibold text-sm">Participants</h4>
+                {chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerAddUserToGroup && (
+                    <Button variant="outline" size="sm" onClick={onTriggerAddUserToGroup}>
+                        <UserPlus className="mr-2 h-4 w-4" /> Add User
+                    </Button>
+                )}
+            </div>
+            <ScrollArea className="h-[calc(100vh-320px)]"> {/* Adjusted height */}
               <ul className="space-y-1 text-sm">
                 {chat.participants?.map(participantUser => {
                   const isCurrentUserParticipant = participantUser.id === currentUser.id;
@@ -348,7 +357,7 @@ export function ChatView({
               message={msg}
               isCurrentUserMessage={msg.senderId === currentUser.id}
               onReplyMessage={isChatActive ? handleReplyToMessageInView : undefined}
-              onEditMessage={isChatActive ? onRequestEditMessage : undefined} 
+              onEditMessage={isChatActive ? onRequestEditMessage : undefined}
               onDeleteMessage={isChatActive ? onDeleteMessage : undefined}
             />
           ))}
@@ -357,7 +366,7 @@ export function ChatView({
               No messages yet. Be the first to send one!
             </div>
           )}
-           {displayedMessages.length === 0 && !isChatActive && !chatOverlayMessage && ( 
+           {displayedMessages.length === 0 && !isChatActive && !chatOverlayMessage && (
             <div className="text-center text-muted-foreground py-10">
               Chat ini tidak aktif.
             </div>
@@ -386,13 +395,13 @@ export function ChatView({
                 </>
               )}
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-7 w-7 shrink-0" 
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
               onClick={editingMessageDetails ? handleCancelEditClick : () => {
                 setReplyingToMessage(null);
-                setNewMessage(""); 
+                setNewMessage("");
               }}
               aria-label={editingMessageDetails ? "Batalkan Edit" : "Batalkan Balasan"}
             >
@@ -408,18 +417,18 @@ export function ChatView({
             value={newMessage}
             onChange={handleTextareaInput}
             placeholder={
-              !isChatActive 
-                ? "Chat tidak aktif" 
-                : editingMessageDetails 
-                ? "Edit pesan Anda..." 
-                : replyingToMessage 
-                ? `Balas ke ${replyingToMessage.senderName}...` 
+              !isChatActive
+                ? "Chat tidak aktif"
+                : editingMessageDetails
+                ? "Edit pesan Anda..."
+                : replyingToMessage
+                ? `Balas ke ${replyingToMessage.senderName}...`
                 : "Ketik pesan..."
             }
             className="flex-1 bg-input border-border focus-visible:ring-ring resize-none overflow-y-auto"
             aria-label="Message input"
             disabled={!isChatActive}
-            rows={1} 
+            rows={1}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && isChatActive) {
                 e.preventDefault();
@@ -432,7 +441,7 @@ export function ChatView({
                if (e.key === 'Escape' && replyingToMessage) {
                 e.preventDefault();
                 setReplyingToMessage(null);
-                setNewMessage(""); 
+                setNewMessage("");
               }
             }}
           />
@@ -444,6 +453,3 @@ export function ChatView({
     </div>
   );
 }
-    
-
-    
