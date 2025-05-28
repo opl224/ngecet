@@ -83,7 +83,7 @@ export function ChatList({
     if (activeFilter === 'direct' && filteredChats.length === 0) return "Belum ada pesan!";
     if (activeFilter === 'group' && filteredChats.length === 0) return "Belum ada grup!";
     if (visibleChats.length === 0) return "Tambah pesan untuk saling berinteraksi";
-    return "Tidak ada pesan yang cocok dengan filter saat ini.";
+    return "Tidak ada pesan yang cocok.";
   };
 
 

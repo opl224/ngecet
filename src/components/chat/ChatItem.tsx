@@ -74,7 +74,8 @@ export function ChatItem({
       statusTimestamp = chat.requestTimestamp;
     } else if (chat.isRejected) {
       if (chat.rejectedByUserId === currentUser.id) {
-        specialStatusText = `Anda menolak permintaan dari ${name}.`;
+        // Do not set specialStatusText, delete button will be shown
+        specialStatusText = null;
       } else {
         specialStatusText = `${name} menolak permintaan Anda.`;
       }
@@ -85,14 +86,12 @@ export function ChatItem({
 
 
   const handleItemClick = () => {
-    // Check conditions before selecting chat
     const canSelectChat = !(
       (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
       (chat.isRejected && !isActive) ||
       (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive)
     );
 
-    // Also, don't select if it's a pending request for the current user (handled by accept/reject buttons)
     if (chat.pendingApprovalFromUserId === currentUser.id) {
         return;
     }
@@ -119,7 +118,7 @@ export function ChatItem({
   }
 
 
-  const isClickDisabled = 
+  const isClickDisabled =
     (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
     (chat.isRejected && !isActive) ||
     (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive) ||
@@ -134,7 +133,7 @@ export function ChatItem({
         isClickDisabled && "opacity-70 cursor-not-allowed"
       )}
     >
-      <div // Changed from button to div
+      <div
         onClick={!isClickDisabled ? handleItemClick : undefined}
         className={cn(
             "w-full flex items-center space-x-3",
@@ -210,7 +209,7 @@ export function ChatItem({
                 );
               }
               if (statusTimestamp && (!specialStatusText || (showPendingClockIcon && !chat.isRejected && chat.type === 'direct')) && calculatedUnreadCount === 0) {
-                 if (chat.type === 'group' || (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) ) {
+                 if (chat.type === 'group' || (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) || (chat.type === 'direct' && !chat.isRejected && !chat.pendingApprovalFromUserId && !chat.blockedByUser) ) { // Added condition for active direct chats
                      return (
                         <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
                           {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
@@ -242,14 +241,7 @@ export function ChatItem({
       )}
       {chat.type === "direct" && chat.blockedByUser === currentUser.id && (
         <div className="mt-2 flex justify-end space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={(e) => { e.stopPropagation(); onUnblockUser(chat.id); }}
-            className="text-green-600 border-green-500 hover:bg-green-500/10 hover:text-green-700 focus:border-green-600 focus:bg-green-500/10"
-          >
-            <ShieldOff className="mr-1 h-4 w-4" /> Buka Blokir
-          </Button>
+          {/* Tombol Buka Blokir ada di ChatView, bukan di sini */}
         </div>
       )}
     </div>
