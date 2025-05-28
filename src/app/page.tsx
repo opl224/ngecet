@@ -96,7 +96,7 @@ export default function ChatPage() {
       status: "Online"
     };
     setCurrentUser(profile);
-    toast({ title: "Profil Disimpan", description: `Selamat datang, ${name}!` });
+    toast({ title: "Profil Disimpan", description: `Diubah menjadi, ${name}!` });
   }, [setCurrentUser, toast]);
 
   const handleCreateDirectChat = useCallback((recipientName: string) => {

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, MessageSquarePlus, ShieldAlert, ShieldOff, Send } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, MessageSquarePlus, ShieldAlert, ShieldOff, Send, Palette, Sun, Moon, Laptop } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -73,6 +73,7 @@ export function ChatView({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
+  
   const prevChatIdRef = useRef<string | undefined>(undefined);
   const prevEditingMessageDetailsRef = useRef<Message | null>(null);
 
@@ -94,7 +95,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); // Clear input when reply is cancelled
+    setNewMessage(""); 
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -121,7 +122,6 @@ export function ChatView({
   }, [propsEditingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
-  // Effect for handling message editing state
    useEffect(() => {
     if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
       if (messageInputRef.current && messageInputRef.current.value !== propsEditingMessageDetails.content) {
@@ -151,37 +151,36 @@ export function ChatView({
   }, [propsEditingMessageDetails, chat.id, replyingToMessage]);
 
 
- // Effect for handling chat switches (focus, reset input etc.)
   useEffect(() => {
     let chatJustSwitched = false;
     if (prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id) {
       chatJustSwitched = true;
-      if (!propsEditingMessageDetails || propsEditingMessageDetails.chatId !== chat.id) {
-          setNewMessage("");
-          if (messageInputRef.current) {
-            messageInputRef.current.style.height = 'auto';
-          }
+    }
+    prevChatIdRef.current = chat.id;
+
+    if (chatJustSwitched) {
+      const currentEditingForThisChat = propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id;
+      if (!currentEditingForThisChat) {
+        setNewMessage("");
+         if (messageInputRef.current) {
+           messageInputRef.current.style.height = 'auto';
+         }
       }
       setReplyingToMessage(null);
-
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
         onCancelEditMessage();
       }
     }
-    prevChatIdRef.current = chat.id;
-
-    if (isChatActive && messageInputRef.current && chatJustSwitched) {
+    
+    if (isChatActive && messageInputRef.current && (chatJustSwitched || !propsEditingMessageDetails) && !replyingToMessage) {
        setTimeout(() => {
-        const currentEditingForThisChat = propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id;
-        if (!currentEditingForThisChat && !replyingToMessage) {
-          messageInputRef.current?.focus();
-        }
+        messageInputRef.current?.focus();
       }, 50);
     }
+
   }, [chat.id, isChatActive, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage]);
 
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (viewportRef.current) {
       setTimeout(() => {
@@ -193,7 +192,7 @@ export function ChatView({
         }
       }, 100);
     }
-  }, [messages, chat.id]); // Scroll when messages change or chat ID changes
+  }, [messages, chat.id]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -321,9 +320,12 @@ export function ChatView({
 
       if (isACreator && !isBCreator) return -1;
       if (!isACreator && isBCreator) return 1;
+      
+      if (isACreator && isACurrentUser) return -1; // Current user who is also admin comes first
+      if (isBCreator && isBCurrentUser) return 1;
 
-      if (!isACreator && isACurrentUser && !isBCreator && !isBCurrentUser) return -1;
-      if (!isACreator && !isACurrentUser && !isBCreator && isBCurrentUser) return 1;
+      if (isACurrentUser && !isBCurrentUser) return -1; // Current user (non-admin) comes after admin
+      if (!isACurrentUser && isBCurrentUser) return 1;
       
       return (a.name || '').localeCompare(b.name || '');
     });
@@ -439,18 +441,6 @@ export function ChatView({
                       : (chat.blockedByUser === currentUser.id ? "Diblokir oleh Anda" : "Tidak Aktif")}
                   </span>
                 </SheetDescription>
-                <DropdownMenuSeparator /> 
-                {onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
-                    <Button
-                        variant="outline"
-                        className="w-full mt-4"
-                        onClick={() => onStartGroupWithUser && onStartGroupWithUser(displayDetails.otherParticipantObject!)}
-                        disabled={!!chat.blockedByUser}
-                    >
-                        <Users className="mr-2 h-4 w-4" />
-                        Buat grup dengan {displayDetails.name}
-                    </Button>
-                )}
               </div>
             ) : chat.type === 'group' ? ( 
               <div className="text-center pt-4">
@@ -467,6 +457,21 @@ export function ChatView({
               </div>
             ) : null}
           </SheetHeader>
+          
+          {chat.type === 'direct' && onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
+              <div className="py-2">
+                  <DropdownMenuSeparator />
+                  <Button
+                      variant="outline"
+                      className="w-full mt-3"
+                      onClick={() => onStartGroupWithUser(displayDetails.otherParticipantObject!)}
+                      disabled={!!chat.blockedByUser}
+                  >
+                      <Users className="mr-2 h-4 w-4" />
+                      Buat grup dengan {displayDetails.name}
+                  </Button>
+              </div>
+          )}
 
           {chat.type === 'group' && (
             <div className="py-2">
@@ -602,14 +607,14 @@ export function ChatView({
                 <>
                   <PencilLine className="inline h-4 w-4 mr-1.5 text-amber-600" />
                   <span className="font-medium text-amber-700">Mengedit pesan:</span>
-                  <p className="italic truncate text-xs">
+                  <p className="truncate text-xs">
                     "{propsEditingMessageDetails.content.length > 70 ? propsEditingMessageDetails.content.substring(0, 70) + "..." : propsEditingMessageDetails.content}"
                   </p>
                 </>
               ) : replyingToMessage && (
                 <>
                   <span className="font-medium">{replyingToMessage.senderName}</span>
-                  <p className="italic truncate text-xs">
+                  <p className="truncate text-xs">
                     "{replyingToMessage.content.length > 70 ? replyingToMessage.content.substring(0, 70) + "..." : replyingToMessage.content}"
                   </p>
                 </>
@@ -661,6 +666,5 @@ export function ChatView({
     </div>
   );
 }
-
 
     
