@@ -377,7 +377,7 @@ export function ChatView({
                          </Avatar>
                          <div className="truncate">
                             <span className="font-medium truncate">{participantName}</span>
-                            {isCurrentUserParticipant && !isChatAdmin && <span className="text-xs text-muted-foreground"> (Anda)</span>}
+                            {isCurrentUserParticipant && !isChatAdmin && <span className="text-xs text-muted-foreground"> Anda</span>}
                          </div>
                        </div>
                        <div className="flex items-center space-x-2 shrink-0">
