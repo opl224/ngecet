@@ -4,8 +4,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useState, useEffect, useMemo } from "react"; // Added useState, useEffect, useMemo
-import type { User, Chat } from "@/types"; // Added Chat type
+import { useState, useEffect, useMemo } from "react";
+import type { User, Chat } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,10 +16,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Added Popover
-import { ScrollArea } from "@/components/ui/scroll-area"; // Added ScrollArea
-import { useToast } from "@/hooks/use-toast"; // Added useToast
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, useFormField } from "@/components/ui/form";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 
 const addUserFormSchema = z.object({
   userName: z.string().min(2, "Nama pengguna minimal 2 karakter.").max(50, "Nama terlalu panjang.").regex(/^[a-zA-Z0-9\s_']+$/, "Nama hanya boleh berisi huruf, angka, spasi, garis bawah, dan apostrof."),
@@ -31,8 +31,8 @@ interface AddUserToGroupDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onAddUser: (userName: string) => void;
-  chats: Chat[]; // Added chats prop
-  currentUserObj: User | null; // Added currentUserObj prop
+  chats: Chat[];
+  currentUserObj: User | null;
 }
 
 export function AddUserToGroupDialog({
@@ -42,7 +42,7 @@ export function AddUserToGroupDialog({
   chats,
   currentUserObj,
 }: AddUserToGroupDialogProps) {
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast();
   const form = useForm<AddUserFormValues>({
     resolver: zodResolver(addUserFormSchema),
     defaultValues: { userName: "" },
@@ -62,7 +62,6 @@ export function AddUserToGroupDialog({
         }
       }
     });
-    // Ensure unique contacts
     return contacts.filter((contact, index, self) =>
       index === self.findIndex((c) => c.id === contact.id)
     );
@@ -81,7 +80,7 @@ export function AddUserToGroupDialog({
     );
     setSuggestions(filteredSuggestions);
     setShowSuggestions(filteredSuggestions.length > 0 && currentInput.length > 0);
-  }, [form.watch("userName"), activeDirectContacts]);
+  }, [form.watch("userName"), activeDirectContacts, form]);
 
 
   function onSubmit(data: AddUserFormValues) {
@@ -120,15 +119,17 @@ export function AddUserToGroupDialog({
             <FormField
               control={form.control}
               name="userName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nama Pengguna</FormLabel>
-                  <Popover open={showSuggestions && suggestions.length > 0} onOpenChange={setShowSuggestions}>
-                    <PopoverTrigger asChild>
-                      <FormControl>
+              render={({ field }) => {
+                const { formItemId, error: fieldError } = useFormField(); // Get RHF item ID and error status
+                return (
+                  <FormItem>
+                    <FormLabel>Nama Pengguna</FormLabel>
+                    <Popover open={showSuggestions && suggestions.length > 0} onOpenChange={setShowSuggestions}>
+                      <PopoverTrigger asChild>
                         <Input
+                          id={formItemId} // Assign id for label association
                           placeholder="e.g., Alex Ray"
-                          {...field}
+                          {...field} // Spread RHF field props (value, onChange, onBlur, etc.)
                           autoFocus
                           onFocus={() => {
                             if (field.value.trim() !== "" && suggestions.length > 0) setShowSuggestions(true);
@@ -138,32 +139,33 @@ export function AddUserToGroupDialog({
                                 setShowSuggestions(false);
                             }
                           }}
+                          aria-invalid={!!fieldError} // Set aria-invalid based on RHF error state
                         />
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[calc(theme(space.96)-theme(space.12))] p-0" side="bottom" align="start">
-                       <ScrollArea className="max-h-40">
-                        {suggestions.length > 0 ? (
-                          <div className="py-1">
-                            {suggestions.map(user => (
-                              <div
-                                key={user.id}
-                                className="px-3 py-2 text-sm hover:bg-accent cursor-pointer"
-                                onClick={() => handleSelectSuggestion(user)}
-                              >
-                                {user.name}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                           field.value.trim() !== "" && <p className="p-3 text-sm text-muted-foreground">Pengguna tidak ditemukan atau tidak memiliki chat aktif.</p>
-                        )}
-                      </ScrollArea>
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[calc(theme(space.96)-theme(space.12))] p-0" side="bottom" align="start">
+                         <ScrollArea className="max-h-40">
+                          {suggestions.length > 0 ? (
+                            <div className="py-1">
+                              {suggestions.map(user => (
+                                <div
+                                  key={user.id}
+                                  className="px-3 py-2 text-sm hover:bg-accent cursor-pointer"
+                                  onClick={() => handleSelectSuggestion(user)}
+                                >
+                                  {user.name}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                             field.value.trim() !== "" && <p className="p-3 text-sm text-muted-foreground">Pengguna tidak ditemukan atau tidak memiliki chat aktif.</p>
+                          )}
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => { form.reset(); setShowSuggestions(false); onOpenChange(false); }}>Batal</Button>
