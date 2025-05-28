@@ -47,12 +47,13 @@ export function MessageBubble({
   const senderAvatarUrl = senderDetails.avatarUrl;
   const senderInitial = senderDetails.name ? senderDetails.name.substring(0, 1).toUpperCase() : "?";
 
-  const BubbleContentLayout = () => (
+  const BubbleContentLayout = ({ className }: { className?: string }) => (
     <div className={cn(
       "shadow-sm flex flex-col px-3 py-2 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg",
       isCurrentUserMessage
-        ? "bg-primary text-primary-foreground rounded-l-xl rounded-bl-xl rounded-tr-md ml-auto" // ml-auto to push to the right
-        : "bg-card text-card-foreground rounded-r-xl rounded-br-xl rounded-tl-md border"
+        ? "bg-primary text-primary-foreground rounded-l-xl rounded-bl-md rounded-tr-xl"
+        : "bg-card text-card-foreground rounded-r-xl rounded-br-md rounded-tl-xl border",
+      className
     )}>
       <div className={cn(
           "text-xs font-semibold mb-0.5",
@@ -107,9 +108,9 @@ export function MessageBubble({
   );
 
 
-  const SenderActionButtons = () => (
+  const SenderActionButtons = ({ className }: { className?: string }) => (
     onDeleteMessage && onEditMessage && onReplyMessage && (
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0">
+      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0", className)}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-muted-foreground hover:text-primary">
@@ -140,9 +141,9 @@ export function MessageBubble({
     )
   );
 
-  const ReceiverActionButton = () => (
+  const ReceiverActionButton = ({ className }: { className?: string }) => (
     onReplyMessage && (
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0">
+      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0", className)}>
          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-muted-foreground hover:text-primary">
@@ -161,8 +162,8 @@ export function MessageBubble({
     )
   );
 
-  const UserAvatarComponent = () => (
-    <Avatar className="h-8 w-8 shrink-0 self-start mt-1">
+  const UserAvatarComponent = ({ className }: { className?: string }) => (
+    <Avatar className={cn("h-8 w-8 shrink-0 self-start mt-1", className)}>
       <AvatarImage src={senderAvatarUrl} alt={senderName} data-ai-hint="person" />
       <AvatarFallback>{senderInitial}</AvatarFallback>
     </Avatar>
@@ -170,21 +171,21 @@ export function MessageBubble({
 
   return (
     <div className={cn(
-        "flex w-full group mb-3 items-start gap-2.5",
-        isCurrentUserMessage && "justify-end" // This keeps the whole group to the right for sender
+        "flex w-full group mb-3 items-start", // Use items-start for consistent top alignment
+        isCurrentUserMessage ? "justify-end" : "justify-start"
       )}
     >
       {isCurrentUserMessage ? (
         <>
-          <SenderActionButtons />
-          <BubbleContentLayout />
+          <SenderActionButtons className="mr-1 self-center" /> {/* Added self-center for vertical middle align with bubble */}
+          <BubbleContentLayout className="mr-2" />
           <UserAvatarComponent />
         </>
       ) : (
         <>
-          <UserAvatarComponent />
-          <BubbleContentLayout />
-          <ReceiverActionButton />
+          <UserAvatarComponent className="mr-2" />
+          <BubbleContentLayout className="mr-1" />
+          <ReceiverActionButton className="self-center" /> {/* Added self-center for vertical middle align with bubble */}
         </>
       )}
     </div>
