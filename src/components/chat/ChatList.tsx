@@ -2,7 +2,7 @@
 "use client";
 
 import type { Chat, User, Message } from "@/types";
-import { useState } from "react"; // Added useState
+import { useState } from "react";
 import { ChatItem } from "./ChatItem";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,7 @@ export function ChatList({
     })
     .sort((a, b) => {
       const tsA = a.lastMessageTimestamp || a.requestTimestamp || 0;
-      const tsB = b.lastMessageTimestamp || b.requestTimestamp || 0; // Corrected: b.requestTimestamp
+      const tsB = b.lastMessageTimestamp || b.requestTimestamp || 0;
       return tsB - tsA;
     });
 
@@ -73,28 +73,27 @@ export function ChatList({
   };
 
   const filteredChats = sortedChatsWithUnread.filter(chat => {
-    if (!activeFilter) return true; // Show all if no filter is active
+    if (!activeFilter) return true;
     return chat.type === activeFilter;
   });
 
   const getEmptyStateMessage = () => {
-    if (!currentUser) return "Loading user..."; // Should not happen if currentUser check above is effective
-    if (activeFilter === 'direct') return "Belum ada pesan!";
-    if (activeFilter === 'group') return "Belum ada grup!";
+    if (!currentUser) return "Loading user..."; 
+    if (activeFilter === 'direct' && filteredChats.length === 0) return "Belum ada pesan langsung!";
+    if (activeFilter === 'group' && filteredChats.length === 0) return "Belum ada grup!";
     if (visibleChats.length === 0) return "Tambah pesan untuk saling berinteraksi";
-    return "No chats match the current filter."; // Fallback if filters applied to an existing list yield no results
+    return "Tidak ada chat yang cocok dengan filter saat ini."; 
   };
 
 
   return (
     <div className="flex flex-col h-full relative">
       <div className="p-4 border-b border-sidebar-border flex items-center space-x-2">
-        {/* Replaced H3 with filter buttons */}
         <Button
           variant={activeFilter === 'direct' ? 'secondary' : 'ghost'}
           size="sm"
           onClick={() => handleFilterClick('direct')}
-          className="flex-1 h-9" // Added h-9 for consistent height
+          className="flex-1 h-9"
         >
           Pesan
         </Button>
@@ -102,7 +101,7 @@ export function ChatList({
           variant={activeFilter === 'group' ? 'secondary' : 'ghost'}
           size="sm"
           onClick={() => handleFilterClick('group')}
-          className="flex-1 h-9" // Added h-9 for consistent height
+          className="flex-1 h-9"
         >
           Grup
         </Button>
@@ -114,9 +113,9 @@ export function ChatList({
               <ChatItem
                 key={chat.id}
                 chat={chat}
-                currentUser={currentUser!} // currentUser is checked above
+                currentUser={currentUser!} 
                 onSelectChat={onSelectChat}
-                isActive={selectedChatId === chat.id && !chat.pendingApprovalFromUserId && !chat.isRejected}
+                isActive={selectedChatId === chat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser}
                 onAcceptChat={onAcceptChat}
                 onRejectChat={onRejectChat}
                 onDeleteChatPermanently={onDeleteChatPermanently}
@@ -142,11 +141,11 @@ export function ChatList({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="mb-2 w-56">
-            <DropdownMenuItem onClick={onNewDirectChat}>
+            <DropdownMenuItem onClick={onNewDirectChat} className="py-2.5">
               <MessageSquarePlus className="mr-2 h-4 w-4" />
               Buat Pesan Baru
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onNewGroupChat}>
+            <DropdownMenuItem onClick={onNewGroupChat} className="py-2.5">
               <Users className="mr-2 h-4 w-4" />
               Buat Grup Baru
             </DropdownMenuItem>
