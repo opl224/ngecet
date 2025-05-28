@@ -25,10 +25,10 @@ interface ChatViewProps {
   messages: Message[];
   currentUser: User;
   onSendMessage: (content: string, replyToMessage?: Message | null) => void;
-  editingMessageDetails: Message | null; // Pesan yang sedang diedit di input utama
-  onSaveEditedMessage: (messageId: string, newContent: string) => void; // Untuk menyimpan editan
-  onRequestEditMessage: (messageToEdit: Message) => void; // Untuk memulai mode edit
-  onCancelEditMessage: () => void; // Untuk membatalkan mode edit
+  editingMessageDetails: Message | null; 
+  onSaveEditedMessage: (messageId: string, newContent: string) => void; 
+  onRequestEditMessage: (messageToEdit: Message) => void; 
+  onCancelEditMessage: () => void; 
   onDeleteMessage: (messageId: string, chatId: string) => void;
 }
 
@@ -63,32 +63,40 @@ export function ChatView({
       setNewMessage(editingMessageDetails.content);
       setReplyingToMessage(null); // Ensure reply mode is off when edit mode starts
       messageInputRef.current?.focus();
-    } else {
-      // This else block executes when editingMessageDetails becomes null,
-      // i.e., when editing is finished (saved) or cancelled.
-      // We should clear the newMessage input.
+    } else if (!replyingToMessage) { 
+      // Clear newMessage only if not editing AND not replying
       setNewMessage("");
     }
 
-    // Reset textarea height if not in edit mode
     if (messageInputRef.current && !editingMessageDetails) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [editingMessageDetails]); // Dependency only on editingMessageDetails
+  }, [editingMessageDetails, replyingToMessage]);
 
 
-  // Reset input dan mode reply/edit ketika chat berubah
+   // Reset input dan mode reply/edit ketika chat berubah
    useEffect(() => {
-    setNewMessage("");
-    setReplyingToMessage(null);
-    // Jika chat yang dipilih berubah, dan kita sedang dalam mode edit, batalkan mode edit.
+    // Hanya kosongkan newMessage jika tidak sedang dalam mode edit untuk chat saat ini
+    // DAN tidak sedang dalam mode membalas pesan di chat saat ini.
+    if ((!editingMessageDetails || (editingMessageDetails && editingMessageDetails.chatId !== chat.id)) && !replyingToMessage) {
+      setNewMessage("");
+    }
+    
+    // Selalu reset mode balasan ketika chat berubah, kecuali jika kita baru memulai mode edit.
+    if (!editingMessageDetails) {
+      setReplyingToMessage(null);
+    }
+
+    // Jika sedang mengedit pesan dari chat lain, batalkan mode edit.
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
       onCancelEditMessage(); 
     }
+    
+    // Reset tinggi textarea
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [chat.id, onCancelEditMessage, editingMessageDetails]);
+  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -100,18 +108,13 @@ export function ChatView({
     if (newMessage.trim()) {
       if (editingMessageDetails) {
         onSaveEditedMessage(editingMessageDetails.id, newMessage.trim());
-        // `onSaveEditedMessage` di `page.tsx` akan mengatur `editingMessageDetails` menjadi null,
-        // yang akan memicu useEffect di atas untuk membersihkan input.
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
-        setReplyingToMessage(null);
+        setReplyingToMessage(null); // Clear reply state after sending
+        setNewMessage(""); // Clear input after sending regular message
       }
-      // `setNewMessage("")` is handled by the useEffect reacting to `editingMessageDetails` becoming null
-      // or by the an explicit `setNewMessage("")` after sending a regular message.
-      // For sending a regular message, we still need to clear it here:
-      if (!editingMessageDetails) {
-        setNewMessage(""); 
-      }
+      // `setNewMessage("")` for edit mode is handled by useEffect reacting to `editingMessageDetails` becoming null
+      
       if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto'; 
       }
@@ -120,8 +123,9 @@ export function ChatView({
 
   const handleReplyToMessageInView = (messageToReply: Message) => {
     if(!isChatActive) return;
-    if (editingMessageDetails) onCancelEditMessage(); // Batalkan edit jika memulai reply
+    if (editingMessageDetails) onCancelEditMessage(); 
     setReplyingToMessage(messageToReply);
+    setNewMessage(""); // Clear input when starting a reply
     messageInputRef.current?.focus();
   };
   
@@ -209,8 +213,8 @@ export function ChatView({
                 <h2 className="text-lg font-semibold group-hover:underline truncate">{displayDetails.name}</h2>
                 <p className="text-xs text-muted-foreground truncate">
                   {chat.type === 'direct'
-                    ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline")) : "Inactive")
-                    : `Group Chat - ${chat.participants?.length || 0} members`}
+                    ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline")) : "Tidak Aktif")
+                    : `Group Chat - ${chat.participants?.length || 0} anggota`}
                 </p>
               </div>
             </div>
@@ -268,7 +272,7 @@ export function ChatView({
                        </Avatar>
                        <span className="truncate">
                         {participantName}
-                        {isCurrentUserParticipant && " (You)"}
+                        {isCurrentUserParticipant && " (Anda)"}
                       </span>
                     </li>
                   );
@@ -311,7 +315,6 @@ export function ChatView({
         </div>
       </ScrollArea>
 
-      {/* Indikator reply atau edit */}
       {(replyingToMessage || editingMessageDetails) && isChatActive && (
         <div className="p-3 border-t bg-muted/30 text-sm">
           <div className="flex justify-between items-center text-muted-foreground">
@@ -337,7 +340,10 @@ export function ChatView({
               variant="ghost" 
               size="icon" 
               className="h-7 w-7 shrink-0" 
-              onClick={editingMessageDetails ? handleCancelEditClick : () => setReplyingToMessage(null)}
+              onClick={editingMessageDetails ? handleCancelEditClick : () => {
+                setReplyingToMessage(null);
+                setNewMessage(""); // Clear input when cancelling reply from here
+              }}
               aria-label={editingMessageDetails ? "Batalkan Edit" : "Batalkan Balasan"}
             >
               <X className="h-4 w-4" />
@@ -373,6 +379,11 @@ export function ChatView({
                 e.preventDefault();
                 handleCancelEditClick();
               }
+               if (e.key === 'Escape' && replyingToMessage) {
+                e.preventDefault();
+                setReplyingToMessage(null);
+                setNewMessage(""); // Clear input if escaping reply mode
+              }
             }}
           />
           <Button type="submit" size="icon" aria-label="Send message" disabled={!newMessage.trim() || !isChatActive} className="self-end">
@@ -383,9 +394,4 @@ export function ChatView({
     </div>
   );
 }
-
-    
-
-    
-
     
