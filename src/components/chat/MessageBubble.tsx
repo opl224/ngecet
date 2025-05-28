@@ -4,6 +4,7 @@
 import type { Message, User, ChatType } from "@/types";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale/id'; // Import Indonesian locale
 import { Undo2, MoreVertical, Edit3, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +20,7 @@ interface MessageBubbleProps {
   message: Message;
   isCurrentUserMessage: boolean;
   senderDetails: User;
-  chatType: ChatType; // Added chatType
+  chatType: ChatType;
   onReplyMessage?: (message: Message) => void;
   onEditMessage?: (message: Message) => void;
   onDeleteMessage?: (messageId: string, chatId: string) => void;
@@ -29,7 +30,7 @@ export function MessageBubble({
   message,
   isCurrentUserMessage,
   senderDetails,
-  chatType, // Destructure chatType
+  chatType,
   onReplyMessage,
   onEditMessage,
   onDeleteMessage,
@@ -53,8 +54,9 @@ export function MessageBubble({
     <div className={cn(
       "shadow-sm flex flex-col px-3 py-2 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg",
       isCurrentUserMessage
-        ? "bg-primary text-primary-foreground rounded-l-xl rounded-bl-md rounded-tr-xl"
-        : "bg-card text-card-foreground rounded-r-xl rounded-br-md rounded-tl-xl border",
+        ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl"
+        : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
+      isCurrentUserMessage ? 'ml-auto' : '', // Push to right if current user message
       className
     )}>
       {/* Sender Name / "Anda" Display */}
@@ -99,15 +101,15 @@ export function MessageBubble({
       )}>
         {message.isEdited && (
            <span className={cn(
-              "text-xs italic mr-2",
+              "text-[10px] italic mr-2", // Smaller font for "edited"
               isCurrentUserMessage ? "text-primary-foreground/70" : "text-muted-foreground/70"
           )}>(edited)</span>
         )}
         <p className={cn(
-            "text-xs",
+            "text-[10px]", // Smaller font for timestamp
             isCurrentUserMessage ? "text-primary-foreground/70" : "text-muted-foreground/70"
         )}>
-          {format(new Date(message.timestamp), "p")}
+          {format(new Date(message.timestamp), "HH:mm", { locale: idLocale })}
         </p>
       </div>
     </div>
@@ -129,18 +131,24 @@ export function MessageBubble({
               <Undo2 size={14} className="mr-2" />
               Balas
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleEdit}>
-              <Edit3 size={14} className="mr-2" />
-              Edit Pesan
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={handleDelete}
-              className="text-destructive hover:!bg-destructive/10 focus:!bg-destructive/10 focus:!text-destructive"
-            >
-              <Trash2 size={14} className="mr-2" />
-              Hapus
-            </DropdownMenuItem>
+            {isCurrentUserMessage && onEditMessage && (
+              <DropdownMenuItem onClick={handleEdit}>
+                <Edit3 size={14} className="mr-2" />
+                Edit Pesan
+              </DropdownMenuItem>
+            )}
+            {isCurrentUserMessage && onDeleteMessage && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleDelete}
+                  className="text-destructive hover:!bg-destructive/10 focus:!bg-destructive/10 focus:!text-destructive"
+                >
+                  <Trash2 size={14} className="mr-2" />
+                  Hapus
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -181,7 +189,7 @@ export function MessageBubble({
         // My messages
         <div className="flex w-full justify-end items-start group mb-3">
           <SenderActionButtons className="mr-1 self-center" />
-          <BubbleContentLayout className={cn(chatType === 'group' ? "mr-2" : "")} />
+          <BubbleContentLayout className="mr-2" />
           {chatType === 'group' && (
             <UserAvatarComponent />
           )}
@@ -192,11 +200,12 @@ export function MessageBubble({
           {chatType === 'group' && (
             <UserAvatarComponent className="mr-2" />
           )}
-          <BubbleContentLayout className="mr-1" />
-          <ReceiverActionButton className="self-center" />
+          <BubbleContentLayout className={chatType === 'group' ? "mr-1" : ""} />
+          <ReceiverActionButton className="ml-1 self-center" />
         </div>
       )}
     </>
   );
 }
 
+    
