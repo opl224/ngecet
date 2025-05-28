@@ -143,8 +143,11 @@ export function ChatView({
         }
       }, 50);
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
-      if (messageInputRef.current && !replyingToMessage ) {
-          messageInputRef.current.style.height = 'auto';
+      // This condition might be part of what clears the input when it shouldn't.
+      // We clear the input mainly when the chat ID changes, handled in the next useEffect.
+      // If not replying, reset height.
+      if (messageInputRef.current && !replyingToMessage) {
+        messageInputRef.current.style.height = 'auto';
       }
     }
     prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
@@ -152,10 +155,7 @@ export function ChatView({
 
 
   useEffect(() => {
-    let chatJustSwitched = false;
-    if (prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id) {
-      chatJustSwitched = true;
-    }
+    const chatJustSwitched = prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id;
     
     if (chatJustSwitched) {
       setNewMessage("");
@@ -163,12 +163,15 @@ export function ChatView({
         messageInputRef.current.style.height = 'auto';
       }
       setReplyingToMessage(null);
+      // If editing message details belong to the PREVIOUS chat, cancel edit.
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
         onCancelEditMessage(); 
       }
     }
     
-    if (isChatActive && messageInputRef.current && (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
+    // Focus input if chat is active, just switched, and not starting an edit for THIS chat, and not replying.
+    if (isChatActive && messageInputRef.current && 
+        (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
       setTimeout(() => {
         messageInputRef.current?.focus();
       }, 50); 
@@ -217,7 +220,7 @@ export function ChatView({
     if(!isChatActive) return;
     if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage("");
+    setNewMessage(""); // Clear input when starting a reply
     setTimeout(() => messageInputRef.current?.focus(), 50);
   }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
@@ -318,11 +321,12 @@ export function ChatView({
       if (isACreator && !isBCreator) return -1;
       if (!isACreator && isBCreator) return 1;
       
-      if (isACreator && isACurrentUser) return -1; 
-      if (isBCreator && isBCurrentUser) return 1;
-
-      if (isACurrentUser && !isBCurrentUser) return -1; 
-      if (!isACurrentUser && isBCurrentUser) return 1;
+      if (isACurrentUser && !isBCurrentUser) {
+        return isACreator ? -1 : 1; // If current user is also creator, they still come first among non-creators
+      }
+      if (!isACurrentUser && isBCurrentUser) {
+        return isBCreator ? 1 : -1;
+      }
       
       return (a.name || '').localeCompare(b.name || '');
     });
@@ -363,12 +367,6 @@ export function ChatView({
           </div>
 
           <div className="flex items-center space-x-1">
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0 ml-2">
-                <Info className="h-5 w-5" />
-                <span className="sr-only">Info Detail Chat</span>
-              </Button>
-            </SheetTrigger>
              {isChatActive && (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -449,7 +447,7 @@ export function ChatView({
                 </Avatar>
                 <SheetTitle className="text-2xl">{displayDetails.name}</SheetTitle>
                  <SheetDescription className="text-base">
-                  {`Group Chat - ${chat.participants?.length || 0} anggota`}
+                   {`Group Chat - ${chat.participants?.length || 0} anggota`}
                 </SheetDescription>
               </div>
             ) : null}
@@ -663,3 +661,4 @@ export function ChatView({
     </div>
   );
 }
+
