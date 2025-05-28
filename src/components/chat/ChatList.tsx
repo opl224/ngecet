@@ -5,7 +5,7 @@ import type { Chat, User, Message } from "@/types";
 import { ChatItem } from "./ChatItem";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Users, MessageSquarePlus } from "lucide-react";
+import { Plus, MessageSquarePlus, Users } from "lucide-react"; // Added Plus
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +16,7 @@ import {
 interface ChatListProps {
   chats: Chat[];
   currentUser: User | null;
-  allMessages: Record<string, Message[]>; // Added to calculate unread counts
+  allMessages: Record<string, Message[]>;
   onSelectChat: (chat: Chat) => void;
   selectedChatId?: string | null;
   onNewDirectChat: () => void;
@@ -62,27 +62,10 @@ export function ChatList({
     });
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative"> {/* Added relative */}
       <div className="p-4 border-b border-sidebar-border flex justify-between items-center">
         <h3 className="text-lg font-semibold text-sidebar-foreground">Chats</h3>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-sidebar-foreground/70 hover:text-sidebar-foreground">
-              <PlusCircle className="h-5 w-5" />
-              <span className="sr-only">New Chat</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onNewDirectChat}>
-              <MessageSquarePlus className="mr-2 h-4 w-4" />
-              New Direct Message
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onNewGroupChat}>
-              <Users className="mr-2 h-4 w-4" />
-              New Group Chat
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* DropdownMenu for new chat removed from here */}
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-1">
@@ -90,7 +73,7 @@ export function ChatList({
             sortedChatsWithUnread.map((chat) => (
               <ChatItem
                 key={chat.id}
-                chat={chat} // This chat object now includes calculatedUnreadCount
+                chat={chat}
                 currentUser={currentUser}
                 onSelectChat={onSelectChat}
                 isActive={selectedChatId === chat.id && !chat.pendingApprovalFromUserId && !chat.isRejected}
@@ -106,6 +89,30 @@ export function ChatList({
           )}
         </div>
       </ScrollArea>
+      <div className="absolute bottom-6 right-6 z-10">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="default"
+              size="icon"
+              className="rounded-full h-14 w-14 shadow-lg"
+              aria-label="New Chat"
+            >
+              <Plus className="h-6 w-6" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top" className="mb-2 w-56">
+            <DropdownMenuItem onClick={onNewDirectChat}>
+              <MessageSquarePlus className="mr-2 h-4 w-4" />
+              New Direct Message
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onNewGroupChat}>
+              <Users className="mr-2 h-4 w-4" />
+              New Group Chat
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 }
