@@ -111,8 +111,8 @@ export default function ChatPage() {
       lastMessage: "Permintaan chat dikirim...",
       lastMessageTimestamp: now,
       lastReadBy: {
-        [currentUser.id]: now, // Creator has "read" it
-        [recipientUser.id]: 0,  // Recipient hasn't read the request yet
+        [currentUser.id]: now, 
+        [recipientUser.id]: 0,  
       },
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
@@ -138,7 +138,7 @@ export default function ChatPage() {
             lastMessageTimestamp: now,
             lastReadBy: {
               ...(chat.lastReadBy || {}),
-              [currentUser!.id]: now, // Accepter has "read" the acceptance
+              [currentUser!.id]: now, 
             },
           };
         }
@@ -172,7 +172,7 @@ export default function ChatPage() {
             lastMessageTimestamp: now,
             lastReadBy: {
               ...(chat.lastReadBy || {}),
-              [currentUser!.id]: now, // Rejecter has "processed" this
+              [currentUser!.id]: now, 
             },
           };
         }
@@ -211,7 +211,7 @@ export default function ChatPage() {
       if (!allParticipantUsers.find(p => p.id === memberUser.id)) {
         allParticipantUsers.push(memberUser);
       }
-      initialLastReadBy[memberUser.id] = 0; // Other members haven't read yet
+      initialLastReadBy[memberUser.id] = 0; 
     });
 
     const newChat: Chat = {
@@ -243,7 +243,6 @@ export default function ChatPage() {
     }
 
     setSelectedChat(chat);
-    // Update lastReadBy for the current user for this chat
     if (currentUser) {
       setChats(prevChats =>
         prevChats.map(c =>
@@ -292,8 +291,6 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       } else if (!chat.pendingApprovalFromUserId && !chat.isRejected) {
-        // Update last message details for sorting/display for other active chats.
-        // Unread count is calculated dynamically by ChatList.
         return {
           ...chat,
           lastMessage: "Aktivitas baru", 
@@ -305,70 +302,103 @@ export default function ChatPage() {
   }, [currentUser, selectedChat, setAllMessages, setChats, toast]);
 
   const handleDeleteMessage = useCallback((messageId: string, chatId: string) => {
+    let newLastMessageContent: string | undefined = undefined;
+    let newLastMessageTimestamp: number | undefined = undefined;
+
     setAllMessages(prev => {
       const chatMessages = (prev[chatId] || []).filter(msg => msg.id !== messageId);
-      return { ...prev, [chatId]: chatMessages };
+      const updatedChatMessages = { ...prev, [chatId]: chatMessages };
+      
+      const lastMessageInChat = chatMessages.length > 0 ? chatMessages[chatMessages.length - 1] : null;
+      if (lastMessageInChat) {
+        newLastMessageContent = lastMessageInChat.content;
+        newLastMessageTimestamp = lastMessageInChat.timestamp;
+      }
+      return updatedChatMessages;
     });
 
     setChats(prevChats => {
-      const chatMessages = (allMessages[chatId] || []).filter(msg => msg.id !== messageId);
-      const lastMessageInChat = chatMessages.length > 0 ? chatMessages[chatMessages.length - 1] : null;
-
-      return prevChats.map(c =>
-        c.id === chatId
-          ? {
-              ...c,
-              lastMessage: lastMessageInChat ? lastMessageInChat.content : (c.type === 'direct' && (c.pendingApprovalFromUserId || c.isRejected) ? (c.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan"),
-              lastMessageTimestamp: lastMessageInChat ? lastMessageInChat.timestamp : (c.requestTimestamp || c.lastMessageTimestamp || Date.now()),
-            }
-          : c
-      ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
+      return prevChats.map(c => {
+        if (c.id === chatId) {
+          const fallbackLastMessage = (c.type === 'direct' && (c.pendingApprovalFromUserId || c.isRejected) ? (c.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan");
+          const fallbackTimestamp = (c.requestTimestamp || c.lastMessageTimestamp || Date.now());
+          return {
+            ...c,
+            lastMessage: newLastMessageContent !== undefined ? newLastMessageContent : fallbackLastMessage,
+            lastMessageTimestamp: newLastMessageTimestamp !== undefined ? newLastMessageTimestamp : fallbackTimestamp,
+          };
+        }
+        return c;
+      }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
     toast({ title: "Pesan Dihapus", description: "Pesan telah berhasil dihapus.", variant: "destructive" });
-  }, [setAllMessages, setChats, allMessages, toast]);
+  }, [setAllMessages, setChats, toast]);
 
   const handleEditMessage = useCallback((messageToEdit: Message) => {
     if (!currentUser || messageToEdit.senderId !== currentUser.id) {
       toast({ title: "Gagal Edit", description: "Anda hanya bisa mengedit pesan Anda sendiri.", variant: "destructive" });
       return;
     }
-    const newContent = window.prompt("Edit pesan Anda:", messageToEdit.content);
-    if (newContent !== null && newContent.trim() !== "" && newContent !== messageToEdit.content) {
-      const editedTimestamp = Date.now();
-      setAllMessages(prev => {
-        const chatMessages = (prev[messageToEdit.chatId] || []).map(msg =>
-          msg.id === messageToEdit.id ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg
-        );
-        return { ...prev, [messageToEdit.chatId]: chatMessages.sort((a,b) => a.timestamp - b.timestamp) };
-      });
-      
-      setChats(prevChats => prevChats.map(c => {
-        if (c.id === messageToEdit.chatId) {
-            const currentChatMessages = (allMessages[messageToEdit.chatId] || [])
-                                           .map(msg => msg.id === messageToEdit.id ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg)
-                                           .sort((a,b) => a.timestamp - b.timestamp);
-            const lastMsg = currentChatMessages.length > 0 ? currentChatMessages[currentChatMessages.length -1] : null;
-            
-            if (lastMsg?.id === messageToEdit.id) { 
-                 return { ...c, lastMessage: newContent, lastMessageTimestamp: editedTimestamp };
-            } else if (lastMsg) { 
-                 return { ...c, lastMessage: lastMsg.content, lastMessageTimestamp: lastMsg.timestamp };
-            } else { 
-                 return { ...c, lastMessage: (c.type === 'direct' && (c.pendingApprovalFromUserId || c.isRejected) ? (c.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan"), lastMessageTimestamp: (c.requestTimestamp || c.lastMessageTimestamp || Date.now()) };
-            }
-        }
-        return c;
-      }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
+    const newContentPrompt = window.prompt("Edit pesan Anda:", messageToEdit.content);
 
-      toast({ title: "Pesan Diedit", description: "Pesan Anda telah berhasil diperbarui." });
-    } else if (newContent === messageToEdit.content) {
-      // No change
-    } else if (newContent !== null && newContent.trim() === "") { 
-      toast({ title: "Edit Gagal", description: "Konten pesan tidak boleh kosong.", variant: "destructive" });
-    } else if (newContent === null) { 
+    if (newContentPrompt === null) {
       toast({ title: "Edit Dibatalkan", description: "Tidak ada perubahan pada pesan.", variant: "default" });
+      return;
     }
-  }, [currentUser, setAllMessages, setChats, allMessages, toast]);
+    if (newContentPrompt.trim() === "") {
+      toast({ title: "Edit Gagal", description: "Konten pesan tidak boleh kosong.", variant: "destructive" });
+      return;
+    }
+    if (newContentPrompt === messageToEdit.content) {
+      // No change, do nothing or provide feedback
+      return;
+    }
+
+    const newContent = newContentPrompt;
+    const editedTimestamp = Date.now();
+    
+    let latestMessageDetailsForChat: { content: string; timestamp: number } | null = null;
+
+    setAllMessages(prevAllMessages => {
+      const chatMessages = (prevAllMessages[messageToEdit.chatId] || []).map(msg =>
+        msg.id === messageToEdit.id ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg
+      );
+      const sortedChatMessages = [...chatMessages].sort((a, b) => a.timestamp - b.timestamp);
+      
+      if (sortedChatMessages.length > 0) {
+        const lastMsg = sortedChatMessages[sortedChatMessages.length - 1];
+        latestMessageDetailsForChat = { content: lastMsg.content, timestamp: lastMsg.timestamp };
+      } else {
+        latestMessageDetailsForChat = null;
+      }
+      return { ...prevAllMessages, [messageToEdit.chatId]: sortedChatMessages };
+    });
+      
+    setChats(prevChats => {
+      const updatedChats = prevChats.map(chat => {
+        if (chat.id === messageToEdit.chatId) {
+          if (latestMessageDetailsForChat) {
+            return { 
+              ...chat, 
+              lastMessage: latestMessageDetailsForChat.content, 
+              lastMessageTimestamp: latestMessageDetailsForChat.timestamp 
+            };
+          } else {
+             // Fallback if chat becomes empty (shouldn't happen on edit but good for robustness)
+             return { 
+               ...chat, 
+               lastMessage: (chat.type === 'direct' && (chat.pendingApprovalFromUserId || chat.isRejected) ? (chat.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan"), 
+               lastMessageTimestamp: (chat.requestTimestamp || chat.lastMessageTimestamp || Date.now()) 
+             };
+          }
+        }
+        return chat;
+      });
+      return updatedChats.sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
+    });
+
+    toast({ title: "Pesan Diedit", description: "Pesan Anda telah berhasil diperbarui." });
+  }, [currentUser, setAllMessages, setChats, toast]);
 
   const handleDeleteChatPermanently = useCallback((chatId: string) => {
     setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
@@ -468,7 +498,7 @@ export default function ChatPage() {
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="flex-1">
+        <SidebarInset className="flex-1 flex flex-col">
            <div className="md:hidden p-2 border-b flex items-center">
              <SidebarTrigger />
              {selectedChat && <span className="ml-2 font-semibold truncate max-w-[calc(100vw-100px)]">
