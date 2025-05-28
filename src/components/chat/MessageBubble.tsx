@@ -84,17 +84,12 @@ export function MessageBubble({
         : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
       bubbleClassName
     )}>
-      {(isCurrentUserMessage && chatType === 'group') && (
+      {((isCurrentUserMessage && chatType === 'group') || (!isCurrentUserMessage && chatType === 'group')) && (
           <div className={cn(
               "text-xs font-semibold mb-0.5",
               isCurrentUserMessage ? "text-primary-foreground/90" : "text-accent-foreground"
           )}>
-              Anda
-          </div>
-      )}
-       {(!isCurrentUserMessage && chatType === 'group') && (
-          <div className={cn("text-xs font-semibold mb-0.5 text-accent-foreground")}>
-              <span>{senderName}</span>
+              <span>{isCurrentUserMessage ? "Anda" : senderName}</span>
           </div>
       )}
 
@@ -205,26 +200,28 @@ export function MessageBubble({
   );
 
   const UserAvatarComponent = ({ className }: { className?: string }) => (
-    <Avatar className={cn("h-8 w-8 shrink-0 self-start", className)}>
-      <AvatarImage src={senderAvatarUrl} alt={senderName} data-ai-hint="person" />
-      <AvatarFallback>{senderInitial}</AvatarFallback>
-    </Avatar>
+    chatType === 'group' ? (
+      <Avatar className={cn("h-8 w-8 shrink-0 self-start", className)}>
+        <AvatarImage src={senderAvatarUrl} alt={senderName} data-ai-hint="person" />
+        <AvatarFallback>{senderInitial}</AvatarFallback>
+      </Avatar>
+    ) : null
   );
 
   return (
     <>
       {isCurrentUserMessage ? (
-        // My messages
+        // My messages (Outgoing)
         <div className="flex w-full justify-end items-start group mb-3">
-          <SenderActionButtons className="mr-1 order-1 self-center" />
-          <BubbleContentLayout className="mr-2 order-2" />
-          {chatType === 'group' && <UserAvatarComponent className="order-3 self-start" />}
+          <SenderActionButtons className="order-1 mr-1 self-center" />
+          <BubbleContentLayout className="order-2 mr-2" />
+          <UserAvatarComponent className="order-3 self-start" />
         </div>
       ) : (
         // Others' messages (Incoming)
         <div className="flex w-full justify-start items-start group mb-3">
-          {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
-          <BubbleContentLayout className={cn("mr-1", chatType === 'direct' && 'ml-0')} />
+          <UserAvatarComponent className="mr-2 self-start" />
+          <BubbleContentLayout className="mr-1"/>
           <ReceiverActionButton className="ml-1 self-center" />
         </div>
       )}
