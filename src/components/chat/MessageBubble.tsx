@@ -51,7 +51,7 @@ export function MessageBubble({
     <div className={cn(
       "shadow-sm flex flex-col px-3 py-2 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg",
       isCurrentUserMessage
-        ? "bg-primary text-primary-foreground rounded-l-xl rounded-bl-xl rounded-tr-md"
+        ? "bg-primary text-primary-foreground rounded-l-xl rounded-bl-xl rounded-tr-md ml-auto" // ml-auto to push to the right
         : "bg-card text-card-foreground rounded-r-xl rounded-br-xl rounded-tl-md border"
     )}>
       <div className={cn(
@@ -109,7 +109,7 @@ export function MessageBubble({
 
   const SenderActionButtons = () => (
     onDeleteMessage && onEditMessage && onReplyMessage && (
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity self-start shrink-0"> {/* Changed self-center to self-start */}
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-muted-foreground hover:text-primary">
@@ -142,7 +142,7 @@ export function MessageBubble({
 
   const ReceiverActionButton = () => (
     onReplyMessage && (
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity self-start shrink-0"> {/* Changed self-center to self-start */}
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0">
          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-muted-foreground hover:text-primary">
@@ -171,7 +171,7 @@ export function MessageBubble({
   return (
     <div className={cn(
         "flex w-full group mb-3 items-start gap-2.5",
-        isCurrentUserMessage && "justify-end"
+        isCurrentUserMessage && "justify-end" // This keeps the whole group to the right for sender
       )}
     >
       {isCurrentUserMessage ? (
