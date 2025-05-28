@@ -60,7 +60,7 @@ export function MessageBubble({
           isCurrentUserMessage ? "text-primary-foreground/90" : "text-primary"
       )}>
           {isCurrentUserMessage ? (
-            <span className="font-normal text-primary-foreground/70">(Anda)</span>
+            <span className="font-normal text-primary-foreground/70">Anda</span>
           ) : (
             <span>{senderName}</span>
           )}
@@ -171,21 +171,21 @@ export function MessageBubble({
 
   return (
     <div className={cn(
-        "flex w-full group mb-3 items-start", // Use items-start for consistent top alignment
+        "flex w-full group mb-3 items-start", 
         isCurrentUserMessage ? "justify-end" : "justify-start"
       )}
     >
       {isCurrentUserMessage ? (
         <>
-          <SenderActionButtons className="mr-1 self-center" /> {/* Added self-center for vertical middle align with bubble */}
+          <SenderActionButtons className="mr-1 self-center" />
           <BubbleContentLayout className="mr-2" />
           <UserAvatarComponent />
         </>
       ) : (
         <>
           <UserAvatarComponent className="mr-2" />
-          <BubbleContentLayout className="mr-1" />
-          <ReceiverActionButton className="self-center" /> {/* Added self-center for vertical middle align with bubble */}
+          <BubbleContentLayout className="mr-1"/>
+          <ReceiverActionButton className="self-center" />
         </>
       )}
     </div>
