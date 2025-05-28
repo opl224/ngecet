@@ -846,7 +846,7 @@ export default function ChatPage() {
              <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
                 <div className="flex items-center gap-2 shrink-0 mr-2">
                     <AppLogo className="h-7 w-7 text-primary" />
-                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground">Ngecet</h1>
+                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">Ngecet</h1>
                 </div>
                 <div className="flex items-center gap-2">
                     {currentUser && (
