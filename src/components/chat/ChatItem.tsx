@@ -61,7 +61,7 @@ export function ChatItem({
 
   if (chat.type === "direct") {
     if (chat.blockedByUser === currentUser.id) {
-        specialStatusText = `Anda memblokir ${name}.`;
+        specialStatusText = null; // Deskripsi dihapus
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
         specialStatusText = `${name} mungkin memblokir Anda.`;
@@ -69,12 +69,13 @@ export function ChatItem({
     } else if (chat.pendingApprovalFromUserId === currentUser.id) {
       statusTimestamp = chat.requestTimestamp;
       showAcceptRejectActions = true;
+      specialStatusText = "Permintaan chat baru";
     } else if (chat.pendingApprovalFromUserId) {
       showPendingClockIcon = true;
       statusTimestamp = chat.requestTimestamp;
     } else if (chat.isRejected) {
       if (chat.rejectedByUserId === currentUser.id) {
-        specialStatusText = null; // Tidak ada teks khusus jika Anda yang menolak, hanya ikon hapus
+        specialStatusText = null; 
       } else {
         specialStatusText = `${name} menolak permintaan Anda.`;
       }
@@ -87,16 +88,14 @@ export function ChatItem({
   const handleItemClick = () => {
     const canSelectChat = !(
       (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
-      // (chat.isRejected && !isActive) || // Chat yang ditolak bisa dipilih untuk dihapus
       (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive)
     );
 
     if (chat.pendingApprovalFromUserId === currentUser.id) {
-        // Jika permintaan menunggu persetujuan Anda, jangan pilih chat, biarkan tombol Terima/Tolak yang bekerja
         return;
     }
 
-    if (canSelectChat || (chat.isRejected && !isActive)) { // Memungkinkan memilih chat yang ditolak
+    if (canSelectChat || (chat.isRejected && !isActive)) { 
       onSelectChat(chat);
     }
   };
@@ -107,8 +106,6 @@ export function ChatItem({
   let statusMessage: React.ReactNode = null;
   if (specialStatusText) {
     statusMessage = specialStatusText;
-  } else if (chat.type === "direct" && chat.pendingApprovalFromUserId === currentUser.id) {
-    statusMessage = "Permintaan chat baru";
   } else if (showPendingClockIcon && !chat.isRejected) {
     // No status message needed if clock icon is shown for pending sent requests
   } else if (chat.type === "group" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
@@ -120,7 +117,6 @@ export function ChatItem({
 
   const isClickDisabled =
     (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
-    // (chat.isRejected && !isActive) || // Tetap bisa diklik untuk membuka ChatView (nanti ada overlay)
     (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive) ||
     (chat.pendingApprovalFromUserId === currentUser.id);
 
@@ -130,7 +126,7 @@ export function ChatItem({
       className={cn(
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        isClickDisabled && !showAcceptRejectActions && "opacity-70 cursor-not-allowed" // Tombol terima/tolak harus tetap bisa diklik
+        isClickDisabled && !showAcceptRejectActions && "opacity-70 cursor-not-allowed" 
       )}
     >
       <div
@@ -164,7 +160,7 @@ export function ChatItem({
               </h4>
             </div>
             {(() => {
-              if (showDeleteAction) { // Jika chat ditolak
+              if (showDeleteAction) { 
                 return (
                   <Button
                     size="icon"
@@ -221,7 +217,7 @@ export function ChatItem({
                   </div>
                 );
               }
-              if (statusTimestamp && (!specialStatusText || (showPendingClockIcon && !chat.isRejected && chat.type === 'direct')) && calculatedUnreadCount === 0) {
+              if (statusTimestamp && (!specialStatusText || (showPendingClockIcon && !chat.isRejected && chat.type === 'direct')) && calculatedUnreadCount === 0 && !chat.blockedByUser && !chat.isRejected) {
                  if (chat.type === 'group' || (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) || (chat.type === 'direct' && !chat.isRejected && !chat.pendingApprovalFromUserId && !chat.blockedByUser) ) {
                      return (
                         <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
@@ -240,20 +236,7 @@ export function ChatItem({
           )}
         </div>
       </div>
-      {/* Tombol Hapus Chat lama dihilangkan dari sini */}
-      {chat.type === "direct" && chat.blockedByUser === currentUser.id && (
-         <div className="mt-2 flex justify-end space-x-2">
-           {/* Tombol Buka Blokir ada di ChatView, atau bisa ditambahkan di sini jika diinginkan */}
-            <Button
-                size="sm"
-                variant="outline"
-                className="text-green-600 border-green-500 hover:bg-green-500/10 hover:text-green-700 focus:border-green-600 focus:bg-green-500/10"
-                onClick={(e) => { e.stopPropagation(); onUnblockUser(chat.id); }}
-            >
-                <ShieldOff className="mr-1 h-4 w-4" /> Buka Blokir
-            </Button>
-        </div>
-      )}
+      {/* Tombol Buka Blokir dihapus dari sini */}
     </div>
   );
 }

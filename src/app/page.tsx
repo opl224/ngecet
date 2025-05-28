@@ -96,7 +96,6 @@ export default function ChatPage() {
       status: "Online"
     };
     setCurrentUser(profile);
-    toast({ title: "Profil Disimpan", description: `Diubah menjadi, ${name}!` });
   }, [setCurrentUser, toast]);
 
   const handleCreateDirectChat = useCallback((recipientName: string) => {
@@ -554,7 +553,6 @@ export default function ChatPage() {
     if (selectedChat?.id === chatId) {
       setSelectedChat(null);
     }
-    toast({ title: "Chat Dihapus", description: "Chat telah dihapus secara permanen.", variant: "destructive" });
   }, [setChats, setAllMessages, selectedChat?.id, toast]);
 
   const handleLogout = (clearData: boolean) => {

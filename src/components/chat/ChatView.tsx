@@ -582,7 +582,6 @@ export function ChatView({
                 className="mb-4 rounded-lg object-contain"
                 data-ai-hint="empty chat"
               />
-              <p className="text-sm">Belum ada pesan. Jadilah yang pertama mengirim!</p>
             </div>
           )}
            {displayedMessages.length === 0 && !isChatActive && !chatOverlayMessage && (

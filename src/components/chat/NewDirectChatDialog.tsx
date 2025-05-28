@@ -52,10 +52,7 @@ export function NewDirectChatDialog({ isOpen, onOpenChange, onCreateChat, curren
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>New Direct Message</DialogTitle>
-          <DialogDescription>
-            Enter the name of the user you want to message.
-          </DialogDescription>
+          <DialogTitle>Tambah pesan baru</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -64,17 +61,17 @@ export function NewDirectChatDialog({ isOpen, onOpenChange, onCreateChat, curren
               name="recipientName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Recipient Name</FormLabel>
+                  <FormLabel>Nama</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Jane Doe" {...field} />
+                    <Input placeholder="Masukkan nama pengguna" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { form.reset(); onOpenChange(false); }}>Cancel</Button>
-              <Button type="submit">Start Chat</Button>
+              <Button type="button" variant="outline" onClick={() => { form.reset(); onOpenChange(false); }}>Batal</Button>
+              <Button type="submit">Mulai pesan</Button>
             </DialogFooter>
           </form>
         </Form>
