@@ -73,22 +73,22 @@ export function ChatView({
   const viewportRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
 
-  const isChatEffectivelyBlocked = chat.type === 'direct' && 
-                                 (chat.blockedByUser === currentUser.id || 
-                                  (chat.blockedByUser && chat.blockedByUser !== currentUser.id)); // Consider if other user blocked current user
+  const isChatEffectivelyBlocked = chat.type === 'direct' &&
+                                 (chat.blockedByUser === currentUser.id ||
+                                  (chat.blockedByUser && chat.blockedByUser !== currentUser.id));
 
   const isChatActive = chat.type === 'group' || (!chat.pendingApprovalFromUserId && !chat.isRejected && !isChatEffectivelyBlocked);
 
-
   const handleCancelEditClick = useCallback(() => {
     onCancelEditMessage();
-    setNewMessage(replyingToMessage ? "" : ""); 
+    setNewMessage(replyingToMessage ? "" : "");
   }, [onCancelEditMessage, replyingToMessage]);
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); 
+    setNewMessage("");
   }, []);
+
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -110,13 +110,10 @@ export function ChatView({
   }, [editingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
-  // Effect for handling message editing state
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      if (replyingToMessage && replyingToMessage.chatId === editingMessageDetails.chatId) {
-        // Keep reply mode if it's for the same chat, otherwise cancel reply
-      } else if (replyingToMessage) {
+      if (replyingToMessage && replyingToMessage.chatId !== editingMessageDetails.chatId) {
         setReplyingToMessage(null);
       }
       setTimeout(() => {
@@ -127,37 +124,26 @@ export function ChatView({
           messageInputRef.current.selectionEnd = len;
         }
       }, 0);
-    } else if (!replyingToMessage) { 
-      // No specific action needed here for newMessage reset, handled by chat.id change effect
+    } else if (!replyingToMessage && !newMessage) { // Avoid clearing input if user is typing a new message after cancelling edit
+      // If not editing and not replying, newMessage should be what user is typing or empty
     }
-  }, [editingMessageDetails, replyingToMessage]);
+  }, [editingMessageDetails]); // Removed replyingToMessage, newMessage from deps to avoid issues
 
 
-   // Effect for resetting input when chat.id changes, if not editing or replying to a message in the new chat
    useEffect(() => {
-    if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-      onCancelEditMessage(); // Cancel edit if it's for a different chat
-    }
-    if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
-      setReplyingToMessage(null); // Cancel reply if it's for a different chat
-    }
-
-    // Clear newMessage only if not editing for the current chat AND not replying for the current chat
     if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
         (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
         setNewMessage("");
     }
 
-    // Auto-resize textarea
     if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto'; // Reset height
-        // Recalculate height only if not empty, otherwise keep it minimal (handled by rows=1)
+        messageInputRef.current.style.height = 'auto';
         if (messageInputRef.current.value) {
-          const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); // Max height 120px
+          const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
           messageInputRef.current.style.height = `${newHeight}px`;
         }
     }
-  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]); // Added editingMessageDetails & replyingToMessage
+  }, [chat.id, editingMessageDetails, replyingToMessage, onCancelEditMessage]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -173,19 +159,19 @@ export function ChatView({
         onSendMessage(newMessage.trim(), replyingToMessage);
         setReplyingToMessage(null);
       }
-      setNewMessage(""); 
+      setNewMessage("");
 
       if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto'; 
+        messageInputRef.current.style.height = 'auto';
       }
     }
   };
 
   const handleReplyToMessageInView = useCallback((messageToReply: Message) => {
     if(!isChatActive) return;
-    if (editingMessageDetails) onCancelEditMessage(); 
+    if (editingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); 
+    setNewMessage("");
     setTimeout(() => messageInputRef.current?.focus(), 0);
   }, [isChatActive, editingMessageDetails, onCancelEditMessage]);
 
@@ -201,9 +187,9 @@ export function ChatView({
         Icon: UserIcon,
         description: `Direct message with ${otherParticipantName}`,
         status: otherParticipantStatus,
-        otherParticipantObject: otherParticipant 
+        otherParticipantObject: otherParticipant
       };
-    } else { 
+    } else {
       const groupName = chat.name || "Unnamed Group";
       return {
         name: groupName,
@@ -228,9 +214,6 @@ export function ChatView({
             text: `Anda telah memblokir ${otherUserName}. Buka blokir untuk melanjutkan.`,
         };
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
-        // This situation (other user blocked you) is harder to manage client-side without server events.
-        // For now, let's assume this state is primarily set by the current user.
-        // Or, we can have a generic message if the chat object has a blockedByUser ID not matching currentUser.
          chatOverlayMessage = {
             icon: <Lock className="w-16 h-16 text-muted-foreground mb-4" />,
             title: "Interaksi Terbatas",
@@ -271,11 +254,7 @@ export function ChatView({
   const userClearedTimestamp = chat.clearedTimestamp?.[currentUser.id] || 0;
   const displayedMessages = messages.filter(msg => {
     if (chat.type === 'direct' && chat.blockedByUser === currentUser.id && msg.senderId !== currentUser.id) {
-        // If current user blocked the other, don't show messages from the other user
-        // (This is a client-side filter, server would still store them)
-        // We might also want to filter based on timestamp if block happened mid-conversation.
-        // For simplicity, now it hides all messages from blocked user.
-        return false; 
+        return false;
     }
     return msg.timestamp > userClearedTimestamp;
   });
@@ -288,13 +267,13 @@ export function ChatView({
       const isACurrentUser = a.id === currentUser.id;
       const isBCurrentUser = b.id === currentUser.id;
 
-      if (isACreator && isACurrentUser) return -1; // Current user who is also admin
+      if (isACreator && isACurrentUser) return -1; 
       if (isBCreator && isBCurrentUser) return 1;
 
-      if (isACreator) return -1; // Admin (not current user)
+      if (isACreator) return -1; 
       if (isBCreator) return 1;
       
-      if (isACurrentUser) return -1; // Current user (not admin)
+      if (isACurrentUser) return -1; 
       if (isBCurrentUser) return 1;
       
       return (a.name || '').localeCompare(b.name || '');
@@ -325,7 +304,7 @@ export function ChatView({
                   <h2 className="text-lg font-semibold truncate">{displayDetails.name}</h2>
                   <p className="text-xs text-muted-foreground truncate">
                     {chat.type === 'direct'
-                      ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline")) 
+                      ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline"))
                         : (chat.blockedByUser === currentUser.id ? "Anda memblokir pengguna ini" : "Tidak Aktif")
                       )
                       : `Group Chat - ${chat.participants?.length || 0} anggota`}
@@ -352,10 +331,13 @@ export function ChatView({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         {onGoBack && (
-                             <DropdownMenuItem onClick={onGoBack}>
-                                <LogOut className="mr-2 h-4 w-4" />
-                                <span>Tutup Chat</span>
-                            </DropdownMenuItem>
+                             <>
+                                <DropdownMenuItem onClick={onGoBack}>
+                                    <LogOut className="mr-2 h-4 w-4" />
+                                    <span>Tutup Chat</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                             </>
                         )}
                         <DropdownMenuItem
                             onClick={() => onDeleteAllMessagesInChat(chat.id)}
@@ -411,12 +393,12 @@ export function ChatView({
                 <SheetTitle className="text-2xl">{displayDetails.name}</SheetTitle>
                 <SheetDescription className="text-base">
                  Status: <span className={cn("font-medium", isChatActive && displayDetails.status === "Online" ? "text-green-500" : "text-muted-foreground")}>
-                    {isChatActive ? (displayDetails.status || "Offline") 
+                    {isChatActive ? (displayDetails.status || "Offline")
                       : (chat.blockedByUser === currentUser.id ? "Diblokir oleh Anda" : "Tidak Aktif")}
                   </span>
                 </SheetDescription>
               </div>
-            ) : ( 
+            ) : (
               <div className="text-center pt-4">
                  <Avatar className="h-24 w-24 mx-auto mb-3">
                     <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Group Avatar'} data-ai-hint="group abstract large"/>
@@ -429,14 +411,14 @@ export function ChatView({
               </div>
             )}
           </SheetHeader>
-          
+
           {chat.type === 'direct' && displayDetails.otherParticipantObject && onStartGroupWithUser && isChatActive && (
             <div className="py-2">
-               <Button 
-                variant="outline" 
+               <Button
+                variant="outline"
                 className="w-full"
                 onClick={() => onStartGroupWithUser(displayDetails.otherParticipantObject!)}
-                disabled={!!chat.blockedByUser} // Disable if chat is blocked
+                disabled={!!chat.blockedByUser}
                >
                 <Users className="mr-2 h-4 w-4" />
                 Buat grup dengan {displayDetails.name}
@@ -517,12 +499,12 @@ export function ChatView({
             const sender = msg.senderId === currentUser.id
               ? currentUser
               : chat.participants.find(p => p.id === msg.senderId);
-            
-            const senderToDisplay : User = sender || { 
-              id: msg.senderId, 
-              name: msg.senderName, 
-              avatarUrl: undefined, 
-              status: "Offline" 
+
+            const senderToDisplay : User = sender || {
+              id: msg.senderId,
+              name: msg.senderName,
+              avatarUrl: undefined,
+              status: "Offline"
             };
 
             return (
@@ -534,7 +516,7 @@ export function ChatView({
                 onReplyMessage={isChatActive ? handleReplyToMessageInView : undefined}
                 onEditMessage={isChatActive ? onRequestEditMessage : undefined}
                 onDeleteMessage={isChatActive ? onDeleteMessage : undefined}
-                chatType={chat.type} 
+                chatType={chat.type}
               />
             );
           })}
