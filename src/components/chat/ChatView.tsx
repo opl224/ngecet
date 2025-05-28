@@ -132,6 +132,7 @@ export function ChatView({
       }
       setTimeout(() => {
         if (messageInputRef.current) {
+          messageInputRef.current.style.height = 'auto'; // Reset height first
           const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
           messageInputRef.current.style.height = `${newHeight}px`;
           messageInputRef.current.focus();
@@ -141,6 +142,7 @@ export function ChatView({
         }
       }, 50);
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
+      // Only reset height if not replying, to avoid flicker
       if (messageInputRef.current && !replyingToMessage ) {
           messageInputRef.current.style.height = 'auto';
       }
@@ -153,32 +155,34 @@ export function ChatView({
     let chatJustSwitched = false;
     if (prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id) {
       chatJustSwitched = true;
-      setNewMessage("");
+      // Reset message input and reply state when chat switches
+      // but only if not starting an edit for the *new* chat
+      if (!propsEditingMessageDetails || propsEditingMessageDetails.chatId !== chat.id) {
+          setNewMessage("");
+          if (messageInputRef.current) {
+            messageInputRef.current.style.height = 'auto';
+          }
+      }
       setReplyingToMessage(null);
 
+      // Cancel editing if the editing message belongs to the previous chat
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
         onCancelEditMessage();
       }
     }
     prevChatIdRef.current = chat.id;
 
-    if (messageInputRef.current) {
-      if (!propsEditingMessageDetails || propsEditingMessageDetails.chatId !== chat.id) {
-         if(!replyingToMessage) { 
-            messageInputRef.current.style.height = 'auto';
-         }
-      }
-    }
-
+    // Auto-focus logic
     if (isChatActive && messageInputRef.current && chatJustSwitched) {
        setTimeout(() => {
+        // Ensure not focusing if an edit mode is about to start for this chat
         const currentEditingForThisChat = propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id;
-        if (!currentEditingForThisChat && !replyingToMessage) {
+        if (!currentEditingForThisChat && !replyingToMessage) { // also check replyingToMessage
           messageInputRef.current?.focus();
         }
-      }, 50);
+      }, 50); // Slightly increased delay
     }
-  }, [chat.id, isChatActive, propsEditingMessageDetails, onCancelEditMessage, replyingToMessage]);
+  }, [chat.id, isChatActive, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage]);
 
 
 
@@ -307,9 +311,9 @@ export function ChatView({
 
       if (isAAdmin && !isBAdmin) return -1; 
       if (!isAAdmin && isBAdmin) return 1;
-
+      
       if (isACurrentUser && !isBAdmin && !isAAdmin) return -1; 
-      if (!isACurrentUser && isBCurrentUser && !isBAdmin) return 1;
+      if (!isACurrentUser && isBCurrentUser && !isBAdmin && !isAAdmin) return 1;
       
       return (a.name || '').localeCompare(b.name || '');
     });
@@ -425,7 +429,7 @@ export function ChatView({
                       : (chat.blockedByUser === currentUser.id ? "Diblokir oleh Anda" : "Tidak Aktif")}
                   </span>
                 </SheetDescription>
-                {onStartGroupWithUser && isChatActive && (
+                {onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
                     <Button
                         variant="outline"
                         className="w-full mt-4"
@@ -514,7 +518,7 @@ export function ChatView({
       </Sheet>
 
       <ScrollArea className="flex-1" viewportRef={viewportRef} ref={scrollAreaRef}>
-        <div className="p-4 space-y-0 mb-4 flex-1"> {}
+        <div className="p-4 flex-1"> {}
         {chatOverlayMessage && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4 z-10">
                 {chatOverlayMessage.icon}
@@ -522,7 +526,7 @@ export function ChatView({
                 <div className="text-muted-foreground">{chatOverlayMessage.text}</div>
             </div>
         )}
-        <div className={cn("space-y-0 flex-1", chatOverlayMessage && "blur-sm pointer-events-none")}>
+        <div className={cn("flex-1 space-y-3", chatOverlayMessage && "blur-sm pointer-events-none")}>
           {displayedMessages.map((msg) => {
             const sender = msg.senderId === currentUser.id
               ? currentUser
@@ -559,6 +563,7 @@ export function ChatView({
                 className="mb-4 rounded-lg object-contain"
                 data-ai-hint="empty chat"
               />
+              <p className="text-sm">Belum ada pesan. Jadilah yang pertama mengirim!</p>
             </div>
           )}
            {displayedMessages.length === 0 && !isChatActive && !chatOverlayMessage && (

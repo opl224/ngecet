@@ -88,7 +88,7 @@ export function MessageBubble({
     <div
       ref={ref}
       className={cn(
-        "shadow-sm flex flex-col px-3 py-3 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative",
+        "shadow-sm flex flex-col px-3 py-3 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative", // py-3 was added
         isCurrentUserMessage
           ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl"
           : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
@@ -103,7 +103,7 @@ export function MessageBubble({
           )}>
               <span>
                 {isCurrentUserMessage && chatType === 'group'
-                  ? "Anda"
+                  ? `Anda`
                   : senderName
                 }
               </span>
@@ -112,7 +112,7 @@ export function MessageBubble({
         <div className={cn(
           "text-xs font-semibold mb-0.5 text-primary-foreground/90"
         )}>
-          {/* No name for self in direct chat */}
+         {/* No name for self in direct chat, unless "Anda" is desired here too for consistency */}
         </div>
       ) : null}
 
@@ -158,7 +158,7 @@ export function MessageBubble({
             {isReadByAtLeastOneOther ? (
               <CheckCheck size={14} className="text-blue-500" />
             ) : (
-              <Check size={14} className={cn("text-primary-foreground/70")} />
+              <Check size={14} className={isCurrentUserMessage ? "text-primary-foreground/70" : "text-muted-foreground/70"} />
             )}
           </span>
         )}
@@ -231,20 +231,25 @@ export function MessageBubble({
   );
 
   return (
-    <div className={cn("flex w-full items-start group mb-3", isCurrentUserMessage ? "justify-end" : "justify-start")}>
+    <div className={cn(
+      "flex w-full items-start group", // Removed mb-3
+      isCurrentUserMessage ? "justify-end" : "justify-start"
+    )}>
       {isCurrentUserMessage ? (
+        // Pesan Anda (keluar)
         <>
           <SenderActionButtons className="order-1 mr-1 self-center" />
           <BubbleContentLayout className="order-2 mr-2">
-            {/* Content is rendered inside BubbleContentLayout */}
+            {/* Content rendered inside BubbleContentLayout */}
           </BubbleContentLayout>
           {chatType === 'group' && <UserAvatarComponent className="order-3 self-start ml-0" />}
         </>
       ) : (
+        // Pesan dari orang lain (masuk)
         <>
           {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
-          <BubbleContentLayout className="mr-1">
-             {/* Content is rendered inside BubbleContentLayout */}
+          <BubbleContentLayout className={cn("mr-1", chatType === 'direct' && "ml-0")}>
+             {/* Content rendered inside BubbleContentLayout */}
           </BubbleContentLayout>
           <ReceiverActionButton className="ml-1 self-center" />
         </>
