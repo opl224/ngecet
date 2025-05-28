@@ -51,7 +51,6 @@ export default function ChatPage() {
   const [isNewDirectChatDialogOpen, setIsNewDirectChatDialogOpen] = useState(false);
   const [isNewGroupChatDialogOpen, setIsNewGroupChatDialogOpen] = useState(false);
   
-  // State untuk edit pesan di input utama
   const [editingMessageDetails, setEditingMessageDetails] = useState<Message | null>(null);
 
 
@@ -60,14 +59,13 @@ export default function ChatPage() {
     setIsClient(true);
   }, []);
 
-
   const handleSaveProfile = useCallback((name: string) => {
     const userId = name.toLowerCase().replace(/\s+/g, "_") || `user_${Date.now()}`;
     const nameInitial = name.substring(0,1).toUpperCase() || 'U';
     const profile: User = {
       id: userId,
       name,
-      avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`, // Placeholder avatar
+      avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`, 
       status: "Online" 
     };
     setCurrentUser(profile);
@@ -264,7 +262,6 @@ export default function ChatPage() {
         ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0))
       );
     }
-    // Batalkan mode edit jika memilih chat lain
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
       setEditingMessageDetails(null);
     }
@@ -307,11 +304,9 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       } else if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected) {
-        // Untuk chat lain yang aktif, kita akan tetap memperbarui lastMessage dan lastMessageTimestamp
-        // agar mereka ter-sortir ke atas dan bisa memicu perhitungan unread count yang benar
         return {
           ...chat,
-          lastMessage: "Aktivitas baru", // Atau bisa juga konten pesan jika diinginkan
+          lastMessage: "Aktivitas baru", 
           lastMessageTimestamp: newMessage.timestamp 
         };
       }
@@ -349,8 +344,7 @@ export default function ChatPage() {
         return c;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
-    // toast({ title: "Pesan Dihapus", description: "Pesan telah berhasil dihapus.", variant: "destructive" });
-  }, [setAllMessages, setChats, toast]);
+  }, [setAllMessages, setChats]);
 
   const handleRequestEditMessageInInput = useCallback((messageToEdit: Message) => {
     if (!currentUser || messageToEdit.senderId !== currentUser.id) {
@@ -358,7 +352,6 @@ export default function ChatPage() {
       return;
     }
     setEditingMessageDetails(messageToEdit);
-    // ChatView akan mengisi input dengan messageToEdit.content
   }, [currentUser, toast]);
 
   const handleSaveEditedMessage = useCallback((messageId: string, newContent: string) => {
@@ -370,7 +363,7 @@ export default function ChatPage() {
     }
     if (newContent === editingMessageDetails.content) {
        toast({ title: "Info Pesan", description: "Konten pesan tidak berubah." });
-       setEditingMessageDetails(null); // Keluar dari mode edit
+       setEditingMessageDetails(null); 
        return;
     }
 
@@ -417,7 +410,7 @@ export default function ChatPage() {
     });
 
     toast({ title: "Pesan Diedit", description: "Pesan Anda telah berhasil diperbarui." });
-    setEditingMessageDetails(null); // Keluar dari mode edit
+    setEditingMessageDetails(null); 
   }, [currentUser, setAllMessages, setChats, toast, editingMessageDetails]);
 
   const handleCancelEditInInput = useCallback(() => {
@@ -441,7 +434,7 @@ export default function ChatPage() {
   const handleLogout = (clearData: boolean) => {
     setCurrentUser(null);
     setSelectedChat(null);
-    setEditingMessageDetails(null); // Pastikan mode edit juga dibatalkan saat logout
+    setEditingMessageDetails(null); 
 
     if (clearData) {
       setChats([]);
@@ -458,6 +451,11 @@ export default function ChatPage() {
       toast({ title: "Logout Berhasil", description: "Sesi Anda telah dihapus. Data chat tetap tersimpan." });
     }
   };
+
+  const handleGoBack = useCallback(() => {
+    setSelectedChat(null);
+    setEditingMessageDetails(null);
+  }, []);
 
 
   if (!isClient) {
@@ -479,7 +477,7 @@ export default function ChatPage() {
         <Sidebar className="border-r" collapsible="icon" variant="sidebar">
           <SidebarHeader className="p-0">
              <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
-                <div className="flex items-center gap-2 shrink-0 mr-2"> {/* Added shrink-0 and mr-2 */}
+                <div className="flex items-center gap-2 shrink-0 mr-2"> 
                     <AppLogo className="h-7 w-7 text-primary" />
                     <h1 className="text-xl font-semibold text-sidebar-primary-foreground">SimplicChat</h1>
                 </div>
@@ -553,6 +551,7 @@ export default function ChatPage() {
               onRequestEditMessage={handleRequestEditMessageInInput}
               onCancelEditMessage={handleCancelEditInInput}
               onDeleteMessage={handleDeleteMessage}
+              onGoBack={handleGoBack}
             />
           ) : (
             <WelcomeMessage />
@@ -577,3 +576,4 @@ export default function ChatPage() {
 }
     
 
+    

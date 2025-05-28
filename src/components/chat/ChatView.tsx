@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -25,23 +25,25 @@ interface ChatViewProps {
   messages: Message[];
   currentUser: User;
   onSendMessage: (content: string, replyToMessage?: Message | null) => void;
-  editingMessageDetails: Message | null; 
-  onSaveEditedMessage: (messageId: string, newContent: string) => void; 
-  onRequestEditMessage: (messageToEdit: Message) => void; 
-  onCancelEditMessage: () => void; 
+  editingMessageDetails: Message | null;
+  onSaveEditedMessage: (messageId: string, newContent: string) => void;
+  onRequestEditMessage: (messageToEdit: Message) => void;
+  onCancelEditMessage: () => void;
   onDeleteMessage: (messageId: string, chatId: string) => void;
+  onGoBack?: () => void; // New prop
 }
 
-export function ChatView({ 
-  chat, 
-  messages, 
-  currentUser, 
-  onSendMessage, 
+export function ChatView({
+  chat,
+  messages,
+  currentUser,
+  onSendMessage,
   editingMessageDetails,
   onSaveEditedMessage,
   onRequestEditMessage,
   onCancelEditMessage,
-  onDeleteMessage 
+  onDeleteMessage,
+  onGoBack
 }: ChatViewProps) {
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState("");
@@ -58,17 +60,14 @@ export function ChatView({
     }
   }, [messages, chat.id]);
 
-  // Effect to handle populating input when editing starts or clearing when edit ends/cancels
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      // Ensure reply mode is off when edit mode starts
       if (replyingToMessage) {
-        setReplyingToMessage(null);
+        setReplyingToMessage(null); // Ensure reply mode is off when edit mode starts
       }
       setTimeout(() => {
         messageInputRef.current?.focus();
-        // Move cursor to the end of the text
         if (messageInputRef.current) {
           const len = messageInputRef.current.value.length;
           messageInputRef.current.selectionStart = len;
@@ -76,23 +75,21 @@ export function ChatView({
         }
       }, 0);
     } else {
-      // This 'else' block runs when editingMessageDetails becomes null (edit finished or cancelled)
-      // OR when the component mounts and editingMessageDetails is initially null.
-      // We only want to clear newMessage if we are also not in reply mode.
+      // Only clear newMessage if not in reply mode
       if (!replyingToMessage) {
         setNewMessage("");
       }
     }
-
+     // Auto-adjust height when edit mode ends or on initial load without edit mode
     if (messageInputRef.current && !editingMessageDetails) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [editingMessageDetails]); // Only depend on editingMessageDetails
+  }, [editingMessageDetails]);
 
 
-   // Effect to reset input and interaction states when the active chat (chat.id) changes.
-   useEffect(() => {
-    // Only reset if not entering edit mode for the current chat OR not in reply mode
+  useEffect(() => {
+    // This effect specifically handles resets when the chat.id (active chat) changes.
+    // It should not interfere with starting edit/reply modes for the *current* chat.
     if (!editingMessageDetails || (editingMessageDetails && editingMessageDetails.chatId !== chat.id)) {
       if (!replyingToMessage || (replyingToMessage && replyingToMessage.chatId !== chat.id)) {
         setNewMessage("");
@@ -103,6 +100,7 @@ export function ChatView({
         setReplyingToMessage(null); 
     }
     
+    // If we switched to a new chat and were editing a message from the *previous* chat, cancel that edit.
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
       onCancelEditMessage(); 
     }
@@ -110,7 +108,7 @@ export function ChatView({
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
+  }, [chat.id, onCancelEditMessage]); // Keep editingMessageDetails and replyingToMessage out of here
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -125,12 +123,12 @@ export function ChatView({
         // newMessage will be cleared by the useEffect reacting to editingMessageDetails becoming null
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
-        setReplyingToMessage(null); // Clear reply state after sending
-        setNewMessage(""); // Clear input after sending regular message
+        setReplyingToMessage(null);
+        setNewMessage(""); 
       }
       
       if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto'; 
+        messageInputRef.current.style.height = 'auto';
       }
     }
   };
@@ -139,13 +137,12 @@ export function ChatView({
     if(!isChatActive) return;
     if (editingMessageDetails) onCancelEditMessage(); 
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); // Clear input when starting a reply
-    setTimeout(() => messageInputRef.current?.focus(), 0); 
+    setNewMessage(""); 
+    setTimeout(() => messageInputRef.current?.focus(), 0);
   };
   
   const handleCancelEditClick = () => {
     onCancelEditMessage();
-    // useEffect reacting to editingMessageDetails becoming null will clear newMessage (if not replying)
   };
 
   const getChatDisplayDetails = () => {
@@ -204,7 +201,7 @@ export function ChatView({
   const handleTextareaInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setNewMessage(event.target.value);
     if (messageInputRef.current) {
-      messageInputRef.current.style.height = 'auto'; 
+      messageInputRef.current.style.height = 'auto';
       const newHeight = Math.min(messageInputRef.current.scrollHeight, 120) 
       messageInputRef.current.style.height = `${newHeight}px`;
     }
@@ -215,26 +212,34 @@ export function ChatView({
     <div className="flex flex-col flex-1 bg-background overflow-hidden">
       <Sheet>
         <header className="p-4 border-b flex items-center justify-between shadow-sm">
-          <SheetTrigger asChild>
-            <div className="flex items-center space-x-3 cursor-pointer group flex-1 min-w-0">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Chat Avatar'} data-ai-hint={chat.type === 'group' ? 'group abstract' : 'person abstract'}/>
-                <AvatarFallback>
-                  <displayDetails.Icon className="h-5 w-5 text-muted-foreground" />
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <h2 className="text-lg font-semibold group-hover:underline truncate">{displayDetails.name}</h2>
-                <p className="text-xs text-muted-foreground truncate">
-                  {chat.type === 'direct'
-                    ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline")) : "Tidak Aktif")
-                    : `Group Chat - ${chat.participants?.length || 0} anggota`}
-                </p>
+          <div className="flex items-center space-x-1 flex-1 min-w-0"> {/* Adjusted space-x */}
+            {onGoBack && (
+              <Button variant="ghost" size="icon" className="md:hidden mr-1 shrink-0" onClick={onGoBack}>
+                <ArrowLeft className="h-5 w-5" />
+                <span className="sr-only">Kembali</span>
+              </Button>
+            )}
+            <SheetTrigger asChild>
+              <div className="flex items-center space-x-3 cursor-pointer group flex-1 min-w-0">
+                <Avatar className="h-10 w-10 shrink-0">
+                  <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Chat Avatar'} data-ai-hint={chat.type === 'group' ? 'group abstract' : 'person abstract'}/>
+                  <AvatarFallback>
+                    <displayDetails.Icon className="h-5 w-5 text-muted-foreground" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold group-hover:underline truncate">{displayDetails.name}</h2>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {chat.type === 'direct'
+                      ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline")) : "Tidak Aktif")
+                      : `Group Chat - ${chat.participants?.length || 0} anggota`}
+                  </p>
+                </div>
               </div>
-            </div>
-          </SheetTrigger>
+            </SheetTrigger>
+          </div>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="ml-2">
+            <Button variant="ghost" size="icon" className="ml-2 shrink-0">
               <Info className="h-5 w-5" />
               <span className="sr-only">Chat Info</span>
             </Button>
@@ -356,7 +361,7 @@ export function ChatView({
               className="h-7 w-7 shrink-0" 
               onClick={editingMessageDetails ? handleCancelEditClick : () => {
                 setReplyingToMessage(null);
-                setNewMessage(""); // Clear input when cancelling reply from here
+                setNewMessage(""); 
               }}
               aria-label={editingMessageDetails ? "Batalkan Edit" : "Batalkan Balasan"}
             >
@@ -396,7 +401,7 @@ export function ChatView({
                if (e.key === 'Escape' && replyingToMessage) {
                 e.preventDefault();
                 setReplyingToMessage(null);
-                setNewMessage(""); // Clear input if escaping reply mode
+                setNewMessage(""); 
               }
             }}
           />
@@ -408,4 +413,6 @@ export function ChatView({
     </div>
   );
 }
+    
+
     
