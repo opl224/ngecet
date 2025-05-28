@@ -13,6 +13,16 @@ import { NewDirectChatDialog } from "@/components/chat/NewDirectChatDialog";
 import { NewGroupChatDialog } from "@/components/chat/NewGroupChatDialog";
 import { AddUserToGroupDialog } from "@/components/chat/AddUserToGroupDialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   SidebarProvider,
   Sidebar,
   SidebarHeader,
@@ -55,6 +65,9 @@ export default function ChatPage() {
 
   const [isAddUserToGroupDialogOpen, setIsAddUserToGroupDialogOpen] = useState(false);
   const [chatIdToAddTo, setChatIdToAddTo] = useState<string | null>(null);
+
+  const [isDeleteGroupConfirmOpen, setIsDeleteGroupConfirmOpen] = useState(false);
+  const [groupToDeleteId, setGroupToDeleteId] = useState<string | null>(null);
 
 
   const [isClient, setIsClient] = useState(false);
@@ -575,6 +588,35 @@ export default function ChatPage() {
     setChatIdToAddTo(null); // Reset after adding
   }, [currentUser, chatIdToAddTo, setChats, toast, chats]);
 
+  const handleTriggerDeleteGroup = useCallback((chatId: string) => {
+    setGroupToDeleteId(chatId);
+    setIsDeleteGroupConfirmOpen(true);
+  }, []);
+
+  const handleConfirmDeleteGroup = useCallback(() => {
+    if (!groupToDeleteId) return;
+
+    const groupName = chats.find(chat => chat.id === groupToDeleteId)?.name || "Grup";
+    setChats(prevChats => prevChats.filter(chat => chat.id !== groupToDeleteId));
+    setAllMessages(prevAllMessages => {
+      const newAllMessages = { ...prevAllMessages };
+      delete newAllMessages[groupToDeleteId];
+      return newAllMessages;
+    });
+
+    if (selectedChat?.id === groupToDeleteId) {
+      setSelectedChat(null);
+    }
+    toast({ title: "Grup Dihapus", description: `Grup "${groupName}" telah dihapus secara permanen.`, variant: "destructive" });
+    setIsDeleteGroupConfirmOpen(false);
+    setGroupToDeleteId(null);
+  }, [groupToDeleteId, chats, selectedChat?.id, setChats, setAllMessages, toast]);
+
+  const handleCancelDeleteGroup = useCallback(() => {
+    setIsDeleteGroupConfirmOpen(false);
+    setGroupToDeleteId(null);
+  }, []);
+
 
   if (!isClient) {
     return (
@@ -678,6 +720,7 @@ export default function ChatPage() {
               onGoBack={handleGoBack}
               onDeleteAllMessagesInChat={handleDeleteAllMessagesInChat}
               onTriggerAddUserToGroup={() => handleOpenAddUserToGroupDialog(selectedChat.id)}
+              onTriggerDeleteGroup={handleTriggerDeleteGroup}
             />
           ) : (
             <WelcomeMessage />
@@ -702,6 +745,25 @@ export default function ChatPage() {
         onOpenChange={setIsAddUserToGroupDialogOpen}
         onAddUser={handleAddNewUserToGroup}
       />
+       <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini akan menghapus grup secara permanen. Semua pesan dalam grup ini juga akan dihapus. Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDeleteGroup}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteGroup}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Hapus Grup
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 }

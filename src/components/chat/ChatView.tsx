@@ -22,6 +22,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ interface ChatViewProps {
   onGoBack?: () => void;
   onDeleteAllMessagesInChat: (chatId: string) => void;
   onTriggerAddUserToGroup?: () => void;
+  onTriggerDeleteGroup?: (chatId: string) => void;
 }
 
 export function ChatView({
@@ -54,6 +56,7 @@ export function ChatView({
   onGoBack,
   onDeleteAllMessagesInChat,
   onTriggerAddUserToGroup,
+  onTriggerDeleteGroup,
 }: ChatViewProps) {
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState("");
@@ -70,6 +73,7 @@ export function ChatView({
     }
   }, [messages, chat.id]);
 
+  // Effect for handling edit mode start/stop and reply mode start
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
@@ -84,15 +88,17 @@ export function ChatView({
           messageInputRef.current.selectionEnd = len;
         }
       }, 0);
-    } else if (!replyingToMessage) { // Only clear if not editing AND not replying
+    } else if (!replyingToMessage) { // Only clear newMessage if not editing AND not replying
         setNewMessage("");
     }
-    if (messageInputRef.current && !editingMessageDetails) { // Auto-adjust height if not editing
+    // Auto-adjust height if not editing
+    if (messageInputRef.current && !editingMessageDetails) {
         messageInputRef.current.style.height = 'auto';
     }
   }, [editingMessageDetails, replyingToMessage]);
 
 
+  // Effect for handling chat ID changes (switching chats)
   useEffect(() => {
     // Reset states when chat.id changes
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
@@ -110,7 +116,8 @@ export function ChatView({
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat.id, onCancelEditMessage]); // editingMessageDetails and replyingToMessage removed to avoid conflicts
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -266,12 +273,24 @@ export function ChatView({
                             </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
-                        onClick={() => onDeleteAllMessagesInChat(chat.id)}
-                        className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10"
+                            onClick={() => onDeleteAllMessagesInChat(chat.id)}
+                            className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10"
                         >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        <span>Hapus Semua Pesan</span>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Hapus Semua Pesan</span>
                         </DropdownMenuItem>
+                         {chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerDeleteGroup && (
+                           <>
+                             <DropdownMenuSeparator />
+                             <DropdownMenuItem
+                               onClick={() => onTriggerDeleteGroup(chat.id)}
+                               className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10"
+                             >
+                               <Trash2 className="mr-2 h-4 w-4" />
+                               <span>Hapus Grup</span>
+                             </DropdownMenuItem>
+                           </>
+                         )}
                     </DropdownMenuContent>
                 </DropdownMenu>
              )}
@@ -317,7 +336,7 @@ export function ChatView({
                     </Button>
                 )}
             </div>
-            <ScrollArea className="h-[calc(100vh-320px)]"> {/* Adjusted height */}
+            <ScrollArea className="h-[calc(100vh-380px)]"> {/* Adjusted height based on typical content */}
               <ul className="space-y-1 text-sm">
                 {chat.participants?.map(participantUser => {
                   const isCurrentUserParticipant = participantUser.id === currentUser.id;
@@ -452,3 +471,4 @@ export function ChatView({
     </div>
   );
 }
+
