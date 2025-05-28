@@ -2,7 +2,7 @@
 "use client";
 
 import type { Chat, Message, User } from "@/types";
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -75,11 +75,12 @@ export function ChatView({
     }
   }, [messages, chat.id]);
 
+  // Effect to handle starting/ending edit mode
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      if (replyingToMessage) { // Cancel reply if starting to edit
-        setReplyingToMessage(null);
+      if (replyingToMessage) {
+        setReplyingToMessage(null); // Cancel reply mode if edit mode starts
       }
       setTimeout(() => {
         messageInputRef.current?.focus();
@@ -89,32 +90,32 @@ export function ChatView({
           messageInputRef.current.selectionEnd = len;
         }
       }, 0);
-    } else if (!replyingToMessage) { // Only clear if not actively replying
+    } else if (!replyingToMessage) { // Only clear if not in reply mode
       setNewMessage("");
     }
-  }, [editingMessageDetails, replyingToMessage]);
+  }, [editingMessageDetails]); // Removed replyingToMessage from dependencies
 
-
+  // Effect to handle chat changes (e.g., switching chats)
   useEffect(() => {
-    // Reset states when chat.id changes, carefully
-    if ((editingMessageDetails && editingMessageDetails.chatId !== chat.id)) {
-      onCancelEditMessage();
+    // Reset input and reply/edit state when chat ID changes
+    // but only if the edit/reply state is not for the current chat
+    if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
+      onCancelEditMessage(); // This will set editingMessageDetails to null
     }
     if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
         setReplyingToMessage(null);
     }
     
-    // Clear newMessage only if not in edit/reply mode for the *current* chat
+    // If not editing this chat and not replying to a message in this chat, clear input
     if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
         (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
       setNewMessage("");
     }
 
     if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto';
+        messageInputRef.current.style.height = 'auto'; // Reset height
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chat.id, onCancelEditMessage]);
+  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -138,18 +139,25 @@ export function ChatView({
     }
   };
 
-  const handleReplyToMessageInView = (messageToReply: Message) => {
+  const handleReplyToMessageInView = useCallback((messageToReply: Message) => {
     if(!isChatActive) return;
     if (editingMessageDetails) onCancelEditMessage(); 
     setReplyingToMessage(messageToReply);
     setNewMessage(""); 
     setTimeout(() => messageInputRef.current?.focus(), 0);
-  };
+  }, [isChatActive, editingMessageDetails, onCancelEditMessage]);
 
-  const handleCancelEditClick = () => {
+  const handleCancelEditClick = useCallback(() => {
     onCancelEditMessage();
-    setNewMessage(replyingToMessage ? "" : ""); // Clear input or set to reply context if any
-  };
+    setNewMessage(replyingToMessage ? "" : ""); 
+  }, [onCancelEditMessage, replyingToMessage]);
+
+
+  const handleCancelReplyClick = useCallback(() => {
+    setReplyingToMessage(null);
+    setNewMessage("");
+  }, []);
+
 
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
@@ -183,7 +191,7 @@ export function ChatView({
     const otherUserName = displayDetails.name === "Direct Chat" ? "pengguna ini" : displayDetails.name;
     if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) {
       chatOverlayMessage = {
-        icon: <SendHorizonal className="w-16 h-16 text-muted-foreground mb-4" />,
+        icon: <SendHorizonal className="w-16 h-16 text-muted-foreground mb-4" />, // Changed from Send
         title: "Menunggu Persetujuan",
         text: `Permintaan chat Anda kepada ${otherUserName} sedang menunggu persetujuan.`,
       };
@@ -219,11 +227,20 @@ export function ChatView({
   const sortedParticipants = useMemo(() => {
     if (!chat.participants) return [];
     return [...chat.participants].sort((a, b) => {
-      if (a.id === chat.createdByUserId) return -1; // Admin comes first
-      if (b.id === chat.createdByUserId) return 1;  // Admin comes first
+      const isAAdmin = a.id === chat.createdByUserId;
+      const isBAdmin = b.id === chat.createdByUserId;
+      const isACurrentUser = a.id === currentUser.id;
+      const isBCurrentUser = b.id === currentUser.id;
+
+      if (isAAdmin && !isACurrentUser) return -1; // Admin first
+      if (isBAdmin && !isBCurrentUser) return 1;
+      if (isAAdmin && isACurrentUser) return -1; // Admin who is current user
+      if (isBAdmin && isBCurrentUser) return 1;
+      if (isACurrentUser) return -1; // Current user (not admin) next
+      if (isBCurrentUser) return 1;
       return (a.name || '').localeCompare(b.name || ''); // Then sort by name
     });
-  }, [chat.participants, chat.createdByUserId]);
+  }, [chat.participants, chat.createdByUserId, currentUser.id]);
 
 
   return (
@@ -359,12 +376,12 @@ export function ChatView({
                          </Avatar>
                          <div className="truncate">
                             <span className="font-medium truncate">{participantName}</span>
-                            {isCurrentUserParticipant && <span className="text-xs text-muted-foreground"> (Anda)</span>}
+                            {isCurrentUserParticipant && !isChatAdmin && <span className="text-xs text-muted-foreground"> (Anda)</span>}
                          </div>
                        </div>
                        <div className="flex items-center space-x-2 shrink-0">
-                         {isChatAdmin && chat.type === 'group' && (
-                            <span className="text-xs text-primary">(Admin)</span>
+                         {isChatAdmin && (
+                            <span className="text-xs text-primary font-semibold">(Admin{isCurrentUserParticipant ? " - Anda" : ""})</span>
                          )}
                          {currentUser.id === chat.createdByUserId &&
                           participantUser.id !== currentUser.id &&
@@ -447,10 +464,7 @@ export function ChatView({
               variant="ghost"
               size="icon"
               className="h-7 w-7 shrink-0"
-              onClick={editingMessageDetails ? handleCancelEditClick : () => {
-                setReplyingToMessage(null);
-                setNewMessage("");
-              }}
+              onClick={editingMessageDetails ? handleCancelEditClick : handleCancelReplyClick}
               aria-label={editingMessageDetails ? "Batalkan Edit" : "Batalkan Balasan"}
             >
               <X className="h-4 w-4" />
@@ -487,8 +501,7 @@ export function ChatView({
                 if (editingMessageDetails) {
                   handleCancelEditClick();
                 } else if (replyingToMessage) {
-                  setReplyingToMessage(null);
-                  setNewMessage("");
+                  handleCancelReplyClick();
                 }
               }
             }}
@@ -501,5 +514,3 @@ export function ChatView({
     </div>
   );
 }
-
-    
