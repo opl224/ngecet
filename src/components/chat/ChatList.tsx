@@ -25,6 +25,7 @@ interface ChatListProps {
   onAcceptChat: (chatId: string) => void;
   onRejectChat: (chatId: string) => void;
   onDeleteChatPermanently: (chatId: string) => void;
+  onUnblockUser: (chatId: string) => void;
 }
 
 export function ChatList({
@@ -38,6 +39,7 @@ export function ChatList({
   onAcceptChat,
   onRejectChat,
   onDeleteChatPermanently,
+  onUnblockUser,
 }: ChatListProps) {
   const [activeFilter, setActiveFilter] = useState<'direct' | 'group' | null>(null);
 
@@ -119,6 +121,7 @@ export function ChatList({
                 onAcceptChat={onAcceptChat}
                 onRejectChat={onRejectChat}
                 onDeleteChatPermanently={onDeleteChatPermanently}
+                onUnblockUser={onUnblockUser}
               />
             ))
           ) : (

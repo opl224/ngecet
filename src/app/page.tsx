@@ -234,33 +234,29 @@ export default function ChatPage() {
         const memberId = name.toLowerCase().replace(/\s+/g, "_") || `user_member_${Date.now()}_${Math.random().toString(36).substring(2,7)}`;
 
         if (memberId === currentUser.id) {
-            // User trying to add themselves explicitly, already included
             continue;
         }
         if (finalMemberUsers.find(u => u.id === memberId)) {
-            // Already added to the list for this group creation
             continue;
         }
-        // Check for existing active direct chat
+        
         const potentialDirectChatIdParts = [currentUser.id, memberId].sort();
         const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
         const existingDirectChat = chats.find(c => c.id === potentialDirectChatId);
 
-        if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected && existingDirectChat.blockedByUser !== currentUser.id && existingDirectChat.blockedByUser !== memberId) {
-            // Direct chat exists and is active, get the user object from there
+        if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected && !existingDirectChat.blockedByUser) {
             const memberUserObject = existingDirectChat.participants.find(p => p.id === memberId);
             if (memberUserObject) {
                 finalMemberUsers.push(memberUserObject);
-            } else { // Should not happen if direct chat exists and is valid
+            } else { 
                  const memberInitial = name.substring(0,1).toUpperCase() || 'M';
                 finalMemberUsers.push({
                     id: memberId, name: name,
                     avatarUrl: `https://placehold.co/100x100.png?text=${memberInitial}`,
-                    status: "Offline" // Default for users not yet interacted with (though this path is for active chats)
+                    status: "Offline"
                 });
             }
         } else {
-            // No active direct chat, or chat is pending/rejected/blocked
             let reason = `Anda tidak memiliki chat langsung yang aktif dengan mereka`;
             if (existingDirectChat?.blockedByUser === currentUser.id) reason = `Anda telah memblokir mereka`;
             else if (existingDirectChat?.blockedByUser === memberId) reason = `Mereka telah memblokir Anda`;
@@ -274,14 +270,14 @@ export default function ChatPage() {
     if (invalidMemberDisplayNames.length > 0) {
         toast({
             title: "Gagal Membuat Grup",
-            description: `Pengguna berikut tidak dapat ditambahkan: ${invalidMemberDisplayNames.join("; ")}. Pastikan Anda memiliki chat langsung yang aktif dengan mereka.`,
+            description: `Pengguna berikut tidak dapat ditambahkan: ${invalidMemberDisplayNames.join("; ")}. Pastikan Anda memiliki chat langsung yang aktif dan tidak terblokir dengan mereka.`,
             variant: "destructive",
             duration: 7000,
         });
         return;
     }
 
-    if (finalMemberUsers.length < 2 && memberDisplayNames.length > 0) { // Check if after filtering, only creator is left but members were intended
+    if (finalMemberUsers.length < 2 && memberDisplayNames.length > 0) { 
         toast({
             title: "Gagal Membuat Grup",
             description: "Tidak ada anggota valid yang dapat ditambahkan selain diri Anda.",
@@ -289,7 +285,7 @@ export default function ChatPage() {
         });
         return;
     }
-     if (finalMemberUsers.length < 2) { // If even no members were attempted to be added, and it's just the creator
+     if (finalMemberUsers.length < 2) { 
          toast({
             title: "Anggota Diperlukan",
             description: "Harap tambahkan minimal satu anggota lain yang valid.",
@@ -321,7 +317,7 @@ export default function ChatPage() {
       avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`,
       lastReadBy: initialLastReadBy,
       clearedTimestamp: initialClearedTimestamp,
-      createdByUserId: currentUser.id, // Set creator ID
+      createdByUserId: currentUser.id, 
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
@@ -490,7 +486,7 @@ export default function ChatPage() {
       const chatMessages = (prevAllMessages[editingMessageDetails!.chatId] || []).map(msg =>
         msg.id === messageId ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg
       );
-      // Re-sort messages by timestamp after edit to maintain order
+      
       const sortedChatMessages = [...chatMessages].sort((a, b) => a.timestamp - b.timestamp);
 
       if (sortedChatMessages.length > 0) {
@@ -503,14 +499,13 @@ export default function ChatPage() {
     setChats(prevChats => {
       const updatedChats = prevChats.map(chat => {
         if (chat.id === editingMessageDetails!.chatId) {
-          // Ensure last message reflects the actual last message after edit & sort
           if (latestMessageDetailsForChat) {
             return {
               ...chat,
               lastMessage: latestMessageDetailsForChat.content,
               lastMessageTimestamp: latestMessageDetailsForChat.timestamp
             };
-          } else { // Fallback if chat becomes empty after edit (should not happen if newContent is not empty)
+          } else { 
              let fallbackMsg = "Belum ada pesan";
               if (chat.type === 'direct') {
                 if (chat.blockedByUser === currentUser?.id) fallbackMsg = "Anda memblokir pengguna ini.";
@@ -529,7 +524,6 @@ export default function ChatPage() {
         }
         return chat;
       });
-      // Re-sort all chats by their last message timestamp
       return updatedChats.sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
 
@@ -627,16 +621,15 @@ export default function ChatPage() {
         return;
     }
 
-    // Check for existing active direct chat
     const potentialDirectChatIdParts = [currentUser.id, newUserId].sort();
     const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
     const existingDirectChat = chats.find(c => c.id === potentialDirectChatId);
 
     let userObjectToAdd: User;
 
-    if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected && existingDirectChat.blockedByUser !== currentUser.id && existingDirectChat.blockedByUser !== newUserId) {
+    if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected && !existingDirectChat.blockedByUser) {
         const foundUser = existingDirectChat.participants.find(p => p.id === newUserId);
-        if (!foundUser) { // Should not happen if direct chat is valid
+        if (!foundUser) { 
             toast({ title: "Error Internal", description: `Tidak dapat menemukan detail untuk ${userName}. Coba mulai chat langsung dulu.`, variant: "destructive" });
             return;
         }
@@ -658,11 +651,11 @@ export default function ChatPage() {
     const systemMessage = `${userObjectToAdd.name} telah ditambahkan ke grup.`;
     setChats(prevChats => {
       const currentChatToUpdate = prevChats.find(c => c.id === chatIdToAddTo);
-      if (!currentChatToUpdate) return prevChats; // Should not happen
+      if (!currentChatToUpdate) return prevChats; 
 
       const updatedParticipants = [...currentChatToUpdate.participants, userObjectToAdd];
-      const updatedLastReadBy = { ...(currentChatToUpdate.lastReadBy || {}), [userObjectToAdd.id]: 0 }; // New user hasn't read anything
-      const updatedClearedTimestamp = { ...(currentChatToUpdate.clearedTimestamp || {}), [userObjectToAdd.id]: 0 }; // New user has no cleared history
+      const updatedLastReadBy = { ...(currentChatToUpdate.lastReadBy || {}), [userObjectToAdd.id]: 0 }; 
+      const updatedClearedTimestamp = { ...(currentChatToUpdate.clearedTimestamp || {}), [userObjectToAdd.id]: 0 }; 
 
 
       return prevChats.map(c =>
@@ -672,14 +665,14 @@ export default function ChatPage() {
               participants: updatedParticipants,
               lastReadBy: updatedLastReadBy,
               clearedTimestamp: updatedClearedTimestamp,
-              lastMessage: systemMessage, // Update last message for the group
-              lastMessageTimestamp: now,  // Update group's last message timestamp
+              lastMessage: systemMessage, 
+              lastMessageTimestamp: now, 
             }
           : c
       ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
     toast({ title: "Pengguna Ditambahkan", description: `${userObjectToAdd.name} telah ditambahkan ke grup.` });
-    setChatIdToAddTo(null); // Reset after adding
+    setChatIdToAddTo(null); 
   }, [currentUser, chatIdToAddTo, setChats, toast, chats]);
 
 
@@ -755,7 +748,7 @@ export default function ChatPage() {
       };
 
       if (selectedChat?.id === chatId) {
-        setSelectedChat(updatedChat); // Update selectedChat if it's the one being modified
+        setSelectedChat(updatedChat); 
       }
 
       return prevChats.map(c => c.id === chatId ? updatedChat : c)
@@ -875,6 +868,7 @@ export default function ChatPage() {
               onAcceptChat={handleAcceptChatRequest}
               onRejectChat={handleRejectChatRequest}
               onDeleteChatPermanently={handleDeleteChatPermanently}
+              onUnblockUser={handleUnblockUser}
             />
           </SidebarContent>
           <SidebarFooter className="p-2 border-t border-sidebar-border">
@@ -955,7 +949,7 @@ export default function ChatPage() {
         isOpen={isNewGroupChatDialogOpen}
         onOpenChange={(isOpen) => {
             setIsNewGroupChatDialogOpen(isOpen);
-            if (!isOpen) { // Reset initial member name when dialog is closed
+            if (!isOpen) { 
                 setGroupDialogInitialMemberName(null);
             }
         }}

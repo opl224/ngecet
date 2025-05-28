@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
-import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert } from "lucide-react";
+import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert, ShieldOff } from "lucide-react";
 
 interface ChatItemProps {
   chat: Chat & { calculatedUnreadCount?: number };
@@ -17,6 +17,7 @@ interface ChatItemProps {
   onAcceptChat: (chatId: string) => void;
   onRejectChat: (chatId: string) => void;
   onDeleteChatPermanently: (chatId: string) => void;
+  onUnblockUser: (chatId: string) => void; 
 }
 
 export function ChatItem({
@@ -26,7 +27,8 @@ export function ChatItem({
   isActive,
   onAcceptChat,
   onRejectChat,
-  onDeleteChatPermanently
+  onDeleteChatPermanently,
+  onUnblockUser,
 }: ChatItemProps) {
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
@@ -48,26 +50,23 @@ export function ChatItem({
   };
 
   const { name, avatarUrl, initials, Icon, otherParticipantStatus } = getChatDisplayDetails();
+  const otherParticipantNameDisplay = (chat.type === 'direct' && chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id)?.name) || name || "Seseorang";
   
   let statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
   let showAcceptRejectActions = false;
   let showDeleteAction = false;
+  let showUnblockAction = false; 
   let specialStatusText: string | null = null;
   const calculatedUnreadCount = chat.calculatedUnreadCount || 0;
 
 
   if (chat.type === "direct") {
-    const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
-    const otherParticipantNameDisplay = otherParticipant?.name || name || "Seseorang";
-
     if (chat.blockedByUser === currentUser.id) {
+        specialStatusText = `Anda memblokir ${otherParticipantNameDisplay}.`;
+        showUnblockAction = true;
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
-        // This case (other user blocked current user) is harder to manage client-side for display in ChatItem
-        // For now, we can show a generic message or rely on ChatView to handle interaction.
-        // specialStatusText = `Interaksi dengan ${otherParticipantNameDisplay} terbatas.`;
-        // For simplicity, we might not show a special status here, and let ChatView handle it.
-        // Or, treat it like any other active chat in the list until clicked.
+        specialStatusText = `${name} mungkin memblokir Anda.`;
     } else if (chat.pendingApprovalFromUserId === currentUser.id) {
       specialStatusText = `${otherParticipantNameDisplay} ingin memulai chat.`;
       statusTimestamp = chat.requestTimestamp; 
@@ -108,9 +107,9 @@ export function ChatItem({
       className={cn(
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        ( (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) ||
-          (chat.isRejected && !isActive) || // Dim if rejected AND not the currently selected (active) chat
-          (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive) // Dim if blocked by other and not active
+        ( (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
+          (chat.isRejected && !isActive) || 
+          (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive) 
         ) && "opacity-70"
       )}
     >
@@ -150,7 +149,7 @@ export function ChatItem({
                 );
               }
               if (!specialStatusText && calculatedUnreadCount === 0 && statusTimestamp) {
-                if (chat.type === 'direct' && !chat.blockedByUser) { // Don't show online status if chat is blocked
+                if (chat.type === 'direct' && !chat.blockedByUser) { 
                   const status = otherParticipantStatus || "Offline";
                   const isOnline = status === "Online";
                   return (
@@ -162,7 +161,7 @@ export function ChatItem({
                       <span className="text-xs text-sidebar-foreground/70">{status}</span>
                     </div>
                   );
-                } else if (chat.type === 'group') { // For groups, always show timestamp if no unread
+                } else if (chat.type === 'group') { 
                   return (
                     <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
                       {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
@@ -209,6 +208,18 @@ export function ChatItem({
             >
                 <Trash2 className="mr-1 h-4 w-4" /> Hapus Chat
             </Button>
+        </div>
+      )}
+      {showUnblockAction && onUnblockUser && (
+        <div className="mt-2 flex justify-end space-x-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => { e.stopPropagation(); onUnblockUser(chat.id); }}
+            className="text-green-600 border-green-500 hover:bg-green-500/10 hover:text-green-700 focus:border-green-600 focus:bg-green-500/10"
+          >
+            <ShieldOff className="mr-1 h-4 w-4" /> Buka Blokir
+          </Button>
         </div>
       )}
     </div>
