@@ -39,9 +39,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Trash2, Settings, ArrowLeft, ShieldOff, ShieldAlert, InfoIcon, UserPlus, UserMinus, MessageSquarePlus } from "lucide-react";
+import { LogOut, Trash2, Settings, ArrowLeft, ShieldOff, ShieldAlert, InfoIcon, UserPlus, UserMinus, MessageSquarePlus, Sun, Moon, Laptop, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from 'next-themes';
 
 
 const LS_USER_KEY = "ngecet_user";
@@ -50,6 +56,7 @@ const LS_MESSAGES_PREFIX = "ngecet_messages_";
 
 export default function ChatPage() {
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [currentUser, setCurrentUser] = useLocalStorage<User | null>(LS_USER_KEY, null);
 
   const initialChatsValue = useMemo(() => [], []);
@@ -139,8 +146,8 @@ export default function ChatPage() {
       id: chatId,
       type: "direct",
       participants: participantsArray,
-      name: recipientUser.name, // Store other participant's name for ChatItem
-      avatarUrl: recipientUser.avatarUrl, // Store other participant's avatar for ChatItem
+      name: recipientUser.name, 
+      avatarUrl: recipientUser.avatarUrl, 
       pendingApprovalFromUserId: recipientUser.id,
       isRejected: false,
       requestTimestamp: now,
@@ -228,7 +235,7 @@ export default function ChatPage() {
     if (!currentUser) return;
 
     const invalidMemberDisplayNames: string[] = [];
-    const finalMemberUsers: User[] = [currentUser]; // Creator is always a member
+    const finalMemberUsers: User[] = [currentUser]; 
 
     for (const name of memberDisplayNames) {
         const memberId = name.toLowerCase().replace(/\s+/g, "_") || `user_member_${Date.now()}_${Math.random().toString(36).substring(2,7)}`;
@@ -402,7 +409,6 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
-      // Update lastMessage and timestamp for other active chats to reflect new activity
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
          return {
           ...chat,
@@ -788,7 +794,6 @@ export default function ChatPage() {
     if (selectedChat?.id === chatId) {
         setSelectedChat(prev => prev ? {...prev, blockedByUser: currentUser.id, lastMessage: `Anda memblokir ${otherParticipantName}.`, lastMessageTimestamp: Date.now()} : null);
     }
-    toast({ title: "Pengguna Diblokir", description: `Anda telah memblokir ${otherParticipantName}.` });
   }, [currentUser, chats, selectedChat, setChats, toast]);
 
   const handleUnblockUser = useCallback((chatId: string) => {
@@ -816,7 +821,6 @@ export default function ChatPage() {
     if (selectedChat?.id === chatId) {
         setSelectedChat(prev => prev ? {...prev, blockedByUser: undefined, lastMessage: `Anda membuka blokir ${otherParticipantName}.`, lastMessageTimestamp: Date.now()} : null);
     }
-    toast({ title: "Blokir Dibuka", description: `Anda telah membuka blokir ${otherParticipantName}.` });
   }, [currentUser, chats, selectedChat, setChats, toast]);
 
 
@@ -881,6 +885,28 @@ export default function ChatPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
+                 <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Palette className="mr-2 h-4 w-4" />
+                    <span>Tema</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={() => setTheme("light")}>
+                        <Sun className="mr-2 h-4 w-4" />
+                        <span>Light</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTheme("dark")}>
+                        <Moon className="mr-2 h-4 w-4" />
+                        <span>Dark</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTheme("system")}>
+                        <Laptop className="mr-2 h-4 w-4" />
+                        <span>System</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
                 <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
                     <InfoIcon className="mr-2 h-4 w-4" />
                     <span>Tentang Aplikasi</span>

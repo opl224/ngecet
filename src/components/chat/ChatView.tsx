@@ -392,7 +392,7 @@ export function ChatView({
                 <SheetDescription className="text-base">
                   <span className={cn("font-medium", isChatActive && displayDetails.status === "Online" ? "text-green-500" : "text-muted-foreground")}>
                     {isChatActive ? (displayDetails.status || "Offline")
-                      : (chat.blockedByUser === currentUser.id ? "Diblokir oleh Anda" : "Tidak Aktif")}
+                      : (chat.blockedByUser === currentUser.id ? "Diblokir oleh pengguna" : "Tidak Aktif")}
                   </span>
                 </SheetDescription>
                 {displayDetails.otherParticipantObject && onStartGroupWithUser && isChatActive && (
@@ -403,6 +403,7 @@ export function ChatView({
                         disabled={!!chat.blockedByUser}
                     >
                         <Users className="mr-2 h-4 w-4" />
+                        <DropdownMenuSeparator/>
                         Buat grup dengan {displayDetails.name}
                     </Button>
                 )}
