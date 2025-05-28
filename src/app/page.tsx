@@ -11,7 +11,7 @@ import { ChatView } from "@/components/chat/ChatView";
 import { WelcomeMessage } from "@/components/chat/WelcomeMessage";
 import { NewDirectChatDialog } from "@/components/chat/NewDirectChatDialog";
 import { NewGroupChatDialog } from "@/components/chat/NewGroupChatDialog";
-import { AddUserToGroupDialog } from "@/components/chat/AddUserToGroupDialog"; // Import new dialog
+import { AddUserToGroupDialog } from "@/components/chat/AddUserToGroupDialog";
 import {
   SidebarProvider,
   Sidebar,
@@ -30,7 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Trash2, Settings } from "lucide-react";
+import { LogOut, Trash2, Settings, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -89,7 +89,7 @@ export default function ChatPage() {
       id: recipientId,
       name: recipientName,
       avatarUrl: `https://placehold.co/100x100.png?text=${recipientInitial}`,
-      status: "Offline"
+      status: "Offline" // Default status for new direct chat recipient
     };
 
     const participantsArray: User[] = [currentUser, recipientUser].sort((a, b) => a.id.localeCompare(b.id));
@@ -116,8 +116,8 @@ export default function ChatPage() {
       id: chatId,
       type: "direct",
       participants: participantsArray,
-      name: recipientUser.name,
-      avatarUrl: recipientUser.avatarUrl,
+      name: recipientUser.name, // Store recipient name for ChatItem display
+      avatarUrl: recipientUser.avatarUrl, // Store recipient avatar for ChatItem display
       pendingApprovalFromUserId: recipientUser.id,
       isRejected: false,
       requestTimestamp: now,
@@ -215,7 +215,7 @@ export default function ChatPage() {
         id: memberId,
         name: name,
         avatarUrl: `https://placehold.co/100x100.png?text=${memberInitial}`,
-        status: "Offline"
+        status: "Offline" // Default status for new group members
       };
     });
 
@@ -228,7 +228,7 @@ export default function ChatPage() {
       if (!allParticipantUsers.find(p => p.id === memberUser.id)) {
         allParticipantUsers.push(memberUser);
       }
-      initialLastReadBy[memberUser.id] = 0;
+      initialLastReadBy[memberUser.id] = 0; // New members haven't read anything
       initialClearedTimestamp[memberUser.id] = 0;
     });
 
@@ -237,11 +237,12 @@ export default function ChatPage() {
       type: "group",
       name: groupName,
       participants: allParticipantUsers,
+      lastMessage: "Grup telah dibuat.",
       lastMessageTimestamp: now,
       avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`,
       lastReadBy: initialLastReadBy,
       clearedTimestamp: initialClearedTimestamp,
-      createdByUserId: currentUser.id, // Set creator
+      createdByUserId: currentUser.id,
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
@@ -314,7 +315,14 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
-      // Logic for updating other chats for unread indication removed as unread is now calculated
+      // Update other active chats' last message and timestamp for sorting and unread calculation
+      if (!chat.pendingApprovalFromUserId && !chat.isRejected) {
+         return {
+          ...chat,
+          lastMessage: chat.type === 'direct' ? `Activity in chat with ${chat.name}` : `Activity in ${chat.name}`,
+          lastMessageTimestamp: newMessage.timestamp,
+         };
+      }
       return chat;
     }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
   }, [currentUser, selectedChat, setAllMessages, setChats, toast]);
@@ -380,13 +388,14 @@ export default function ChatPage() {
       const chatMessages = (prevAllMessages[editingMessageDetails!.chatId] || []).map(msg =>
         msg.id === messageId ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg
       );
+      // Ensure messages are sorted by their actual timestamp after edit
       const sortedChatMessages = [...chatMessages].sort((a, b) => a.timestamp - b.timestamp);
 
       if (sortedChatMessages.length > 0) {
         const lastMsg = sortedChatMessages[sortedChatMessages.length - 1];
         latestMessageDetailsForChat = { content: lastMsg.content, timestamp: lastMsg.timestamp };
       } else {
-        latestMessageDetailsForChat = null;
+        latestMessageDetailsForChat = null; // Should not happen if we just edited a message
       }
       return { ...prevAllMessages, [editingMessageDetails!.chatId]: sortedChatMessages };
     });
@@ -394,6 +403,7 @@ export default function ChatPage() {
     setChats(prevChats => {
       const updatedChats = prevChats.map(chat => {
         if (chat.id === editingMessageDetails!.chatId) {
+          // Update last message based on the actual last message after edit
           if (latestMessageDetailsForChat) {
             return {
               ...chat,
@@ -401,6 +411,7 @@ export default function ChatPage() {
               lastMessageTimestamp: latestMessageDetailsForChat.timestamp
             };
           } else {
+             // Fallback if for some reason no messages are left (e.g., if last message was deleted then edited - though UI prevents this)
              const fallbackMsg = (chat.type === 'direct' && (chat.pendingApprovalFromUserId || chat.isRejected) ? (chat.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan");
              const fallbackTs = (chat.requestTimestamp || chat.lastMessageTimestamp || Date.now());
              return {
@@ -412,6 +423,7 @@ export default function ChatPage() {
         }
         return chat;
       });
+      // Re-sort chats by the potentially new lastMessageTimestamp
       return updatedChats.sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
 
@@ -445,6 +457,7 @@ export default function ChatPage() {
     if (clearData) {
       setChats([]);
       setAllMessages({});
+      // Clear individual message histories if they were stored separately (not the case here with `LS_MESSAGES_PREFIX}all`)
       if (typeof window !== "undefined") {
         Object.keys(window.localStorage).forEach(key => {
           if (key.startsWith(LS_MESSAGES_PREFIX) && key !== `${LS_MESSAGES_PREFIX}all`) {
@@ -460,7 +473,7 @@ export default function ChatPage() {
 
   const handleGoBack = useCallback(() => {
     setSelectedChat(null);
-    setEditingMessageDetails(null);
+    setEditingMessageDetails(null); // Ensure edit mode is cancelled when going back
   }, []);
 
   const handleDeleteAllMessagesInChat = useCallback((chatId: string) => {
@@ -474,7 +487,7 @@ export default function ChatPage() {
             lastMessage: "Semua pesan telah dihapus.",
             lastMessageTimestamp: now,
             lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: now },
-            clearedTimestamp: {
+            clearedTimestamp: { // Record when this user cleared the chat
               ...(chat.clearedTimestamp || {}),
               [currentUser.id]: now,
             }
@@ -507,21 +520,42 @@ export default function ChatPage() {
     };
     const now = Date.now();
 
+    // Check for existing direct chat and its status
+    const potentialDirectChatIdParts = [currentUser.id, newUser.id].sort();
+    const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
+    const existingDirectChat = chats.find(c => c.id === potentialDirectChatId);
+
+    if (existingDirectChat) {
+      if (existingDirectChat.pendingApprovalFromUserId === newUser.id) {
+        toast({ title: "Penambahan Gagal", description: `Tidak dapat menambahkan ${userName}. Permintaan chat langsung Anda kepadanya masih tertunda.`, variant: "destructive" });
+        return;
+      }
+      if (existingDirectChat.pendingApprovalFromUserId === currentUser.id) {
+        toast({ title: "Penambahan Gagal", description: `Harap terima dulu permintaan chat langsung dari ${userName} sebelum menambahkannya ke grup.`, variant: "destructive" });
+        return;
+      }
+      if (existingDirectChat.isRejected) {
+        toast({ title: "Penambahan Gagal", description: `Tidak dapat menambahkan ${userName}. Chat langsung Anda dengannya sebelumnya telah ditolak.`, variant: "destructive" });
+        return;
+      }
+    }
+
     setChats(prevChats => {
       const chatToUpdate = prevChats.find(c => c.id === chatIdToAddTo);
-      if (!chatToUpdate) {
-        toast({ title: "Error", description: "Grup tidak ditemukan.", variant: "destructive" });
+      if (!chatToUpdate || chatToUpdate.type !== 'group') { // Ensure it's a group chat
+        toast({ title: "Error", description: "Grup tidak ditemukan atau chat bukan grup.", variant: "destructive" });
         return prevChats;
       }
 
       if (chatToUpdate.participants.find(p => p.id === newUser.id)) {
         toast({ title: "Info", description: `${userName} sudah menjadi anggota grup.`, variant: "default" });
-        return prevChats;
+        return prevChats; // No change if user is already a member
       }
 
       const updatedParticipants = [...chatToUpdate.participants, newUser];
-      const updatedLastReadBy = { ...(chatToUpdate.lastReadBy || {}), [newUser.id]: 0 };
+      const updatedLastReadBy = { ...(chatToUpdate.lastReadBy || {}), [newUser.id]: 0 }; // New user hasn't read anything
       const updatedClearedTimestamp = { ...(chatToUpdate.clearedTimestamp || {}), [newUser.id]: 0 };
+      const systemMessage = `${userName} telah ditambahkan ke grup.`;
 
 
       return prevChats.map(c =>
@@ -531,7 +565,7 @@ export default function ChatPage() {
               participants: updatedParticipants,
               lastReadBy: updatedLastReadBy,
               clearedTimestamp: updatedClearedTimestamp,
-              lastMessage: `${userName} telah ditambahkan ke grup.`, // System message
+              lastMessage: systemMessage, 
               lastMessageTimestamp: now,
             }
           : c
@@ -539,7 +573,7 @@ export default function ChatPage() {
     });
     toast({ title: "Pengguna Ditambahkan", description: `${userName} telah ditambahkan ke grup.` });
     setChatIdToAddTo(null); // Reset after adding
-  }, [currentUser, chatIdToAddTo, setChats, toast]);
+  }, [currentUser, chatIdToAddTo, setChats, toast, chats]);
 
 
   if (!isClient) {
@@ -618,7 +652,13 @@ export default function ChatPage() {
         <SidebarInset className="flex-1 flex flex-col">
            <div className="md:hidden p-2 border-b flex items-center">
              <SidebarTrigger />
-             {selectedChat && <span className="ml-2 font-semibold truncate max-w-[calc(100vw-100px)]">
+             {selectedChat && (
+                <Button variant="ghost" size="icon" className="mr-1 shrink-0" onClick={handleGoBack}>
+                    <ArrowLeft className="h-5 w-5" />
+                    <span className="sr-only">Kembali</span>
+                </Button>
+             )}
+             {selectedChat && <span className="ml-2 font-semibold truncate max-w-[calc(100vw-120px)]"> {/* Adjusted max-width */}
                 {selectedChat.type === 'direct' && selectedChat.participants
                     ? selectedChat.participants.find(p => p.id !== currentUser.id)?.name || 'Direct Chat'
                     : selectedChat.name || 'Group Chat'}
@@ -665,3 +705,4 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+
