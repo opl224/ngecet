@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
-import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert, ShieldOff, Clock } from "lucide-react"; // Added Clock
+import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert, ShieldOff, Clock } from "lucide-react";
 
 interface ChatItemProps {
   chat: Chat & { calculatedUnreadCount?: number };
@@ -50,7 +50,6 @@ export function ChatItem({
   };
 
   const { name, avatarUrl, initials, Icon, otherParticipantStatus } = getChatDisplayDetails();
-  const otherParticipantNameDisplay = (chat.type === 'direct' && chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id)?.name) || name || "Seseorang";
 
   let statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
   let showAcceptRejectActions = false;
@@ -67,18 +66,17 @@ export function ChatItem({
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
         specialStatusText = `${name} mungkin memblokir Anda.`;
     } else if (chat.pendingApprovalFromUserId === currentUser.id) {
-      specialStatusText = `${otherParticipantNameDisplay} ingin memulai chat.`;
-      statusTimestamp = chat.requestTimestamp;
+      // Action buttons will be shown inline, specialStatusText is not needed here for "XYZ wants to chat"
+      statusTimestamp = chat.requestTimestamp; // For sorting
       showAcceptRejectActions = true;
     } else if (chat.pendingApprovalFromUserId) {
-      // specialStatusText = `Permintaan dikirim. Menunggu ${name}...`; // Removed this line
-      showPendingClockIcon = true; // Show clock icon instead
+      showPendingClockIcon = true;
       statusTimestamp = chat.requestTimestamp;
     } else if (chat.isRejected) {
       if (chat.rejectedByUserId === currentUser.id) {
         specialStatusText = `Anda menolak permintaan dari ${name}.`;
       } else {
-        specialStatusText = `${name} menolak permintaan anda.`;
+        specialStatusText = `${name} menolak permintaan Anda.`;
       }
       statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
       showDeleteAction = true;
@@ -95,6 +93,8 @@ export function ChatItem({
   let statusMessage: React.ReactNode = null;
   if (specialStatusText) {
     statusMessage = specialStatusText;
+  } else if (chat.type === "direct" && chat.pendingApprovalFromUserId === currentUser.id) {
+    statusMessage = "Permintaan chat baru"; // New text for incoming pending request
   } else if (showPendingClockIcon && !chat.isRejected) {
     // No status message needed if clock icon is shown for pending sent requests
   } else if (chat.type === "group" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
@@ -148,6 +148,30 @@ export function ChatItem({
               </h4>
             </div>
             {(() => {
+              if (showAcceptRejectActions && chat.type === "direct" && chat.pendingApprovalFromUserId === currentUser.id) {
+                return (
+                  <div className="flex items-center space-x-1 shrink-0 ml-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={(e) => { e.stopPropagation(); onRejectChat(chat.id); }}
+                      className="h-7 w-7 p-1 text-destructive hover:bg-destructive/5 hover:text-destructive"
+                      aria-label="Tolak Permintaan"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={(e) => { e.stopPropagation(); onAcceptChat(chat.id); }}
+                      className="h-7 w-7 p-1 text-green-600 hover:bg-green-500/5 hover:text-green-700"
+                      aria-label="Terima Permintaan"
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              }
               if (!specialStatusText && calculatedUnreadCount > 0) {
                 return (
                   <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0 ml-2">
@@ -181,6 +205,13 @@ export function ChatItem({
                           {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
                         </span>
                       );
+                } else if (!specialStatusText && !showPendingClockIcon && chat.type === 'direct' && !chat.blockedByUser && !showAcceptRejectActions && statusTimestamp) {
+                     // This case is to show timestamp if it's an active direct chat and no unread/online status to show
+                     return (
+                        <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
+                          {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
+                        </span>
+                      );
                 }
               }
               return null;
@@ -193,25 +224,7 @@ export function ChatItem({
           )}
         </div>
       </button>
-      {showAcceptRejectActions && chat.type === "direct" && chat.pendingApprovalFromUserId === currentUser.id && (
-        <div className="mt-2 flex justify-end space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={(e) => { e.stopPropagation(); onRejectChat(chat.id); }}
-            className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive-foreground focus:border-destructive focus:bg-destructive/10"
-          >
-            <X className="mr-1 h-4 w-4" /> Tolak
-          </Button>
-          <Button
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); onAcceptChat(chat.id); }}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            <Check className="mr-1 h-4 w-4" /> Terima
-          </Button>
-        </div>
-      )}
+      {/* Removed the old block for accept/reject buttons that was here */}
       {showDeleteAction && (
         <div className="mt-2 flex justify-end space-x-2">
             <Button
