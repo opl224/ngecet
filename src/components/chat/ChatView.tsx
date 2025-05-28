@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, X, AlertTriangle, Lock, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, ShieldAlert, ShieldOff, Send, Palette, Sun, Moon, Laptop, InfoIcon } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, X, AlertTriangle, Lock, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, ShieldAlert, ShieldOff, Send, Palette, Sun, Moon, Laptop, InfoIcon, Clock } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -33,7 +33,7 @@ interface ChatViewProps {
   messages: Message[];
   currentUser: User;
   onSendMessage: (content: string, replyToMessage?: Message | null) => void;
-  editingMessageDetails: Message | null;
+  editingMessageDetails: Message | null; // Renamed from propsEditingMessageDetails for clarity
   onSaveEditedMessage: (messageId: string, newContent: string) => void;
   onRequestEditMessage: (messageToEdit: Message) => void;
   onCancelEditMessage: () => void;
@@ -53,7 +53,7 @@ export function ChatView({
   messages,
   currentUser,
   onSendMessage,
-  editingMessageDetails: propsEditingMessageDetails,
+  editingMessageDetails, // Using the renamed prop
   onSaveEditedMessage,
   onRequestEditMessage,
   onCancelEditMessage,
@@ -87,25 +87,25 @@ export function ChatView({
 
   const handleCancelEditClick = useCallback(() => {
     onCancelEditMessage();
-    if (newMessage !== "") setNewMessage("");
+    setNewMessage(""); // Clear input on cancel
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [onCancelEditMessage, newMessage]);
+  }, [onCancelEditMessage]);
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    if (newMessage !== "") setNewMessage("");
+    setNewMessage(""); // Clear input on cancel reply
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [newMessage]);
+  }, []);
 
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        if (propsEditingMessageDetails) {
+        if (editingMessageDetails) {
           handleCancelEditClick();
         } else if (replyingToMessage) {
           handleCancelReplyClick();
@@ -119,63 +119,63 @@ export function ChatView({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [propsEditingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
+  }, [editingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
    useEffect(() => {
-    if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
-      if (newMessage !== propsEditingMessageDetails.content) {
-        setNewMessage(propsEditingMessageDetails.content);
-      }
+    if (editingMessageDetails && editingMessageDetails.chatId === chat.id) {
+      setNewMessage(editingMessageDetails.content); // Reverted to unconditional set
       if (replyingToMessage) {
          setReplyingToMessage(null);
       }
       setTimeout(() => {
         if (messageInputRef.current) {
           messageInputRef.current.style.height = 'auto';
+          // Ensure value is set before calculating scrollHeight for accuracy
+          if (messageInputRef.current.value !== editingMessageDetails.content) {
+            messageInputRef.current.value = editingMessageDetails.content;
+          }
           const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
           messageInputRef.current.style.height = `${newHeight}px`;
           messageInputRef.current.focus();
-          const len = propsEditingMessageDetails.content.length;
+          const len = editingMessageDetails.content.length;
           messageInputRef.current.selectionStart = len;
           messageInputRef.current.selectionEnd = len;
         }
       }, 50);
-    } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
-      // This case handles when editing is cancelled or finished for the current chat
+    } else if (!editingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
       if (messageInputRef.current && !replyingToMessage ) {
-          // Only reset height if not in reply mode, newMessage is reset by handleCancelEditClick or chat switch
           messageInputRef.current.style.height = 'auto';
       }
     }
-    prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
-  }, [propsEditingMessageDetails, chat.id, replyingToMessage, newMessage]);
+    prevEditingMessageDetailsRef.current = editingMessageDetails;
+  }, [editingMessageDetails, chat.id, replyingToMessage, onCancelEditMessage]);
 
 
   useEffect(() => {
     const chatJustSwitched = prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id;
 
     if (chatJustSwitched) {
-      if (newMessage !== "") setNewMessage("");
-      if (messageInputRef.current) { // Ensure ref is current
+      setNewMessage(""); // Reverted to unconditional set
+      if (messageInputRef.current) {
         messageInputRef.current.style.setProperty('height', 'auto', 'important');
       }
-      if (replyingToMessage !== null) setReplyingToMessage(null);
+      setReplyingToMessage(null); // Reverted to unconditional set
 
-      if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
+      if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
         onCancelEditMessage();
       }
     }
 
     if (isChatActive && messageInputRef.current &&
-        (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
+        (chatJustSwitched || (!editingMessageDetails && !replyingToMessage))) {
       setTimeout(() => {
         messageInputRef.current?.focus();
       }, 50);
     }
     prevChatIdRef.current = chat.id;
-
-  }, [chat.id, isChatActive, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage, newMessage]);
+  // Removed newMessage from dependencies
+  }, [chat.id, isChatActive, onCancelEditMessage, editingMessageDetails, replyingToMessage, prevChatIdRef]);
 
 
   useEffect(() => {
@@ -199,13 +199,13 @@ export function ChatView({
       return;
     }
     if (newMessage.trim()) {
-      if (propsEditingMessageDetails) {
-        onSaveEditedMessage(propsEditingMessageDetails.id, newMessage.trim());
+      if (editingMessageDetails) {
+        onSaveEditedMessage(editingMessageDetails.id, newMessage.trim());
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
         if (replyingToMessage !== null) setReplyingToMessage(null);
       }
-      if (newMessage !== "") setNewMessage("");
+      setNewMessage("");
 
       if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
@@ -215,11 +215,11 @@ export function ChatView({
 
   const handleReplyToMessageInView = useCallback((messageToReply: Message) => {
     if(!isChatActive) return;
-    if (propsEditingMessageDetails) onCancelEditMessage();
+    if (editingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    if (newMessage !== "") setNewMessage("");
+    setNewMessage("");
     setTimeout(() => messageInputRef.current?.focus(), 50);
-  }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage, newMessage]);
+  }, [isChatActive, editingMessageDetails, onCancelEditMessage]);
 
   const getChatDisplayDetails = useMemo(() => {
     if (chat.type === "direct") {
@@ -317,13 +317,14 @@ export function ChatView({
 
       if (isACreator && !isBCreator) return -1;
       if (!isACreator && isBCreator) return 1;
+      
+      if (isACreator && isACurrentUser) return -1; // Admin and current user is highest
+      if (isBCreator && isBCurrentUser) return 1;
 
-      if (isACurrentUser && !isBCurrentUser) {
-        return isACreator ? -1 : 1;
-      }
-      if (!isACurrentUser && isBCurrentUser) {
-        return isBCreator ? 1 : -1;
-      }
+
+      if (isACurrentUser && !isBCurrentUser) return -1; // Current user (not admin) next
+      if (!isACurrentUser && isBCurrentUser) return 1;
+
 
       return (a.name || '').localeCompare(b.name || '');
     });
@@ -449,7 +450,7 @@ export function ChatView({
               </div>
             ) : null}
           </DialogHeader>
-
+          
           {chat.type === 'direct' && onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
               <div className="py-2 border-t">
                   <Button
@@ -463,6 +464,7 @@ export function ChatView({
                   </Button>
               </div>
           )}
+
 
           {chat.type === 'group' && (
             <div className="py-2 border-t">
@@ -546,32 +548,6 @@ export function ChatView({
             </div>
         )}
         <div className={cn("flex-1 space-y-3", chatOverlayMessage && "blur-sm pointer-events-none")}>
-          {displayedMessages.map((msg) => {
-            const sender = msg.senderId === currentUser.id
-              ? currentUser
-              : chat.participants.find(p => p.id === msg.senderId);
-
-            const senderToDisplay : User = sender || {
-              id: msg.senderId,
-              name: msg.senderName,
-              avatarUrl: undefined,
-              status: "Offline"
-            };
-
-            return (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                isCurrentUserMessage={msg.senderId === currentUser.id}
-                senderDetails={senderToDisplay}
-                chatType={chat.type}
-                chat={chat}
-                onReplyMessage={isChatActive ? handleReplyToMessageInView : undefined}
-                onEditMessage={isChatActive ? onRequestEditMessage : undefined}
-                onDeleteMessage={isChatActive ? onDeleteMessage : undefined}
-              />
-            );
-          })}
           {displayedMessages.length === 0 && isChatActive && (
              <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-75 pt-10">
               <Image
@@ -597,20 +573,46 @@ export function ChatView({
               <p className="text-sm">Chat ini tidak aktif.</p>
             </div>
           )}
+           {displayedMessages.map((msg) => {
+            const sender = msg.senderId === currentUser.id
+              ? currentUser
+              : chat.participants.find(p => p.id === msg.senderId);
+
+            const senderToDisplay : User = sender || {
+              id: msg.senderId,
+              name: msg.senderName,
+              avatarUrl: undefined, // Default avatar or logic handled in MessageBubble
+              status: "Offline" // Default status
+            };
+
+            return (
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                isCurrentUserMessage={msg.senderId === currentUser.id}
+                senderDetails={senderToDisplay}
+                chatType={chat.type}
+                chat={chat}
+                onReplyMessage={isChatActive ? handleReplyToMessageInView : undefined}
+                onEditMessage={isChatActive ? onRequestEditMessage : undefined}
+                onDeleteMessage={isChatActive ? onDeleteMessage : undefined}
+              />
+            );
+          })}
         </div>
         </div>
       </ScrollArea>
 
-      {(replyingToMessage || propsEditingMessageDetails) && isChatActive && (
+      {(replyingToMessage || editingMessageDetails) && isChatActive && (
         <div className="p-3 border-t bg-muted/30 text-sm">
           <div className="flex justify-between items-center text-muted-foreground">
             <div className="truncate flex-1 min-w-0 pr-2">
-              {propsEditingMessageDetails ? (
+              {editingMessageDetails ? (
                 <>
                   <PencilLine className="inline h-4 w-4 mr-1.5 text-amber-600" />
                   <span className="font-medium text-amber-700">Mengedit pesan:</span>
                   <p className="truncate text-xs">
-                    "{propsEditingMessageDetails.content.length > 70 ? propsEditingMessageDetails.content.substring(0, 70) + "..." : propsEditingMessageDetails.content}"
+                    "{editingMessageDetails.content.length > 70 ? editingMessageDetails.content.substring(0, 70) + "..." : editingMessageDetails.content}"
                   </p>
                 </>
               ) : replyingToMessage && (
@@ -626,8 +628,8 @@ export function ChatView({
               variant="ghost"
               size="icon"
               className="h-7 w-7 shrink-0"
-              onClick={propsEditingMessageDetails ? handleCancelEditClick : handleCancelReplyClick}
-              aria-label={propsEditingMessageDetails ? "Batalkan Edit" : "Batalkan Balasan"}
+              onClick={editingMessageDetails ? handleCancelEditClick : handleCancelReplyClick}
+              aria-label={editingMessageDetails ? "Batalkan Edit" : "Batalkan Balasan"}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -643,7 +645,7 @@ export function ChatView({
             placeholder={
               !isChatActive
                 ? (chat.type === 'direct' && chat.blockedByUser === currentUser.id ? "Anda memblokir pengguna ini" : "Chat tidak aktif")
-                : propsEditingMessageDetails
+                : editingMessageDetails
                 ? "Edit pesan Anda..."
                 : replyingToMessage
                 ? `Balas ke ${replyingToMessage.senderName}...`
@@ -661,11 +663,10 @@ export function ChatView({
             }}
           />
           <Button type="submit" size="icon" aria-label="Send message" disabled={!newMessage.trim() || !isChatActive} className="self-end">
-            {propsEditingMessageDetails ? <Check className="h-5 w-5" /> : <SendHorizonal className="h-5 w-5" />}
+            {editingMessageDetails ? <Check className="h-5 w-5" /> : <SendHorizonal className="h-5 w-5" />}
           </Button>
         </form>
       </footer>
     </div>
   );
 }
-
