@@ -328,7 +328,7 @@ export default function ChatPage() {
 
   const handleSelectChat = useCallback((chat: Chat) => {
     if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
-        toast({ title: "Interaksi Terbatas", description: "Anda tidak dapat berinteraksi dalam chat ini saat ini." });
+        // Removed toast "Interaksi Terbatas"
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
         toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
     } else if (chat.isRejected) {
@@ -886,7 +886,11 @@ export default function ChatPage() {
   }
 
   if (!currentUser) {
-    return <UserProfileForm currentUser={null} onSaveProfile={handleSaveProfile} />;
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <UserProfileForm currentUser={null} onSaveProfile={handleSaveProfile} />
+      </div>
+    );
   }
 
 
@@ -1036,6 +1040,7 @@ export default function ChatPage() {
         }}
         onCreateChat={handleCreateGroupChat}
         currentUserObj={currentUser}
+        chats={chats} // Pass chats for suggestions
         initialMemberName={groupDialogInitialMemberName}
       />
       <AddUserToGroupDialog
