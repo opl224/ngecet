@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus, UserMinus } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, MessageSquarePlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -42,6 +42,7 @@ interface ChatViewProps {
   onTriggerAddUserToGroup?: () => void;
   onTriggerDeleteGroup?: (chatId: string) => void;
   onRemoveParticipant?: (chatId: string, participantIdToRemove: string) => void;
+  onStartGroupWithUser?: (user: User) => void;
 }
 
 export function ChatView({
@@ -59,6 +60,7 @@ export function ChatView({
   onTriggerAddUserToGroup,
   onTriggerDeleteGroup,
   onRemoveParticipant,
+  onStartGroupWithUser,
 }: ChatViewProps) {
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState("");
@@ -79,7 +81,6 @@ export function ChatView({
     setNewMessage(""); 
   }, []);
 
-  // Effect for handling Escape key to go back or cancel edit/reply
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -106,13 +107,11 @@ export function ChatView({
     }
   }, [messages, chat.id]);
 
-
-  // Effect for handling message editing state
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      if (replyingToMessage) {
-        setReplyingToMessage(null); // Ensure reply mode is off when editing
+      if (replyingToMessage) { // Ensure reply mode is off when editing
+        setReplyingToMessage(null); 
       }
       setTimeout(() => {
         messageInputRef.current?.focus();
@@ -123,23 +122,22 @@ export function ChatView({
         }
       }, 0);
     } else if (!replyingToMessage) { 
-      // Only clear if not editing AND not replying
-      // setNewMessage(""); // This line was causing issues, let's manage clearing more carefully
+      // setNewMessage(""); // Clearing here can interfere with typing when switching chats
     }
-  }, [editingMessageDetails]); // Removed replyingToMessage from deps as it's handled inside
+  }, [editingMessageDetails]);
 
-  // Effect for resetting states when chat.id changes
+
    useEffect(() => {
-    // Reset states when chat.id changes,
-    // but only if not currently editing/replying to a message from the *new* chat
+    // Only reset/clear if not currently editing OR replying to a message relevant to the NEW chat.
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
       onCancelEditMessage();
     }
     if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
       setReplyingToMessage(null);
     }
-     // Always clear the new message input when chat.id changes,
-     // unless an edit for the current chat is in progress or a reply is active for the current chat.
+
+    // Always clear the new message input when chat.id changes,
+    // unless an edit for the current chat is in progress or a reply is active for the current chat.
     if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
         (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
         setNewMessage("");
@@ -180,7 +178,7 @@ export function ChatView({
     setTimeout(() => messageInputRef.current?.focus(), 0);
   }, [isChatActive, editingMessageDetails, onCancelEditMessage]);
 
-  const getChatDisplayDetails = () => {
+  const getChatDisplayDetails = useMemo(() => {
     if (chat.type === "direct") {
       const otherParticipant = chat.participants?.find(p => p.id !== currentUser.id);
       const otherParticipantName = otherParticipant?.name || "Direct Chat";
@@ -191,7 +189,8 @@ export function ChatView({
         avatarUrl: otherParticipantAvatar,
         Icon: UserIcon,
         description: `Direct message with ${otherParticipantName}`,
-        status: otherParticipantStatus
+        status: otherParticipantStatus,
+        otherParticipantObject: otherParticipant // Expose the other participant object
       };
     } else { 
       const groupName = chat.name || "Unnamed Group";
@@ -200,12 +199,13 @@ export function ChatView({
         avatarUrl: chat.avatarUrl,
         Icon: Users,
         description: `Group Chat - ${chat.participants?.length || 0} anggota`,
-        status: null
+        status: null,
+        otherParticipantObject: undefined
       };
     }
-  };
+  }, [chat, currentUser.id]);
 
-  const displayDetails = getChatDisplayDetails();
+  const displayDetails = getChatDisplayDetails;
 
   let chatOverlayMessage = null;
   if (chat.type === 'direct') {
@@ -248,10 +248,10 @@ export function ChatView({
   const sortedParticipants = useMemo(() => {
     if (!chat.participants) return [];
     return [...chat.participants].sort((a, b) => {
-      const isACurrentUser = a.id === currentUser.id;
-      const isBCurrentUser = b.id === currentUser.id;
       const isAAdmin = a.id === chat.createdByUserId;
       const isBAdmin = b.id === chat.createdByUserId;
+      const isACurrentUser = a.id === currentUser.id;
+      const isBCurrentUser = b.id === currentUser.id;
 
       if (isAAdmin && !isACurrentUser) return -1; 
       if (isBAdmin && !isBCurrentUser) return 1;  
@@ -375,59 +375,75 @@ export function ChatView({
               </div>
             )}
           </SheetHeader>
-          <div className="py-2">
-            <div className="flex justify-between items-center mb-2 px-1">
-                <h4 className="font-semibold text-sm">Participants</h4>
-                {isChatActive && chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerAddUserToGroup && (
-                    <Button variant="outline" size="sm" onClick={onTriggerAddUserToGroup}>
-                        <UserPlus className="mr-2 h-4 w-4" /> Add User
-                    </Button>
-                )}
+          
+          {chat.type === 'direct' && displayDetails.otherParticipantObject && onStartGroupWithUser && isChatActive && (
+            <div className="py-2">
+               <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => onStartGroupWithUser(displayDetails.otherParticipantObject!)}
+               >
+                <Users className="mr-2 h-4 w-4" />
+                Buat Grup dengan {displayDetails.name}
+               </Button>
             </div>
-            <ScrollArea className="h-[calc(100vh-380px)]">
-              <ul className="space-y-1 text-sm">
-                {sortedParticipants.map(participantUser => {
-                  const isCurrentUserParticipant = participantUser.id === currentUser.id;
-                  const participantName = participantUser.name || "Unknown User";
-                  const isChatAdmin = participantUser.id === chat.createdByUserId;
+          )}
 
-                  return (
-                    <li key={participantUser.id} className="flex items-center justify-between space-x-2 p-2 hover:bg-muted/50 rounded-md">
-                       <div className="flex items-center space-x-2 min-w-0 flex-1">
-                         <Avatar className="h-8 w-8">
-                           <AvatarImage src={participantUser.avatarUrl} alt={participantName} data-ai-hint="person abstract small"/>
-                           <AvatarFallback>{participantUser?.name?.substring(0,1).toUpperCase() || '?'}</AvatarFallback>
-                         </Avatar>
-                         <div className="truncate">
-                            <span className="font-medium truncate">{participantName}</span>
-                            {isCurrentUserParticipant && !isChatAdmin && <span className="text-xs text-muted-foreground"> Anda</span>}
+          {chat.type === 'group' && (
+            <div className="py-2">
+              <div className="flex justify-between items-center mb-2 px-1">
+                  <h4 className="font-semibold text-sm">Participants</h4>
+                  {isChatActive && chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerAddUserToGroup && (
+                      <Button variant="outline" size="sm" onClick={onTriggerAddUserToGroup}>
+                          <UserPlus className="mr-2 h-4 w-4" /> Add User
+                      </Button>
+                  )}
+              </div>
+              <ScrollArea className="h-[calc(100vh-380px)]"> {/* Adjust height as needed */}
+                <ul className="space-y-1 text-sm">
+                  {sortedParticipants.map(participantUser => {
+                    const isCurrentUserParticipant = participantUser.id === currentUser.id;
+                    const participantName = participantUser.name || "Unknown User";
+                    const isChatAdmin = participantUser.id === chat.createdByUserId;
+
+                    return (
+                      <li key={participantUser.id} className="flex items-center justify-between space-x-2 p-2 hover:bg-muted/50 rounded-md">
+                         <div className="flex items-center space-x-2 min-w-0 flex-1">
+                           <Avatar className="h-8 w-8">
+                             <AvatarImage src={participantUser.avatarUrl} alt={participantName} data-ai-hint="person abstract small"/>
+                             <AvatarFallback>{participantUser?.name?.substring(0,1).toUpperCase() || '?'}</AvatarFallback>
+                           </Avatar>
+                           <div className="truncate">
+                              <span className="font-medium truncate">{participantName}</span>
+                              {isCurrentUserParticipant && <span className="text-xs text-muted-foreground"> (Anda)</span>}
+                           </div>
                          </div>
-                       </div>
-                       <div className="flex items-center space-x-2 shrink-0">
-                         {isChatAdmin && (
-                            <span className="text-xs text-primary font-semibold">(Admin{isCurrentUserParticipant ? " - Anda" : ""})</span>
-                         )}
-                         {currentUser.id === chat.createdByUserId &&
-                          participantUser.id !== currentUser.id &&
-                          chat.type === 'group' &&
-                          onRemoveParticipant && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0"
-                              onClick={() => onRemoveParticipant(chat.id, participantUser.id)}
-                              aria-label={`Keluarkan ${participantName}`}
-                            >
-                              <UserMinus className="h-4 w-4" />
-                            </Button>
-                         )}
-                       </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </ScrollArea>
-          </div>
+                         <div className="flex items-center space-x-2 shrink-0">
+                           {isChatAdmin && (
+                              <span className="text-xs text-primary font-semibold">(Admin{isCurrentUserParticipant ? "" : ""})</span>
+                           )}
+                           {currentUser.id === chat.createdByUserId &&
+                            participantUser.id !== currentUser.id &&
+                            chat.type === 'group' &&
+                            onRemoveParticipant && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0"
+                                onClick={() => onRemoveParticipant(chat.id, participantUser.id)}
+                                aria-label={`Keluarkan ${participantName}`}
+                              >
+                                <UserMinus className="h-4 w-4" />
+                              </Button>
+                           )}
+                         </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </ScrollArea>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
 
@@ -545,4 +561,3 @@ export function ChatView({
     </div>
   );
 }
-

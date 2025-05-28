@@ -22,7 +22,7 @@ export function AppLogo({ className, ...props }: AppLogoProps) {
     >
       <Image
         src={logoSrc}
-        alt="SimplicChat Logo"
+        alt="Ngecet Logo"
         layout="fill" // Mengisi div parent
         objectFit="contain" // Menjaga aspek rasio, bisa 'cover' atau 'contain'
         priority // Penting untuk LCP jika logo adalah bagian utama

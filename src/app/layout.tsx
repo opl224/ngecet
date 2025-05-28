@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({ // Corrected instantiation
 });
 
 export const metadata: Metadata = {
-  title: 'SimplicChat',
+  title: 'Ngecet',
   description: 'Simple and elegant web chatting application.',
 };
 

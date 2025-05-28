@@ -71,7 +71,7 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
       <div className="p-8 bg-card shadow-xl rounded-lg w-full max-w-md space-y-6">
         <div className="flex flex-col items-center space-y-2">
           {/* Assuming AppLogo might be used here or similar branding */}
-          <h1 className="text-2xl font-bold text-center text-foreground">Selamat Datang di SimplicChat</h1>
+          <h1 className="text-2xl font-bold text-center text-foreground">Selamat Datang di Ngecet</h1>
           <p className="text-sm text-muted-foreground text-center">Silakan atur profil Anda untuk memulai.</p>
         </div>
         <Form {...form}>
@@ -136,9 +136,10 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Edit Profile</DialogTitle>
-          <DialogDescription>
+          </ br>
+          {/* <DialogDescription>
             Make changes to your display name. Click save when you're done.
-          </DialogDescription>
+          </DialogDescription> */}
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">

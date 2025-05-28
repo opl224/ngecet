@@ -44,9 +44,9 @@ import { LogOut, Trash2, Settings, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 
-const LS_USER_KEY = "simplicchat_user";
-const LS_CHATS_KEY = "simplicchat_chats";
-const LS_MESSAGES_PREFIX = "simplicchat_messages_";
+const LS_USER_KEY = "ngecet_user";
+const LS_CHATS_KEY = "ngecet_chats";
+const LS_MESSAGES_PREFIX = "ngecet_messages_";
 
 export default function ChatPage() {
   const { toast } = useToast();
@@ -68,6 +68,7 @@ export default function ChatPage() {
 
   const [isDeleteGroupConfirmOpen, setIsDeleteGroupConfirmOpen] = useState(false);
   const [groupToDeleteId, setGroupToDeleteId] = useState<string | null>(null);
+  const [groupDialogInitialMemberName, setGroupDialogInitialMemberName] = useState<string | null>(null);
 
 
   const [isClient, setIsClient] = useState(false);
@@ -218,7 +219,7 @@ export default function ChatPage() {
     if (!currentUser) return;
 
     const invalidMemberDisplayNames: string[] = [];
-    const finalMemberUsers: User[] = [currentUser]; // Start with the current user
+    const finalMemberUsers: User[] = [currentUser]; 
 
     for (const name of memberDisplayNames) {
         const memberId = name.toLowerCase().replace(/\s+/g, "_") || `user_member_${Date.now()}_${Math.random().toString(36).substring(2,7)}`;
@@ -238,7 +239,6 @@ export default function ChatPage() {
             if (memberUserObject) {
                 finalMemberUsers.push(memberUserObject);
             } else {
-                 // This case should ideally not happen if chats array is consistent
                 const memberInitial = name.substring(0,1).toUpperCase() || 'M';
                 finalMemberUsers.push({
                     id: memberId, name: name,
@@ -373,12 +373,11 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
-      // Update last message for other active chats to trigger re-sorting
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected) {
          return {
           ...chat,
-          lastMessage: chat.type === 'direct' ? `Aktivitas di chat dengan ${chat.name}` : `Aktivitas di ${chat.name}`, // Generic message
-          lastMessageTimestamp: newMessage.timestamp, // Use current message timestamp for sorting
+          lastMessage: chat.type === 'direct' ? `Aktivitas baru di chat dengan ${chat.name}` : `Aktivitas baru di ${chat.name}`,
+          lastMessageTimestamp: newMessage.timestamp, 
          };
       }
       return chat;
@@ -581,7 +580,6 @@ export default function ChatPage() {
     if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected) {
         const foundUser = existingDirectChat.participants.find(p => p.id === newUserId);
         if (!foundUser) {
-            // This case should ideally not happen if chat data is consistent
             toast({ title: "Error Internal", description: `Tidak dapat menemukan detail untuk ${userName}. Coba mulai chat langsung dulu.`, variant: "destructive" });
             return;
         }
@@ -697,7 +695,6 @@ export default function ChatPage() {
         lastMessageTimestamp: now,
       };
       
-      // If selected chat is the one being updated, update selectedChat as well
       if (selectedChat?.id === chatId) {
         setSelectedChat(updatedChat);
       }
@@ -706,6 +703,14 @@ export default function ChatPage() {
                       .sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
   }, [currentUser, setChats, toast, selectedChat]);
+
+  const handleStartGroupWithUser = useCallback((userToInclude: User) => {
+    if (!currentUser) return;
+    setGroupDialogInitialMemberName(userToInclude.name);
+    setIsNewGroupChatDialogOpen(true);
+    // Close the sheet if it's open (assuming ChatView handles its own sheet state or we pass a closer)
+    // For now, just opening the dialog. Sheet will close when user clicks away or X.
+  }, [currentUser]);
 
 
   if (!isClient) {
@@ -729,7 +734,7 @@ export default function ChatPage() {
              <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
                 <div className="flex items-center gap-2 shrink-0 mr-2">
                     <AppLogo className="h-7 w-7 text-primary" />
-                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground">SimplicChat</h1>
+                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground">Ngecet</h1>
                 </div>
                 <div className="flex items-center gap-2">
                     {currentUser && (
@@ -812,6 +817,7 @@ export default function ChatPage() {
               onTriggerAddUserToGroup={() => handleOpenAddUserToGroupDialog(selectedChat.id)}
               onTriggerDeleteGroup={handleTriggerDeleteGroup}
               onRemoveParticipant={handleRemoveParticipantFromGroup}
+              onStartGroupWithUser={handleStartGroupWithUser}
             />
           ) : (
             <WelcomeMessage />
@@ -827,11 +833,17 @@ export default function ChatPage() {
       />
       <NewGroupChatDialog
         isOpen={isNewGroupChatDialogOpen}
-        onOpenChange={setIsNewGroupChatDialogOpen}
+        onOpenChange={(isOpen) => {
+            setIsNewGroupChatDialogOpen(isOpen);
+            if (!isOpen) {
+                setGroupDialogInitialMemberName(null); // Reset prefill when dialog closes
+            }
+        }}
         onCreateChat={handleCreateGroupChat}
         currentUserId={currentUser?.id}
         chats={chats} 
         currentUserObj={currentUser}
+        initialMemberName={groupDialogInitialMemberName}
       />
       <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}

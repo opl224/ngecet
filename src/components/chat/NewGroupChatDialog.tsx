@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area"; 
-import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; 
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"; 
 
 const groupChatFormSchema = z.object({
   groupName: z.string().min(2, "Nama grup minimal 2 karakter.").max(30, "Nama grup terlalu panjang."),
@@ -36,9 +36,18 @@ interface NewGroupChatDialogProps {
   currentUserId: string | undefined;
   chats: Chat[]; 
   currentUserObj: User | null; 
+  initialMemberName?: string | null;
 }
 
-export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, currentUserId, chats, currentUserObj }: NewGroupChatDialogProps) {
+export function NewGroupChatDialog({ 
+    isOpen, 
+    onOpenChange, 
+    onCreateChat, 
+    currentUserId, 
+    chats, 
+    currentUserObj, 
+    initialMemberName 
+}: NewGroupChatDialogProps) {
   const { toast } = useToast();
   const [currentMemberNameInput, setCurrentMemberNameInput] = useState('');
   const [addedMembers, setAddedMembers] = useState<string[]>([]);
@@ -51,6 +60,32 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
     resolver: zodResolver(groupChatFormSchema),
     defaultValues: { groupName: "" },
   });
+
+  useEffect(() => {
+    if (isOpen && initialMemberName && !addedMembers.includes(initialMemberName)) {
+        // Validate if initialMemberName can be added (is an active contact)
+        const isActiveContact = activeDirectContacts.some(contact => contact.name.toLowerCase() === initialMemberName.toLowerCase());
+        if (isActiveContact) {
+            setAddedMembers(prev => [...prev, initialMemberName]);
+        } else if (currentUserObj?.name.toLowerCase() !== initialMemberName.toLowerCase()) {
+            // Only toast if it's not the current user and not an active contact
+            toast({
+                title: "Info Tambahan",
+                description: `Pengguna "${initialMemberName}" tidak dapat ditambahkan secara otomatis karena tidak ada chat langsung aktif. Anda bisa menambahkannya secara manual jika memenuhi syarat.`,
+                variant: "default"
+            });
+        }
+    }
+    if (!isOpen) { // Reset when dialog closes
+        setAddedMembers([]);
+        setCurrentMemberNameInput('');
+        setShowSuggestions(false);
+        setIsMemberInputFocused(false);
+        form.reset({ groupName: "" });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialMemberName, currentUserObj]); // activeDirectContacts is not needed here as it might cause loop
+
 
   const activeDirectContacts = useMemo(() => {
     if (!currentUserId || !chats) return [];
@@ -151,24 +186,20 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
       return;
     }
     onCreateChat(data.groupName, addedMembers);
-    form.reset({ groupName: "" });
-    setAddedMembers([]);
-    setCurrentMemberNameInput('');
-    setShowSuggestions(false);
-    setIsMemberInputFocused(false);
+    // Reset is handled by useEffect on isOpen changing to false
     onOpenChange(false);
   }
   
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-        if (!open) { 
-            form.reset({ groupName: "" });
-            setAddedMembers([]);
-            setCurrentMemberNameInput('');
-            setShowSuggestions(false);
-            setIsMemberInputFocused(false);
-        }
+        // if (!open) { // Reset logic moved to useEffect for better coordination with initialMemberName
+        //     form.reset({ groupName: "" });
+        //     setAddedMembers([]);
+        //     setCurrentMemberNameInput('');
+        //     setShowSuggestions(false);
+        //     setIsMemberInputFocused(false);
+        // }
         onOpenChange(open);
     }}>
       <DialogContent className="sm:max-w-[425px]">
@@ -197,7 +228,7 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
             <FormItem>
               <FormLabel>Tambah Anggota</FormLabel>
               <Popover open={isMemberInputFocused && showSuggestions && suggestions.length > 0} onOpenChange={(open) => {
-                  // if (!open) setShowSuggestions(false); // Handled by onInteractOutside or selection
+                  // Popover visibility managed by focus and suggestions state
               }}>
                 <PopoverAnchor asChild>
                     <div className="flex space-x-2">
@@ -207,13 +238,13 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
                         onChange={(e) => setCurrentMemberNameInput(e.target.value)}
                         onFocus={() => {
                             setIsMemberInputFocused(true);
-                            const currentInput = currentMemberNameInput.trim();
-                            if (currentInput === "") {
+                            const currentInputVal = currentMemberNameInput.trim();
+                            if (currentInputVal === "") {
                                 setShowSuggestions(false);
                                 setSuggestions([]);
                             } else {
                                 const filtered = activeDirectContacts.filter(contact =>
-                                  contact.name.toLowerCase().includes(currentInput.toLowerCase()) &&
+                                  contact.name.toLowerCase().includes(currentInputVal.toLowerCase()) &&
                                   !addedMembers.map(am => am.toLowerCase()).includes(contact.name.toLowerCase())
                                 );
                                 setSuggestions(filtered);
@@ -244,7 +275,6 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
                     onOpenAutoFocus={(e) => e.preventDefault()}
                     onInteractOutside={() => {
                         setIsMemberInputFocused(false);
-                        // setShowSuggestions(false); // Let suggestions persist if input still has text
                     }}
                 >
                   <ScrollArea className="max-h-40">
@@ -262,8 +292,9 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
                         ))}
                       </div>
                     ) : (
-                       currentMemberNameInput.trim() !== "" && <p className="p-3 text-sm text-muted-foreground">Pengguna tidak ditemukan atau sudah ditambahkan.</p>
+                       currentMemberNameInput.trim() !== "" && <p className="p-3 text-sm text-muted-foreground">Pengguna tidak ditemukan, belum punya chat aktif, atau sudah ditambahkan.</p>
                     )}
+                    {activeDirectContacts.length === 0 && currentMemberNameInput.trim() === "" && <p className="p-3 text-sm text-muted-foreground">Tidak ada kontak aktif untuk disarankan.</p>}
                   </ScrollArea>
                 </PopoverContent>
               </Popover>
@@ -297,11 +328,7 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
 
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => {
-                  form.reset({ groupName: "" });
-                  setAddedMembers([]);
-                  setCurrentMemberNameInput('');
-                  setShowSuggestions(false);
-                  setIsMemberInputFocused(false);
+                  // Reset logic is now mainly in useEffect on isOpen
                   onOpenChange(false); 
                 }}>Batal</Button>
               <Button type="submit">Buat Grup</Button>
