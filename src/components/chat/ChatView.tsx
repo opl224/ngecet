@@ -52,9 +52,6 @@ export function ChatView({
 
   const isChatActive = chat.type === 'group' || (!chat.pendingApprovalFromUserId && !chat.isRejected);
 
-  // State untuk menyimpan konten asli pesan yang diedit, untuk perbandingan saat membatalkan
-  const [originalContentOfEditingMessage, setOriginalContentOfEditingMessage] = useState<string | null>(null);
-
   useEffect(() => {
     if (viewportRef.current) {
       viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
@@ -62,25 +59,23 @@ export function ChatView({
   }, [messages, chat.id]);
 
   useEffect(() => {
-    // Jika mode edit aktif, isi textarea dengan konten pesan yang diedit
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      setOriginalContentOfEditingMessage(editingMessageDetails.content); // Simpan konten asli
-      setReplyingToMessage(null); // Batalkan mode reply jika sedang edit
+      setReplyingToMessage(null); // Ensure reply mode is off when edit mode starts
       messageInputRef.current?.focus();
     } else {
-      // Jika mode edit selesai/dibatalkan DAN input masih berisi konten lama dari pesan yg diedit
-      // (Artinya pengguna tidak mengubahnya sebelum pembatalan/simpan)
-      // Maka kosongkan input. Jika pengguna sudah mengetik hal baru, biarkan.
-      if (originalContentOfEditingMessage && newMessage === originalContentOfEditingMessage) {
-        setNewMessage("");
-      }
-      setOriginalContentOfEditingMessage(null); // Reset konten asli
+      // This else block executes when editingMessageDetails becomes null,
+      // i.e., when editing is finished (saved) or cancelled.
+      // We should clear the newMessage input.
+      setNewMessage("");
     }
-     if (messageInputRef.current && !editingMessageDetails) { // Reset tinggi hanya jika tidak dalam mode edit
+
+    // Reset textarea height if not in edit mode
+    if (messageInputRef.current && !editingMessageDetails) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [editingMessageDetails, newMessage]); // Tambahkan newMessage sebagai dependensi
+  }, [editingMessageDetails]); // Dependency only on editingMessageDetails
+
 
   // Reset input dan mode reply/edit ketika chat berubah
    useEffect(() => {
@@ -93,7 +88,7 @@ export function ChatView({
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [chat.id, onCancelEditMessage]);
+  }, [chat.id, onCancelEditMessage, editingMessageDetails]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -106,12 +101,17 @@ export function ChatView({
       if (editingMessageDetails) {
         onSaveEditedMessage(editingMessageDetails.id, newMessage.trim());
         // `onSaveEditedMessage` di `page.tsx` akan mengatur `editingMessageDetails` menjadi null,
-        // yang akan memicu useEffect di atas untuk membersihkan input jika perlu.
+        // yang akan memicu useEffect di atas untuk membersihkan input.
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
         setReplyingToMessage(null);
       }
-      setNewMessage(""); // Selalu clear textarea setelah send/save
+      // `setNewMessage("")` is handled by the useEffect reacting to `editingMessageDetails` becoming null
+      // or by the an explicit `setNewMessage("")` after sending a regular message.
+      // For sending a regular message, we still need to clear it here:
+      if (!editingMessageDetails) {
+        setNewMessage(""); 
+      }
       if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto'; 
       }
@@ -127,7 +127,7 @@ export function ChatView({
   
   const handleCancelEditClick = () => {
     onCancelEditMessage();
-    // useEffect akan menangani pembersihan input jika diperlukan
+    // useEffect reacting to editingMessageDetails becoming null will clear newMessage
   };
 
   const getChatDisplayDetails = () => {
@@ -383,6 +383,8 @@ export function ChatView({
     </div>
   );
 }
+
+    
 
     
 
