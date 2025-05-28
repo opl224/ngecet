@@ -14,7 +14,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
+  DialogHeader, // Ensure DialogHeader is imported
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -33,7 +33,7 @@ interface ChatViewProps {
   messages: Message[];
   currentUser: User;
   onSendMessage: (content: string, replyToMessage?: Message | null) => void;
-  editingMessageDetails: Message | null; 
+  editingMessageDetails: Message | null;
   onSaveEditedMessage: (messageId: string, newContent: string) => void;
   onRequestEditMessage: (messageToEdit: Message) => void;
   onCancelEditMessage: () => void;
@@ -54,7 +54,7 @@ export function ChatView({
   messages,
   currentUser,
   onSendMessage,
-  editingMessageDetails: propsEditingMessageDetails, 
+  editingMessageDetails: propsEditingMessageDetails,
   onSaveEditedMessage,
   onRequestEditMessage,
   onCancelEditMessage,
@@ -89,7 +89,7 @@ export function ChatView({
 
   const handleCancelEditClick = useCallback(() => {
     onCancelEditMessage();
-    setNewMessage(""); 
+    setNewMessage("");
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -97,7 +97,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); 
+    setNewMessage("");
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -112,7 +112,6 @@ export function ChatView({
         } else if (replyingToMessage) {
           handleCancelReplyClick();
         } else if (onGoBack) {
-          // Only call onGoBack if no other modal/editing state is active
           onGoBack();
         }
       }
@@ -127,7 +126,7 @@ export function ChatView({
 
    useEffect(() => {
     if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
-      setNewMessage(propsEditingMessageDetails.content); 
+      setNewMessage(propsEditingMessageDetails.content);
       if (replyingToMessage) {
          setReplyingToMessage(null);
       }
@@ -147,22 +146,24 @@ export function ChatView({
       }, 50);
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
       if (messageInputRef.current && !replyingToMessage ) {
+          // No direct setNewMessage("") here, as it might clear user input prematurely
+          // Let the chat switch useEffect handle clearing if needed.
           messageInputRef.current.style.height = 'auto';
       }
     }
     prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
-  }, [propsEditingMessageDetails, chat.id, replyingToMessage, onCancelEditMessage]);
+  }, [propsEditingMessageDetails, chat.id, replyingToMessage, onCancelEditMessage]); // Added onCancelEditMessage
 
 
   useEffect(() => {
     const chatJustSwitched = prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id;
 
     if (chatJustSwitched) {
-      setNewMessage(""); 
+      setNewMessage("");
       if (messageInputRef.current) {
         messageInputRef.current.style.setProperty('height', 'auto', 'important');
       }
-      setReplyingToMessage(null); 
+      setReplyingToMessage(null);
 
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
         onCancelEditMessage();
@@ -318,12 +319,12 @@ export function ChatView({
 
       if (isACreator && !isBCreator) return -1;
       if (!isACreator && isBCreator) return 1;
-      
-      if (isACreator && isACurrentUser) return -1; 
+
+      if (isACreator && isACurrentUser) return -1;
       if (isBCreator && isBCurrentUser) return 1;
 
 
-      if (isACurrentUser && !isBCurrentUser) return -1; 
+      if (isACurrentUser && !isBCurrentUser) return -1;
       if (!isACurrentUser && isBCurrentUser) return 1;
 
 
@@ -419,7 +420,7 @@ export function ChatView({
         </header>
 
         <DialogContent className="sm:max-w-md">
-          <SheetHeader className="mb-4 pb-2">
+          <DialogHeader className="mb-4 pb-2">
             {chat.type === 'direct' && displayDetails.otherParticipantObject ? (
               <div className="flex flex-col items-center text-center space-y-3 pt-4">
                 <Avatar className="h-24 w-24">
@@ -450,20 +451,22 @@ export function ChatView({
                 </DialogDescription>
               </div>
             ) : null}
-          </SheetHeader>
-          
+          </DialogHeader>
           {chat.type === 'direct' && onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
-              <div className="py-2 border-t">
-                  <Button
-                      variant="outline"
-                      className="w-full mt-4"
-                      onClick={() => onStartGroupWithUser(displayDetails.otherParticipantObject!)}
-                      disabled={!!chat.blockedByUser}
-                  >
-                      <Users className="mr-2 h-4 w-4" />
-                      Buat grup dengan {displayDetails.name}
-                  </Button>
-              </div>
+              <>
+                <DropdownMenuSeparator />
+                <div className="py-2">
+                    <Button
+                        variant="outline"
+                        className="w-full mt-2"
+                        onClick={() => onStartGroupWithUser(displayDetails.otherParticipantObject!)}
+                        disabled={!!chat.blockedByUser}
+                    >
+                        <Users className="mr-2 h-4 w-4" />
+                        Buat grup dengan {displayDetails.name}
+                    </Button>
+                </div>
+              </>
           )}
 
 
@@ -595,8 +598,8 @@ export function ChatView({
             const senderToDisplay : User = sender || {
               id: msg.senderId,
               name: msg.senderName,
-              avatarUrl: undefined, 
-              status: "Offline" 
+              avatarUrl: undefined,
+              status: "Offline"
             };
 
             return (
@@ -684,4 +687,3 @@ export function ChatView({
     </div>
   );
 }
-
