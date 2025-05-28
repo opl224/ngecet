@@ -110,7 +110,10 @@ export default function ChatPage() {
       requestTimestamp: now,
       lastMessage: "Permintaan chat dikirim...",
       lastMessageTimestamp: now,
-      unreadCount: 0,
+      lastReadBy: {
+        [currentUser.id]: now, // Creator has "read" it
+        [recipientUser.id]: 0,  // Recipient hasn't read the request yet
+      },
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
@@ -133,7 +136,10 @@ export default function ChatPage() {
             rejectedByUserId: undefined,
             lastMessage: "Permintaan chat diterima.",
             lastMessageTimestamp: now,
-            unreadCount: 0, 
+            lastReadBy: {
+              ...(chat.lastReadBy || {}),
+              [currentUser!.id]: now, // Accepter has "read" the acceptance
+            },
           };
         }
         return chat;
@@ -164,6 +170,10 @@ export default function ChatPage() {
             rejectedByUserId: currentUser?.id,
             lastMessage: "Permintaan chat ditolak.",
             lastMessageTimestamp: now,
+            lastReadBy: {
+              ...(chat.lastReadBy || {}),
+              [currentUser!.id]: now, // Rejecter has "processed" this
+            },
           };
         }
         return chat;
@@ -195,10 +205,13 @@ export default function ChatPage() {
     });
 
     const allParticipantUsers: User[] = [currentUser];
+    const initialLastReadBy: Record<string, number> = { [currentUser.id]: Date.now() };
+
     memberUsers.forEach(memberUser => {
       if (!allParticipantUsers.find(p => p.id === memberUser.id)) {
         allParticipantUsers.push(memberUser);
       }
+      initialLastReadBy[memberUser.id] = 0; // Other members haven't read yet
     });
 
     const newChat: Chat = {
@@ -208,7 +221,7 @@ export default function ChatPage() {
       participants: allParticipantUsers,
       lastMessageTimestamp: Date.now(),
       avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`,
-      unreadCount: 0,
+      lastReadBy: initialLastReadBy,
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
     setSelectedChat(newChat);
@@ -230,12 +243,17 @@ export default function ChatPage() {
     }
 
     setSelectedChat(chat);
-    setChats(prevChats =>
-      prevChats.map(c =>
-        c.id === chat.id ? { ...c, unreadCount: 0 } : c
-      ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0))
-    );
-  }, [currentUser?.id, toast, setChats]);
+    // Update lastReadBy for the current user for this chat
+    if (currentUser) {
+      setChats(prevChats =>
+        prevChats.map(c =>
+          c.id === chat.id 
+          ? { ...c, lastReadBy: { ...(c.lastReadBy || {}), [currentUser.id]: Date.now() } } 
+          : c
+        ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0))
+      );
+    }
+  }, [currentUser, toast, setChats]);
 
   const handleSendMessage = useCallback((content: string, replyToMessage?: Message | null) => {
     if (!currentUser || !selectedChat) return;
@@ -271,16 +289,15 @@ export default function ChatPage() {
           ...chat, 
           lastMessage: content, 
           lastMessageTimestamp: newMessage.timestamp,
-          // unreadCount for selected chat is handled by handleSelectChat or should be 0
+          lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       } else if (!chat.pendingApprovalFromUserId && !chat.isRejected) {
-        // Simulate receiving a message: Increment unread count for other active chats
-        // and update their last message details for sorting/display.
+        // Update last message details for sorting/display for other active chats.
+        // Unread count is calculated dynamically by ChatList.
         return {
           ...chat,
-          lastMessage: "Aktivitas baru", // Generic message for other chats
-          lastMessageTimestamp: newMessage.timestamp, // Use current message's timestamp
-          unreadCount: (chat.unreadCount || 0) + 1,
+          lastMessage: "Aktivitas baru", 
+          lastMessageTimestamp: newMessage.timestamp,
         };
       }
       return chat;
@@ -336,7 +353,7 @@ export default function ChatPage() {
                  return { ...c, lastMessage: newContent, lastMessageTimestamp: editedTimestamp };
             } else if (lastMsg) { 
                  return { ...c, lastMessage: lastMsg.content, lastMessageTimestamp: lastMsg.timestamp };
-            } else { // No messages left, reset lastMessage indicators
+            } else { 
                  return { ...c, lastMessage: (c.type === 'direct' && (c.pendingApprovalFromUserId || c.isRejected) ? (c.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan"), lastMessageTimestamp: (c.requestTimestamp || c.lastMessageTimestamp || Date.now()) };
             }
         }
@@ -429,6 +446,7 @@ export default function ChatPage() {
             <ChatList
               chats={chats}
               currentUser={currentUser}
+              allMessages={allMessages}
               onSelectChat={handleSelectChat}
               selectedChatId={selectedChat?.id}
               onNewDirectChat={() => setIsNewDirectChatDialogOpen(true)}

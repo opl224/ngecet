@@ -10,7 +10,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { Users, User as UserIcon, Check, X, Trash2 } from "lucide-react";
 
 interface ChatItemProps {
-  chat: Chat;
+  chat: Chat & { calculatedUnreadCount?: number }; // Expect calculatedUnreadCount
   currentUser: User;
   onSelectChat: (chat: Chat) => void;
   isActive: boolean;
@@ -49,21 +49,22 @@ export function ChatItem({
   const { name, avatarUrl, initials, Icon } = getChatDisplayDetails();
   const otherParticipant = chat.type === 'direct' ? chat.participants.find(p => p.id !== currentUser.id) : null;
 
-  let statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp; // Use requestTimestamp as a fallback for pending
+  let statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
   let showAcceptRejectActions = false;
   let showDeleteAction = false;
   let specialStatusText: string | null = null;
+  const unreadCount = chat.calculatedUnreadCount || 0;
 
 
   if (chat.type === "direct") {
     const otherParticipantName = (typeof otherParticipant === 'object' ? otherParticipant?.name : null) || name || "Seseorang";
     if (chat.pendingApprovalFromUserId === currentUser.id) {
       specialStatusText = `${otherParticipantName} ingin memulai chat.`;
-      statusTimestamp = chat.requestTimestamp; // For pending, timestamp is request time
+      statusTimestamp = chat.requestTimestamp;
       showAcceptRejectActions = true;
     } else if (chat.pendingApprovalFromUserId) {
       specialStatusText = `Permintaan dikirim. Menunggu ${name}...`;
-      statusTimestamp = chat.requestTimestamp; // For pending, timestamp is request time
+      statusTimestamp = chat.requestTimestamp;
     } else if (chat.isRejected) {
       if (chat.rejectedByUserId === currentUser.id) {
         specialStatusText = `Anda menolak permintaan dari ${name}.`;
@@ -81,7 +82,7 @@ export function ChatItem({
   };
 
   const isItemActiveInList = isActive && !chat.pendingApprovalFromUserId && !chat.isRejected;
-  const unreadCount = chat.unreadCount || 0;
+  
 
   let statusMessage: React.ReactNode = null;
   if (specialStatusText) {
@@ -93,8 +94,7 @@ export function ChatItem({
   } else if (!chat.lastMessage && !specialStatusText) {
     statusMessage = "Belum ada pesan";
   }
-  // If there is a lastMessage but no specialStatusText, statusMessage remains null,
-  // and the lastMessage content itself is not displayed in this line.
+  
 
   return (
     <div

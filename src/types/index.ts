@@ -28,7 +28,7 @@ export interface Chat {
   participants: User[];
   lastMessage?: string;
   lastMessageTimestamp?: number;
-  unreadCount?: number; // Optional: for future unread messages feature
+  // unreadCount?: number; // Removed: will be calculated dynamically
   avatarUrl?: string; // For group chats or direct chat partner avatar
 
   // Fields for chat request system
@@ -36,4 +36,6 @@ export interface Chat {
   isRejected?: boolean;
   rejectedByUserId?: string; // ID of the user who rejected
   requestTimestamp?: number; // Timestamp of the initial request
+
+  lastReadBy?: Record<string, number>; // ADDED: maps userId to timestamp of last read
 }

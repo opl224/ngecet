@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Chat, User } from "@/types";
+import type { Chat, User, Message } from "@/types";
 import { ChatItem } from "./ChatItem";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
 interface ChatListProps {
   chats: Chat[];
   currentUser: User | null;
+  allMessages: Record<string, Message[]>; // Added to calculate unread counts
   onSelectChat: (chat: Chat) => void;
   selectedChatId?: string | null;
   onNewDirectChat: () => void;
@@ -28,6 +29,7 @@ interface ChatListProps {
 export function ChatList({
   chats,
   currentUser,
+  allMessages,
   onSelectChat,
   selectedChatId,
   onNewDirectChat,
@@ -40,11 +42,24 @@ export function ChatList({
     return <div className="p-4 text-sm text-sidebar-foreground/70">Loading user...</div>;
   }
 
-  const sortedChats = [...chats].sort((a, b) => {
-    const tsA = a.lastMessageTimestamp || a.requestTimestamp || 0;
-    const tsB = b.lastMessageTimestamp || b.requestTimestamp || 0;
-    return tsB - tsA;
-  });
+  const sortedChatsWithUnread = [...chats]
+    .map(chat => {
+      if (!currentUser) return { ...chat, calculatedUnreadCount: 0 };
+      
+      const lastReadTimestamp = chat.lastReadBy?.[currentUser.id] || 0;
+      const messagesInChat = allMessages[chat.id] || [];
+      
+      const unreadMessagesCount = messagesInChat.filter(
+        msg => msg.senderId !== currentUser.id && msg.timestamp > lastReadTimestamp
+      ).length;
+      
+      return { ...chat, calculatedUnreadCount: unreadMessagesCount };
+    })
+    .sort((a, b) => {
+      const tsA = a.lastMessageTimestamp || a.requestTimestamp || 0;
+      const tsB = b.lastMessageTimestamp || b.requestTimestamp || 0;
+      return tsB - tsA;
+    });
 
   return (
     <div className="flex flex-col h-full">
@@ -71,11 +86,11 @@ export function ChatList({
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-1">
-          {sortedChats.length > 0 ? (
-            sortedChats.map((chat) => (
+          {sortedChatsWithUnread.length > 0 ? (
+            sortedChatsWithUnread.map((chat) => (
               <ChatItem
                 key={chat.id}
-                chat={chat}
+                chat={chat} // This chat object now includes calculatedUnreadCount
                 currentUser={currentUser}
                 onSelectChat={onSelectChat}
                 isActive={selectedChatId === chat.id && !chat.pendingApprovalFromUserId && !chat.isRejected}
@@ -94,5 +109,3 @@ export function ChatList({
     </div>
   );
 }
-
-    
