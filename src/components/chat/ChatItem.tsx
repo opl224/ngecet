@@ -56,7 +56,7 @@ export function ChatItem({
 
 
   if (chat.type === "direct") {
-    const otherParticipantName = (typeof otherParticipant === 'object' ? otherParticipant?.name : null) || name || "Someone";
+    const otherParticipantName = (typeof otherParticipant === 'object' ? otherParticipant?.name : null) || name || "Seseorang";
     if (chat.pendingApprovalFromUserId === currentUser.id) {
       specialStatusText = `${otherParticipantName} ingin memulai chat.`;
       statusTimestamp = chat.requestTimestamp;
@@ -70,7 +70,7 @@ export function ChatItem({
       } else {
         specialStatusText = `${name} menolak permintaan Anda.`;
       }
-      statusTimestamp = chat.lastMessageTimestamp; // Keep timestamp for sorting/display
+      statusTimestamp = chat.lastMessageTimestamp;
       showDeleteAction = true;
     }
   }
@@ -81,9 +81,20 @@ export function ChatItem({
   };
 
   const isItemActiveInList = isActive && !chat.pendingApprovalFromUserId && !chat.isRejected;
-
   const unreadCount = chat.unreadCount || 0;
 
+  let statusMessage: React.ReactNode = null;
+  if (specialStatusText) {
+    statusMessage = specialStatusText;
+  } else if (chat.type === "group" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
+     statusMessage = `${chat.participants.length} anggota`;
+  } else if (chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
+     statusMessage = "Mulai percakapan";
+  } else if (!chat.lastMessage && !specialStatusText) {
+    statusMessage = "Belum ada pesan";
+  } else if (chat.lastMessage && !specialStatusText) {
+      statusMessage = chat.type === 'group' ? 'Aktivitas grup terakhir' : 'Aktivitas terakhir';
+  }
 
   return (
     <div
@@ -111,51 +122,31 @@ export function ChatItem({
         </Avatar>
         <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2 min-w-0">
-                <h4 className={cn(
-                    "font-semibold text-sm truncate",
-                    chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
-                    chat.isRejected && "text-destructive"
-                  )}
-                >
-                  {name}
-                </h4>
-            </div>
+            <h4 className={cn(
+                "font-semibold text-sm truncate",
+                chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
+                chat.isRejected && "text-destructive"
+              )}
+            >
+              {name}
+            </h4>
+            {/* Display unread badge OR timestamp, but not if specialStatusText is present for pending/rejected */}
             {unreadCount > 0 && !specialStatusText ? (
               <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0 ml-2">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </Badge>
-            ) : statusTimestamp ? (
+            ) : statusTimestamp && !specialStatusText ? ( // Only show timestamp if no special text and no unread count takes precedence
               <p className="text-xs text-sidebar-foreground/60 whitespace-nowrap ml-2 shrink-0">
                 {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
               </p>
             ) : null}
           </div>
-          {/* Display special status text or placeholder messages */}
-          {specialStatusText ? (
-            <p className="text-xs text-sidebar-foreground/70 truncate">
-              {specialStatusText}
+          {/* Display status message (previously last message or special status) */}
+          {statusMessage && (
+            <p className="text-xs text-sidebar-foreground/70 truncate overflow-hidden">
+              {statusMessage}
             </p>
-          ) : chat.type === "group" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected ? (
-             <p className="text-xs text-sidebar-foreground/70 truncate">
-                {`${chat.participants.length} anggota`}
-              </p>
-           ) : chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected ? (
-             <p className="text-xs text-sidebar-foreground/70 truncate">
-                Mulai percakapan
-              </p>
-           ) : !chat.lastMessage && !specialStatusText ? ( // If no last message and no special text, show a generic placeholder
-            <p className="text-xs text-sidebar-foreground/70 truncate">
-              Belum ada pesan
-            </p>
-           ) : (
-            chat.lastMessage && !specialStatusText && ( // If lastMessage exists AND not a specialStatus, show generic activity text
-                <p className="text-xs text-sidebar-foreground/70 truncate italic">
-                    {chat.type === 'group' ? 'Aktivitas grup terakhir' : 'Aktivitas terakhir'}
-                </p>
-            )
-           )
-          }
+          )}
         </div>
       </button>
       {showAcceptRejectActions && chat.type === "direct" && chat.pendingApprovalFromUserId === currentUser.id && (
@@ -192,3 +183,5 @@ export function ChatItem({
     </div>
   );
 }
+
+    
