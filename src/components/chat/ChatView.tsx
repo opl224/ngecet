@@ -94,7 +94,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage("");
+    setNewMessage(""); // Clear input when reply is cancelled
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -122,7 +122,7 @@ export function ChatView({
 
 
   // Effect for handling message editing state
-  useEffect(() => {
+   useEffect(() => {
     if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
       if (messageInputRef.current && messageInputRef.current.value !== propsEditingMessageDetails.content) {
         messageInputRef.current.value = propsEditingMessageDetails.content;
@@ -133,7 +133,7 @@ export function ChatView({
       }
       setTimeout(() => {
         if (messageInputRef.current) {
-          messageInputRef.current.style.height = 'auto'; // Reset height first
+          messageInputRef.current.style.height = 'auto'; 
           const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
           messageInputRef.current.style.height = `${newHeight}px`;
           messageInputRef.current.focus();
@@ -143,7 +143,6 @@ export function ChatView({
         }
       }, 50);
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
-      // Only reset height if not replying, to avoid flicker
       if (messageInputRef.current && !replyingToMessage ) {
           messageInputRef.current.style.height = 'auto';
       }
@@ -153,12 +152,10 @@ export function ChatView({
 
 
  // Effect for handling chat switches (focus, reset input etc.)
- useEffect(() => {
+  useEffect(() => {
     let chatJustSwitched = false;
     if (prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id) {
       chatJustSwitched = true;
-      // Reset message input and reply state when chat switches
-      // but only if not starting an edit for the *new* chat
       if (!propsEditingMessageDetails || propsEditingMessageDetails.chatId !== chat.id) {
           setNewMessage("");
           if (messageInputRef.current) {
@@ -167,19 +164,16 @@ export function ChatView({
       }
       setReplyingToMessage(null);
 
-      // Cancel editing if the editing message belongs to the previous chat
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
         onCancelEditMessage();
       }
     }
     prevChatIdRef.current = chat.id;
 
-    // Auto-focus logic
     if (isChatActive && messageInputRef.current && chatJustSwitched) {
        setTimeout(() => {
-        // Ensure not focusing if an edit mode is about to start for this chat
         const currentEditingForThisChat = propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id;
-        if (!currentEditingForThisChat && !replyingToMessage) { 
+        if (!currentEditingForThisChat && !replyingToMessage) {
           messageInputRef.current?.focus();
         }
       }, 50);
@@ -190,15 +184,14 @@ export function ChatView({
   // Auto-scroll to bottom
   useEffect(() => {
     if (viewportRef.current) {
-      // Slight delay to ensure DOM is updated, especially if messages are rendered with effects
       setTimeout(() => {
-        if (viewportRef.current) { // Check again inside timeout as component might unmount
+        if (viewportRef.current) { 
           viewportRef.current.scrollTo({
             top: viewportRef.current.scrollHeight,
-            behavior: 'smooth' 
+            behavior: 'smooth'
           });
         }
-      }, 100); 
+      }, 100);
     }
   }, [messages, chat.id]); // Scroll when messages change or chat ID changes
 
@@ -228,7 +221,7 @@ export function ChatView({
     if(!isChatActive) return;
     if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); 
+    setNewMessage("");
     setTimeout(() => messageInputRef.current?.focus(), 50);
   }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
@@ -321,16 +314,16 @@ export function ChatView({
   const sortedParticipants = useMemo(() => {
     if (!chat.participants) return [];
     return [...chat.participants].sort((a, b) => {
-      const isAAdmin = a.id === chat.createdByUserId;
-      const isBAdmin = b.id === chat.createdByUserId;
+      const isACreator = a.id === chat.createdByUserId;
+      const isBCreator = b.id === chat.createdByUserId;
       const isACurrentUser = a.id === currentUser.id;
       const isBCurrentUser = b.id === currentUser.id;
 
-      if (isAAdmin && !isBAdmin) return -1; 
-      if (!isAAdmin && isBAdmin) return 1;
-      
-      if (isACurrentUser && !isBCurrentUser && !isAAdmin && !isBAdmin) return -1;
-      if (!isACurrentUser && isBCurrentUser && !isAAdmin && !isBAdmin) return 1;
+      if (isACreator && !isBCreator) return -1;
+      if (!isACreator && isBCreator) return 1;
+
+      if (!isACreator && isACurrentUser && !isBCreator && !isBCurrentUser) return -1;
+      if (!isACreator && !isACurrentUser && !isBCreator && isBCurrentUser) return 1;
       
       return (a.name || '').localeCompare(b.name || '');
     });
@@ -446,7 +439,8 @@ export function ChatView({
                       : (chat.blockedByUser === currentUser.id ? "Diblokir oleh Anda" : "Tidak Aktif")}
                   </span>
                 </SheetDescription>
-                 {onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
+                <DropdownMenuSeparator /> 
+                {onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
                     <Button
                         variant="outline"
                         className="w-full mt-4"
@@ -667,3 +661,6 @@ export function ChatView({
     </div>
   );
 }
+
+
+    

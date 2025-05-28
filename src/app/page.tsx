@@ -895,15 +895,15 @@ export default function ChatPage() {
                     <DropdownMenuSubContent>
                       <DropdownMenuItem onClick={() => setTheme("light")}>
                         <Sun className="mr-2 h-4 w-4" />
-                        <span>Light</span>
+                        <span>Terang</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setTheme("dark")}>
                         <Moon className="mr-2 h-4 w-4" />
-                        <span>Dark</span>
+                        <span>Gelap</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setTheme("system")}>
                         <Laptop className="mr-2 h-4 w-4" />
-                        <span>System</span>
+                        <span>Sietem</span>
                       </DropdownMenuItem>
                     </DropdownMenuSubContent>
                   </DropdownMenuPortal>
