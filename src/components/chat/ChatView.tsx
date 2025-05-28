@@ -156,27 +156,24 @@ export function ChatView({
     if (prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id) {
       chatJustSwitched = true;
     }
-    prevChatIdRef.current = chat.id;
-
+    
     if (chatJustSwitched) {
-      const currentEditingForThisChat = propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id;
-      if (!currentEditingForThisChat) {
-        setNewMessage("");
-         if (messageInputRef.current) {
-           messageInputRef.current.style.height = 'auto';
-         }
+      setNewMessage("");
+      if (messageInputRef.current) {
+        messageInputRef.current.style.height = 'auto';
       }
       setReplyingToMessage(null);
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
-        onCancelEditMessage();
+        onCancelEditMessage(); 
       }
     }
     
-    if (isChatActive && messageInputRef.current && (chatJustSwitched || !propsEditingMessageDetails) && !replyingToMessage) {
-       setTimeout(() => {
+    if (isChatActive && messageInputRef.current && (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
+      setTimeout(() => {
         messageInputRef.current?.focus();
-      }, 50);
+      }, 50); 
     }
+    prevChatIdRef.current = chat.id;
 
   }, [chat.id, isChatActive, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage]);
 
@@ -321,10 +318,10 @@ export function ChatView({
       if (isACreator && !isBCreator) return -1;
       if (!isACreator && isBCreator) return 1;
       
-      if (isACreator && isACurrentUser) return -1; // Current user who is also admin comes first
+      if (isACreator && isACurrentUser) return -1; 
       if (isBCreator && isBCurrentUser) return 1;
 
-      if (isACurrentUser && !isBCurrentUser) return -1; // Current user (non-admin) comes after admin
+      if (isACurrentUser && !isBCurrentUser) return -1; 
       if (!isACurrentUser && isBCurrentUser) return 1;
       
       return (a.name || '').localeCompare(b.name || '');
@@ -425,7 +422,7 @@ export function ChatView({
         </header>
 
         <SheetContent>
-          <SheetHeader className="mb-4 pb-2 border-b">
+          <SheetHeader className="mb-4 pb-2">
             {chat.type === 'direct' && displayDetails.otherParticipantObject ? (
               <div className="flex flex-col items-center text-center space-y-3 pt-4">
                 <Avatar className="h-24 w-24">
@@ -666,5 +663,3 @@ export function ChatView({
     </div>
   );
 }
-
-    
