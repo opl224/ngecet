@@ -33,7 +33,7 @@ interface ChatViewProps {
   messages: Message[];
   currentUser: User;
   onSendMessage: (content: string, replyToMessage?: Message | null) => void;
-  editingMessageDetails: Message | null; // Renamed from propsEditingMessageDetails for clarity
+  editingMessageDetails: Message | null; 
   onSaveEditedMessage: (messageId: string, newContent: string) => void;
   onRequestEditMessage: (messageToEdit: Message) => void;
   onCancelEditMessage: () => void;
@@ -46,6 +46,7 @@ interface ChatViewProps {
   onStartGroupWithUser?: (user: User) => void;
   onBlockUser?: (chatId: string) => void;
   onUnblockUser?: (chatId: string) => void;
+  onLeaveGroup?: (chatId: string) => void;
 }
 
 export function ChatView({
@@ -53,7 +54,7 @@ export function ChatView({
   messages,
   currentUser,
   onSendMessage,
-  editingMessageDetails, // Using the renamed prop
+  editingMessageDetails: propsEditingMessageDetails, 
   onSaveEditedMessage,
   onRequestEditMessage,
   onCancelEditMessage,
@@ -66,6 +67,7 @@ export function ChatView({
   onStartGroupWithUser,
   onBlockUser,
   onUnblockUser,
+  onLeaveGroup,
 }: ChatViewProps) {
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState("");
@@ -87,7 +89,7 @@ export function ChatView({
 
   const handleCancelEditClick = useCallback(() => {
     onCancelEditMessage();
-    setNewMessage(""); // Clear input on cancel
+    setNewMessage(""); 
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -95,7 +97,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); // Clear input on cancel reply
+    setNewMessage(""); 
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -105,11 +107,12 @@ export function ChatView({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        if (editingMessageDetails) {
+        if (propsEditingMessageDetails) {
           handleCancelEditClick();
         } else if (replyingToMessage) {
           handleCancelReplyClick();
         } else if (onGoBack) {
+          // Only call onGoBack if no other modal/editing state is active
           onGoBack();
         }
       }
@@ -119,63 +122,61 @@ export function ChatView({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [editingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
+  }, [propsEditingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
    useEffect(() => {
-    if (editingMessageDetails && editingMessageDetails.chatId === chat.id) {
-      setNewMessage(editingMessageDetails.content); // Reverted to unconditional set
+    if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
+      setNewMessage(propsEditingMessageDetails.content); 
       if (replyingToMessage) {
          setReplyingToMessage(null);
       }
       setTimeout(() => {
         if (messageInputRef.current) {
           messageInputRef.current.style.height = 'auto';
-          // Ensure value is set before calculating scrollHeight for accuracy
-          if (messageInputRef.current.value !== editingMessageDetails.content) {
-            messageInputRef.current.value = editingMessageDetails.content;
+          if (messageInputRef.current.value !== propsEditingMessageDetails.content) {
+            messageInputRef.current.value = propsEditingMessageDetails.content;
           }
           const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
           messageInputRef.current.style.height = `${newHeight}px`;
           messageInputRef.current.focus();
-          const len = editingMessageDetails.content.length;
+          const len = propsEditingMessageDetails.content.length;
           messageInputRef.current.selectionStart = len;
           messageInputRef.current.selectionEnd = len;
         }
       }, 50);
-    } else if (!editingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
+    } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
       if (messageInputRef.current && !replyingToMessage ) {
           messageInputRef.current.style.height = 'auto';
       }
     }
-    prevEditingMessageDetailsRef.current = editingMessageDetails;
-  }, [editingMessageDetails, chat.id, replyingToMessage, onCancelEditMessage]);
+    prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
+  }, [propsEditingMessageDetails, chat.id, replyingToMessage, onCancelEditMessage]);
 
 
   useEffect(() => {
     const chatJustSwitched = prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id;
 
     if (chatJustSwitched) {
-      setNewMessage(""); // Reverted to unconditional set
+      setNewMessage(""); 
       if (messageInputRef.current) {
         messageInputRef.current.style.setProperty('height', 'auto', 'important');
       }
-      setReplyingToMessage(null); // Reverted to unconditional set
+      setReplyingToMessage(null); 
 
-      if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
+      if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
         onCancelEditMessage();
       }
     }
 
     if (isChatActive && messageInputRef.current &&
-        (chatJustSwitched || (!editingMessageDetails && !replyingToMessage))) {
+        (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
       setTimeout(() => {
         messageInputRef.current?.focus();
       }, 50);
     }
     prevChatIdRef.current = chat.id;
-  // Removed newMessage from dependencies
-  }, [chat.id, isChatActive, onCancelEditMessage, editingMessageDetails, replyingToMessage, prevChatIdRef]);
+  }, [chat.id, isChatActive, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage]);
 
 
   useEffect(() => {
@@ -199,8 +200,8 @@ export function ChatView({
       return;
     }
     if (newMessage.trim()) {
-      if (editingMessageDetails) {
-        onSaveEditedMessage(editingMessageDetails.id, newMessage.trim());
+      if (propsEditingMessageDetails) {
+        onSaveEditedMessage(propsEditingMessageDetails.id, newMessage.trim());
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
         if (replyingToMessage !== null) setReplyingToMessage(null);
@@ -215,11 +216,11 @@ export function ChatView({
 
   const handleReplyToMessageInView = useCallback((messageToReply: Message) => {
     if(!isChatActive) return;
-    if (editingMessageDetails) onCancelEditMessage();
+    if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
     setNewMessage("");
     setTimeout(() => messageInputRef.current?.focus(), 50);
-  }, [isChatActive, editingMessageDetails, onCancelEditMessage]);
+  }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
   const getChatDisplayDetails = useMemo(() => {
     if (chat.type === "direct") {
@@ -318,11 +319,11 @@ export function ChatView({
       if (isACreator && !isBCreator) return -1;
       if (!isACreator && isBCreator) return 1;
       
-      if (isACreator && isACurrentUser) return -1; // Admin and current user is highest
+      if (isACreator && isACurrentUser) return -1; 
       if (isBCreator && isBCurrentUser) return 1;
 
 
-      if (isACurrentUser && !isBCurrentUser) return -1; // Current user (not admin) next
+      if (isACurrentUser && !isBCurrentUser) return -1; 
       if (!isACurrentUser && isBCurrentUser) return 1;
 
 
@@ -418,7 +419,7 @@ export function ChatView({
         </header>
 
         <DialogContent className="sm:max-w-md">
-          <DialogHeader className="mb-4 pb-2">
+          <SheetHeader className="mb-4 pb-2">
             {chat.type === 'direct' && displayDetails.otherParticipantObject ? (
               <div className="flex flex-col items-center text-center space-y-3 pt-4">
                 <Avatar className="h-24 w-24">
@@ -449,7 +450,7 @@ export function ChatView({
                 </DialogDescription>
               </div>
             ) : null}
-          </DialogHeader>
+          </SheetHeader>
           
           {chat.type === 'direct' && onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
               <div className="py-2 border-t">
@@ -521,8 +522,20 @@ export function ChatView({
                   })}
                 </ul>
               </ScrollArea>
+                {isChatActive && chat.type === 'group' && onLeaveGroup && (
+                     <div className="mt-4 pt-4 border-t">
+                        <Button
+                            variant="destructive"
+                            className="w-full"
+                            onClick={() => onLeaveGroup(chat.id)}
+                        >
+                            <LogOut className="mr-2 h-4 w-4" />
+                            Keluar Grup
+                        </Button>
+                    </div>
+                )}
                 {isChatActive && chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerDeleteGroup && (
-                    <div className="mt-4 pt-4 border-t">
+                    <div className="mt-2">
                         <Button
                             variant="destructive"
                             className="w-full"
@@ -539,7 +552,7 @@ export function ChatView({
       </Dialog>
 
       <ScrollArea className="flex-1" viewportRef={viewportRef} ref={scrollAreaRef}>
-        <div className="p-4 flex-1">
+        <div className="p-4 flex-1 space-y-3">
         {chatOverlayMessage && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4 z-10">
                 {chatOverlayMessage.icon}
@@ -547,7 +560,7 @@ export function ChatView({
                 <div className="text-muted-foreground">{chatOverlayMessage.text}</div>
             </div>
         )}
-        <div className={cn("flex-1 space-y-3", chatOverlayMessage && "blur-sm pointer-events-none")}>
+        <div className={cn("flex-1", chatOverlayMessage && "blur-sm pointer-events-none")}>
           {displayedMessages.length === 0 && isChatActive && (
              <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-75 pt-10">
               <Image
@@ -558,6 +571,7 @@ export function ChatView({
                 className="mb-4 rounded-lg object-contain"
                 data-ai-hint="empty chat"
               />
+              <p className="text-sm">Belum ada pesan. Mulai percakapan!</p>
             </div>
           )}
            {displayedMessages.length === 0 && !isChatActive && !chatOverlayMessage && (
@@ -581,8 +595,8 @@ export function ChatView({
             const senderToDisplay : User = sender || {
               id: msg.senderId,
               name: msg.senderName,
-              avatarUrl: undefined, // Default avatar or logic handled in MessageBubble
-              status: "Offline" // Default status
+              avatarUrl: undefined, 
+              status: "Offline" 
             };
 
             return (
@@ -603,16 +617,16 @@ export function ChatView({
         </div>
       </ScrollArea>
 
-      {(replyingToMessage || editingMessageDetails) && isChatActive && (
+      {(replyingToMessage || propsEditingMessageDetails) && isChatActive && (
         <div className="p-3 border-t bg-muted/30 text-sm">
           <div className="flex justify-between items-center text-muted-foreground">
             <div className="truncate flex-1 min-w-0 pr-2">
-              {editingMessageDetails ? (
+              {propsEditingMessageDetails ? (
                 <>
                   <PencilLine className="inline h-4 w-4 mr-1.5 text-amber-600" />
                   <span className="font-medium text-amber-700">Mengedit pesan:</span>
                   <p className="truncate text-xs">
-                    "{editingMessageDetails.content.length > 70 ? editingMessageDetails.content.substring(0, 70) + "..." : editingMessageDetails.content}"
+                    "{propsEditingMessageDetails.content.length > 70 ? propsEditingMessageDetails.content.substring(0, 70) + "..." : propsEditingMessageDetails.content}"
                   </p>
                 </>
               ) : replyingToMessage && (
@@ -628,8 +642,8 @@ export function ChatView({
               variant="ghost"
               size="icon"
               className="h-7 w-7 shrink-0"
-              onClick={editingMessageDetails ? handleCancelEditClick : handleCancelReplyClick}
-              aria-label={editingMessageDetails ? "Batalkan Edit" : "Batalkan Balasan"}
+              onClick={propsEditingMessageDetails ? handleCancelEditClick : handleCancelReplyClick}
+              aria-label={propsEditingMessageDetails ? "Batalkan Edit" : "Batalkan Balasan"}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -645,7 +659,7 @@ export function ChatView({
             placeholder={
               !isChatActive
                 ? (chat.type === 'direct' && chat.blockedByUser === currentUser.id ? "Anda memblokir pengguna ini" : "Chat tidak aktif")
-                : editingMessageDetails
+                : propsEditingMessageDetails
                 ? "Edit pesan Anda..."
                 : replyingToMessage
                 ? `Balas ke ${replyingToMessage.senderName}...`
@@ -663,10 +677,11 @@ export function ChatView({
             }}
           />
           <Button type="submit" size="icon" aria-label="Send message" disabled={!newMessage.trim() || !isChatActive} className="self-end">
-            {editingMessageDetails ? <Check className="h-5 w-5" /> : <SendHorizonal className="h-5 w-5" />}
+            {propsEditingMessageDetails ? <Check className="h-5 w-5" /> : <SendHorizonal className="h-5 w-5" />}
           </Button>
         </form>
       </footer>
     </div>
   );
 }
+

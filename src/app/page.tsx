@@ -119,11 +119,7 @@ export default function ChatPage() {
     const existingChat = chats.find(c => c.id === chatId);
     if (existingChat) {
       setSelectedChat(existingChat);
-      if (existingChat.blockedByUser === currentUser.id) {
-        // toast({ title: "Chat Diblokir", description: `Anda telah memblokir ${recipientName}. Buka blokir untuk melanjutkan.`, variant: "destructive" });
-        return;
-      }
-      if (existingChat.blockedByUser === recipientUser.id) {
+       if (existingChat.blockedByUser === recipientUser.id) {
         toast({ title: "Info", description: `Anda mungkin diblokir oleh ${recipientName}.`, variant: "default" });
       }
       if (existingChat.pendingApprovalFromUserId === currentUser.id) {
@@ -408,8 +404,8 @@ export default function ChatPage() {
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
          return {
           ...chat,
-          lastMessage: `Aktivitas baru di ${chat.type === 'direct' ? (chat.participants.find(p=>p.id !== currentUser.id)?.name || 'seseorang') : chat.name}`, // Generic message
-          lastMessageTimestamp: newMessage.timestamp, // Update timestamp to sort it up
+          lastMessage: `Aktivitas baru di ${chat.type === 'direct' ? (chat.participants.find(p=>p.id !== currentUser.id)?.name || 'seseorang') : chat.name}`, 
+          lastMessageTimestamp: newMessage.timestamp, 
          };
       }
       return chat;
@@ -454,7 +450,6 @@ export default function ChatPage() {
         return c;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
-    // Toast for message deletion is removed based on user request.
   }, [setAllMessages, setChats, currentUser]);
 
   const handleRequestEditMessageInInput = useCallback((messageToEdit: Message) => {
@@ -760,6 +755,67 @@ export default function ChatPage() {
     });
   }, [currentUser, setChats, toast, selectedChat]);
 
+  const handleLeaveGroup = useCallback((chatId: string) => {
+    if (!currentUser) return;
+
+    let chatBeingLeft: Chat | undefined;
+    let isGroupDeleted = false;
+
+    setChats(prevChats => {
+        chatBeingLeft = prevChats.find(c => c.id === chatId);
+        if (!chatBeingLeft || chatBeingLeft.type !== 'group') {
+            toast({ title: "Error", description: "Grup tidak ditemukan.", variant: "destructive" });
+            return prevChats;
+        }
+
+        const updatedParticipants = chatBeingLeft.participants.filter(p => p.id !== currentUser.id);
+
+        if (updatedParticipants.length === 0) {
+            // Jika grup menjadi kosong, hapus grup
+            isGroupDeleted = true;
+            return prevChats.filter(c => c.id !== chatId);
+        }
+
+        const updatedLastReadBy = { ...chatBeingLeft.lastReadBy };
+        delete updatedLastReadBy[currentUser.id];
+
+        const updatedClearedTimestamp = { ...chatBeingLeft.clearedTimestamp };
+        delete updatedClearedTimestamp[currentUser.id];
+        
+        const now = Date.now();
+        const leaveMessage = `${currentUser.name} telah keluar dari grup.`;
+
+        return prevChats.map(c =>
+            c.id === chatId
+                ? {
+                    ...c,
+                    participants: updatedParticipants,
+                    lastReadBy: updatedLastReadBy,
+                    clearedTimestamp: updatedClearedTimestamp,
+                    lastMessage: leaveMessage,
+                    lastMessageTimestamp: now,
+                  }
+                : c
+        ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
+    });
+
+    if (isGroupDeleted && chatBeingLeft) {
+        setAllMessages(prevAllMessages => {
+            const newAllMessages = { ...prevAllMessages };
+            delete newAllMessages[chatId];
+            return newAllMessages;
+        });
+        toast({ title: "Grup Ditinggalkan & Dihapus", description: `Anda keluar dari grup "${chatBeingLeft.name}", dan grup tersebut telah dihapus karena kosong.` });
+    } else if (chatBeingLeft) {
+        toast({ title: "Keluar Grup Berhasil", description: `Anda telah keluar dari grup "${chatBeingLeft.name}".` });
+    }
+
+    if (selectedChat?.id === chatId) {
+        setSelectedChat(null);
+    }
+}, [currentUser, selectedChat?.id, setChats, setAllMessages, toast]);
+
+
   const handleStartGroupWithUser = useCallback((userToInclude: User) => {
     if (!currentUser) return;
     setGroupDialogInitialMemberName(userToInclude.name);
@@ -956,6 +1012,7 @@ export default function ChatPage() {
               onStartGroupWithUser={handleStartGroupWithUser}
               onBlockUser={handleBlockUser}
               onUnblockUser={handleUnblockUser}
+              onLeaveGroup={handleLeaveGroup}
             />
           ) : (
             <WelcomeMessage />
@@ -986,6 +1043,7 @@ export default function ChatPage() {
         onOpenChange={setIsAddUserToGroupDialogOpen}
         onAddUser={handleAddNewUserToGroup}
         currentUserObj={currentUser}
+        chats={chats}
       />
        <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
         <AlertDialogContent>
@@ -1029,3 +1087,4 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+
