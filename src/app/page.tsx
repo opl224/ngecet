@@ -36,17 +36,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuPortal, // Added DropdownMenuPortal
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Trash2, Settings, ArrowLeft, ShieldOff, ShieldAlert, InfoIcon, UserPlus, UserMinus, MessageSquarePlus, Sun, Moon, Laptop, Palette } from "lucide-react";
+import { LogOut, Trash2, Settings, ArrowLeft, ShieldOff, ShieldAlert, InfoIcon, UserPlus, UserMinus, MessageSquarePlus, Sun, Moon, Laptop, Palette, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from 'next-themes';
 
@@ -96,7 +93,7 @@ export default function ChatPage() {
       status: "Online"
     };
     setCurrentUser(profile);
-  }, [setCurrentUser, toast]);
+  }, [setCurrentUser]);
 
   const handleCreateDirectChat = useCallback((recipientName: string) => {
     if (!currentUser) return;
@@ -112,7 +109,7 @@ export default function ChatPage() {
       id: recipientId,
       name: recipientName,
       avatarUrl: `https://placehold.co/100x100.png?text=${recipientInitial}`,
-      status: "Offline" // Default status for new contact
+      status: "Offline" 
     };
 
     const participantsArray: User[] = [currentUser, recipientUser].sort((a, b) => a.id.localeCompare(b.id));
@@ -334,9 +331,7 @@ export default function ChatPage() {
   }, [currentUser, chats, setChats, setAllMessages, toast]);
 
   const handleSelectChat = useCallback((chat: Chat) => {
-    // if (chat.type === "direct" && chat.blockedByUser === currentUser?.id) {
-    // } else
-    if (chat.type === "direct" && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
+    if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
         toast({ title: "Interaksi Terbatas", description: "Anda tidak dapat berinteraksi dalam chat ini saat ini." });
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
         toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
@@ -409,11 +404,12 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
+      // Update other active chats to show new activity
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
          return {
           ...chat,
-          lastMessage: `Aktivitas baru di ${chat.type === 'direct' ? (chat.participants.find(p=>p.id !== currentUser.id)?.name || 'seseorang') : chat.name}`,
-          lastMessageTimestamp: newMessage.timestamp,
+          lastMessage: `Aktivitas baru di ${chat.type === 'direct' ? (chat.participants.find(p=>p.id !== currentUser.id)?.name || 'seseorang') : chat.name}`, // Generic message
+          lastMessageTimestamp: newMessage.timestamp, // Update timestamp to sort it up
          };
       }
       return chat;
@@ -458,6 +454,7 @@ export default function ChatPage() {
         return c;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
+    // Toast for message deletion is removed based on user request.
   }, [setAllMessages, setChats, currentUser]);
 
   const handleRequestEditMessageInInput = useCallback((messageToEdit: Message) => {
@@ -553,7 +550,7 @@ export default function ChatPage() {
     if (selectedChat?.id === chatId) {
       setSelectedChat(null);
     }
-  }, [setChats, setAllMessages, selectedChat?.id, toast]);
+  }, [setChats, setAllMessages, selectedChat?.id]);
 
   const handleLogout = (clearData: boolean) => {
     setCurrentUser(null);
@@ -636,10 +633,11 @@ export default function ChatPage() {
     if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected && !existingDirectChat.blockedByUser) {
         const foundUser = existingDirectChat.participants.find(p => p.id === newUserId);
         if (!foundUser) { 
-            toast({ title: "Error Internal", description: `Tidak dapat menemukan detail untuk ${userName}. Coba mulai chat langsung dulu.`, variant: "destructive" });
-            return;
+            const newUserInitial = userName.substring(0,1).toUpperCase() || 'N';
+            userObjectToAdd = { id: newUserId, name: userName, avatarUrl: `https://placehold.co/100x100.png?text=${newUserInitial}`, status: "Offline" };
+        } else {
+            userObjectToAdd = foundUser;
         }
-        userObjectToAdd = foundUser;
     } else {
         let reason = "Anda harus memiliki chat langsung yang aktif dengannya terlebih dahulu.";
         if (existingDirectChat) {
@@ -901,7 +899,7 @@ export default function ChatPage() {
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setTheme("system")}>
                         <Laptop className="mr-2 h-4 w-4" />
-                        <span>Sietem</span>
+                        <span>Sistem</span>
                       </DropdownMenuItem>
                     </DropdownMenuSubContent>
                   </DropdownMenuPortal>
@@ -981,7 +979,6 @@ export default function ChatPage() {
         }}
         onCreateChat={handleCreateGroupChat}
         currentUserObj={currentUser}
-        chats={chats}
         initialMemberName={groupDialogInitialMemberName}
       />
       <AddUserToGroupDialog
@@ -989,7 +986,6 @@ export default function ChatPage() {
         onOpenChange={setIsAddUserToGroupDialogOpen}
         onAddUser={handleAddNewUserToGroup}
         currentUserObj={currentUser}
-        chats={chats}
       />
        <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
         <AlertDialogContent>
@@ -1033,7 +1029,3 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
-
-    
-
-    
