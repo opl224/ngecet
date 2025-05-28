@@ -88,7 +88,7 @@ export function MessageBubble({
     <div
       ref={ref}
       className={cn(
-        "shadow-sm flex flex-col px-3 py-3 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative", // Changed py-1.5 to py-3
+        "shadow-sm flex flex-col px-3 py-4 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative", // Changed py-3 to py-4
         isCurrentUserMessage
           ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl"
           : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
@@ -109,11 +109,7 @@ export function MessageBubble({
               </span>
           </div>
       ) : isCurrentUserMessage && chatType === 'direct' ? (
-        <div className={cn(
-          "text-xs font-semibold mb-0.5 text-primary-foreground/90"
-        )}>
-         {/* No name for self in direct chat, unless "Anda" is desired here too for consistency */}
-        </div>
+        null // No "Anda" or sender name for direct messages from self, unless specifically requested.
       ) : null}
 
 
@@ -237,23 +233,21 @@ export function MessageBubble({
     )}>
       {isCurrentUserMessage ? (
         <>
-          {chatType === 'group' && <UserAvatarComponent className="order-1 mr-2 self-start" />}
-          <BubbleContentLayout className={cn("order-2", chatType === 'direct' && "mr-0")}>
+          <SenderActionButtons className="order-1 mr-1 self-center" />
+          <BubbleContentLayout className="order-2 mr-2">
             {/* Content rendered inside BubbleContentLayout */}
           </BubbleContentLayout>
-          <SenderActionButtons className="order-3 ml-1 self-center" />
-          {chatType === 'direct' && <div className="w-8 shrink-0 order-1" />} {/* Spacer for direct messages to align action button */}
+           {chatType === 'group' && <UserAvatarComponent className="order-3 ml-0 self-start" />}
         </>
       ) : (
         <>
           {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
-          <BubbleContentLayout className={cn(chatType === 'direct' && "ml-0")}>
+          <BubbleContentLayout className={cn(chatType === 'direct' && "ml-0", "mr-1")}>
              {/* Content rendered inside BubbleContentLayout */}
           </BubbleContentLayout>
-          <ReceiverActionButton className="ml-1 self-center" />
+          <ReceiverActionButton className="self-center" />
         </>
       )}
     </div>
   );
 }
-
