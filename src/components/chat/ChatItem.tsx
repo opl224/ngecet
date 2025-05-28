@@ -65,9 +65,9 @@ export function ChatItem({
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
         specialStatusText = `${name} mungkin memblokir Anda.`;
+         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.pendingApprovalFromUserId === currentUser.id) {
-      // Action buttons will be shown inline, specialStatusText is not needed here for "XYZ wants to chat"
-      statusTimestamp = chat.requestTimestamp; // For sorting
+      statusTimestamp = chat.requestTimestamp;
       showAcceptRejectActions = true;
     } else if (chat.pendingApprovalFromUserId) {
       showPendingClockIcon = true;
@@ -85,16 +85,31 @@ export function ChatItem({
 
 
   const handleItemClick = () => {
-    onSelectChat(chat);
+    // Check conditions before selecting chat
+    const canSelectChat = !(
+      (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
+      (chat.isRejected && !isActive) ||
+      (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive)
+    );
+
+    // Also, don't select if it's a pending request for the current user (handled by accept/reject buttons)
+    if (chat.pendingApprovalFromUserId === currentUser.id) {
+        return;
+    }
+
+    if (canSelectChat) {
+      onSelectChat(chat);
+    }
   };
 
-  const isItemActiveInList = isActive && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser;
+  const isItemActiveInList = isActive && !chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser);
+
 
   let statusMessage: React.ReactNode = null;
   if (specialStatusText) {
     statusMessage = specialStatusText;
   } else if (chat.type === "direct" && chat.pendingApprovalFromUserId === currentUser.id) {
-    statusMessage = "Permintaan chat baru"; // New text for incoming pending request
+    statusMessage = "Permintaan chat baru";
   } else if (showPendingClockIcon && !chat.isRejected) {
     // No status message needed if clock icon is shown for pending sent requests
   } else if (chat.type === "group" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
@@ -104,25 +119,27 @@ export function ChatItem({
   }
 
 
+  const isClickDisabled = 
+    (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
+    (chat.isRejected && !isActive) ||
+    (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive) ||
+    (chat.pendingApprovalFromUserId === currentUser.id);
+
+
   return (
     <div
       className={cn(
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        ( (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
-          (chat.isRejected && !isActive) ||
-          (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive)
-        ) && "opacity-70"
+        isClickDisabled && "opacity-70 cursor-not-allowed"
       )}
     >
-      <button
-        onClick={handleItemClick}
-        disabled={
-           (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
-           (chat.isRejected && !isActive) ||
-           (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive)
-        }
-        className="w-full flex items-center space-x-3"
+      <div // Changed from button to div
+        onClick={!isClickDisabled ? handleItemClick : undefined}
+        className={cn(
+            "w-full flex items-center space-x-3",
+            !isClickDisabled && "cursor-pointer"
+        )}
       >
         <Avatar className="h-10 w-10">
           <AvatarImage src={avatarUrl} alt={name || 'Chat Avatar'} data-ai-hint={chat.type === 'group' ? 'group people' : 'person abstract'} />
@@ -179,7 +196,7 @@ export function ChatItem({
                   </Badge>
                 );
               }
-              if (!specialStatusText && !showPendingClockIcon && statusTimestamp && chat.type === 'direct' && !chat.blockedByUser) {
+              if (chat.type === 'direct' && !chat.blockedByUser && !showAcceptRejectActions && !showPendingClockIcon && !chat.isRejected && calculatedUnreadCount === 0) {
                 const status = otherParticipantStatus || "Offline";
                 const isOnline = status === "Online";
                 return (
@@ -192,27 +209,14 @@ export function ChatItem({
                   </div>
                 );
               }
-              if (statusTimestamp && (!specialStatusText || (showPendingClockIcon && !chat.isRejected && chat.type === 'direct'))) {
-                if (!specialStatusText && !showPendingClockIcon && chat.type === 'group') {
+              if (statusTimestamp && (!specialStatusText || (showPendingClockIcon && !chat.isRejected && chat.type === 'direct')) && calculatedUnreadCount === 0) {
+                 if (chat.type === 'group' || (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) ) {
                      return (
                         <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
                           {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
                         </span>
                       );
-                } else if (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) {
-                    return (
-                        <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
-                          {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
-                        </span>
-                      );
-                } else if (!specialStatusText && !showPendingClockIcon && chat.type === 'direct' && !chat.blockedByUser && !showAcceptRejectActions && statusTimestamp) {
-                     // This case is to show timestamp if it's an active direct chat and no unread/online status to show
-                     return (
-                        <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
-                          {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
-                        </span>
-                      );
-                }
+                 }
               }
               return null;
             })()}
@@ -223,8 +227,7 @@ export function ChatItem({
             </p>
           )}
         </div>
-      </button>
-      {/* Removed the old block for accept/reject buttons that was here */}
+      </div>
       {showDeleteAction && (
         <div className="mt-2 flex justify-end space-x-2">
             <Button
