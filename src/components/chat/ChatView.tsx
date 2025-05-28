@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Chat, Message, User } from "@/types";
+import type { Chat, Message, User, ChatType } from "@/types"; // Added ChatType
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -78,7 +78,7 @@ export function ChatView({
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      if (replyingToMessage) {
+      if (replyingToMessage) { // If editing, cancel any ongoing reply
         setReplyingToMessage(null);
       }
       setTimeout(() => {
@@ -89,31 +89,29 @@ export function ChatView({
           messageInputRef.current.selectionEnd = len;
         }
       }, 0);
-    } else if (!replyingToMessage) {
+    } else if (!replyingToMessage) { // Only clear if not editing AND not replying
       setNewMessage("");
     }
   }, [editingMessageDetails, replyingToMessage]);
 
+
   useEffect(() => {
-    // Reset states when chat.id changes, but be careful not to interfere with edit/reply flows
-    if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-      onCancelEditMessage(); // Cancel edit if chat switched during edit
-    }
-    if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
-        setReplyingToMessage(null); // Cancel reply if chat switched
-    }
-    
-    // Only clear newMessage if not entering edit mode for the current chat
-    // and not in reply mode for the current chat.
+    // Reset states when chat.id changes
     if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
         (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
       setNewMessage("");
     }
+    if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
+      setReplyingToMessage(null);
+    }
+    if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
+      onCancelEditMessage();
+    }
 
     if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto'; // Reset height on chat change
+        messageInputRef.current.style.height = 'auto';
     }
-  }, [chat.id, onCancelEditMessage, editingMessageDetails, replyingToMessage]);
+  }, [chat.id, onCancelEditMessage]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -128,8 +126,8 @@ export function ChatView({
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
         setReplyingToMessage(null);
-        setNewMessage(""); 
       }
+      setNewMessage(""); // Clear input after send/edit in both cases
 
       if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto'; // Reset height after send/edit
@@ -139,15 +137,15 @@ export function ChatView({
 
   const handleReplyToMessageInView = useCallback((messageToReply: Message) => {
     if(!isChatActive) return;
-    if (editingMessageDetails) onCancelEditMessage(); 
+    if (editingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); 
+    setNewMessage("");
     setTimeout(() => messageInputRef.current?.focus(), 0);
   }, [isChatActive, editingMessageDetails, onCancelEditMessage]);
 
   const handleCancelEditClick = useCallback(() => {
     onCancelEditMessage();
-    setNewMessage(replyingToMessage ? "" : ""); 
+    setNewMessage(replyingToMessage ? "" : "");
   }, [onCancelEditMessage, replyingToMessage]);
 
 
@@ -161,7 +159,7 @@ export function ChatView({
     if (chat.type === "direct") {
       const otherParticipant = chat.participants?.find(p => p.id !== currentUser.id);
       const otherParticipantName = otherParticipant?.name || "Direct Chat";
-      const otherParticipantAvatar = otherParticipant?.avatarUrl || chat.avatarUrl; // Fallback to chat.avatarUrl if participant not found
+      const otherParticipantAvatar = otherParticipant?.avatarUrl || chat.avatarUrl;
       const otherParticipantStatus = otherParticipant?.status || "Offline";
       return {
         name: otherParticipantName,
@@ -177,7 +175,7 @@ export function ChatView({
         avatarUrl: chat.avatarUrl,
         Icon: Users,
         description: `Group Chat - ${chat.participants?.length || 0} anggota`,
-        status: null // No single status for a group
+        status: null
       };
     }
   };
@@ -189,7 +187,7 @@ export function ChatView({
     const otherUserName = displayDetails.name === "Direct Chat" ? "pengguna ini" : displayDetails.name;
     if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) {
       chatOverlayMessage = {
-        icon: <SendHorizonal className="w-16 h-16 text-muted-foreground mb-4" />, // Changed from Send
+        icon: <SendHorizonal className="w-16 h-16 text-muted-foreground mb-4" />,
         title: "Menunggu Persetujuan",
         text: `Permintaan chat Anda kepada ${otherUserName} sedang menunggu persetujuan.`,
       };
@@ -214,7 +212,7 @@ export function ChatView({
     setNewMessage(event.target.value);
     if (messageInputRef.current) {
       messageInputRef.current.style.height = 'auto';
-      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120) // Max height of 120px
+      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120)
       messageInputRef.current.style.height = `${newHeight}px`;
     }
   };
@@ -225,18 +223,18 @@ export function ChatView({
   const sortedParticipants = useMemo(() => {
     if (!chat.participants) return [];
     return [...chat.participants].sort((a, b) => {
-      const isAAdmin = a.id === chat.createdByUserId;
-      const isBAdmin = b.id === chat.createdByUserId;
       const isACurrentUser = a.id === currentUser.id;
       const isBCurrentUser = b.id === currentUser.id;
+      const isAAdmin = a.id === chat.createdByUserId;
+      const isBAdmin = b.id === chat.createdByUserId;
 
-      if (isAAdmin && !isACurrentUser) return -1; 
+      if (isAAdmin && !isACurrentUser) return -1;
       if (isBAdmin && !isBCurrentUser) return 1;
-
-      if (isAAdmin && isACurrentUser) return -1; 
+      
+      if (isAAdmin && isACurrentUser) return -1;
       if (isBAdmin && isBCurrentUser) return 1;
       
-      if (isACurrentUser) return -1; 
+      if (isACurrentUser) return -1;
       if (isBCurrentUser) return 1;
       
       return (a.name || '').localeCompare(b.name || '');
@@ -425,7 +423,7 @@ export function ChatView({
             const senderToDisplay : User = sender || { 
               id: msg.senderId, 
               name: msg.senderName, 
-              avatarUrl: undefined, // Fallback if user not in participants list
+              avatarUrl: undefined, 
               status: "Offline" 
             };
 
@@ -438,6 +436,7 @@ export function ChatView({
                 onReplyMessage={isChatActive ? handleReplyToMessageInView : undefined}
                 onEditMessage={isChatActive ? onRequestEditMessage : undefined}
                 onDeleteMessage={isChatActive ? onDeleteMessage : undefined}
+                chatType={chat.type} 
               />
             );
           })}
@@ -529,3 +528,4 @@ export function ChatView({
     </div>
   );
 }
+

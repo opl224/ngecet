@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Message, User } from "@/types";
+import type { Message, User, ChatType } from "@/types";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
 import { Undo2, MoreVertical, Edit3, Trash2 } from "lucide-react";
@@ -19,6 +19,7 @@ interface MessageBubbleProps {
   message: Message;
   isCurrentUserMessage: boolean;
   senderDetails: User;
+  chatType: ChatType; // Added chatType
   onReplyMessage?: (message: Message) => void;
   onEditMessage?: (message: Message) => void;
   onDeleteMessage?: (messageId: string, chatId: string) => void;
@@ -28,6 +29,7 @@ export function MessageBubble({
   message,
   isCurrentUserMessage,
   senderDetails,
+  chatType, // Destructure chatType
   onReplyMessage,
   onEditMessage,
   onDeleteMessage,
@@ -55,16 +57,20 @@ export function MessageBubble({
         : "bg-card text-card-foreground rounded-r-xl rounded-br-md rounded-tl-xl border",
       className
     )}>
-      <div className={cn(
-          "text-xs font-semibold mb-0.5",
-          isCurrentUserMessage ? "text-primary-foreground/90" : "text-primary"
-      )}>
-          {isCurrentUserMessage ? (
-            <span className="font-normal text-primary-foreground/70">Anda</span>
-          ) : (
-            <span>{senderName}</span>
-          )}
-      </div>
+      {/* Sender Name / "Anda" Display */}
+      { (isCurrentUserMessage || chatType === 'group') && (
+          <div className={cn(
+              "text-xs font-semibold mb-0.5",
+              isCurrentUserMessage ? "text-primary-foreground/90" : "text-primary"
+          )}>
+              {isCurrentUserMessage ? (
+                  <span className="font-normal text-primary-foreground/70">Anda</span>
+              ) : ( 
+                // This part is only reached if chatType === 'group' AND !isCurrentUserMessage
+                <span>{senderName}</span>
+              )}
+          </div>
+      )}
 
       {message.replyToMessageId && message.replyToMessageSenderName && message.replyToMessageContent && (
         <div className={cn(
@@ -170,24 +176,27 @@ export function MessageBubble({
   );
 
   return (
-    <div className={cn(
-        "flex w-full group mb-3 items-start", 
-        isCurrentUserMessage ? "justify-end" : "justify-start"
-      )}
-    >
+    <>
       {isCurrentUserMessage ? (
-        <>
+        // My messages
+        <div className="flex w-full justify-end items-start group mb-3">
           <SenderActionButtons className="mr-1 self-center" />
-          <BubbleContentLayout className="mr-2" />
-          <UserAvatarComponent />
-        </>
+          <BubbleContentLayout className={cn(chatType === 'group' ? "mr-2" : "")} />
+          {chatType === 'group' && (
+            <UserAvatarComponent />
+          )}
+        </div>
       ) : (
-        <>
-          <UserAvatarComponent className="mr-2" />
-          <BubbleContentLayout className="mr-1"/>
+        // Others' messages
+        <div className="flex w-full justify-start items-start group mb-3">
+          {chatType === 'group' && (
+            <UserAvatarComponent className="mr-2" />
+          )}
+          <BubbleContentLayout className="mr-1" />
           <ReceiverActionButton className="self-center" />
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 }
+
