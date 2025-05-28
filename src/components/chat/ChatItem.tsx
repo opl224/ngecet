@@ -49,7 +49,7 @@ export function ChatItem({
   const { name, avatarUrl, initials, Icon } = getChatDisplayDetails();
   const otherParticipant = chat.type === 'direct' ? chat.participants.find(p => p.id !== currentUser.id) : null;
 
-  let statusTimestamp = chat.lastMessageTimestamp;
+  let statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp; // Use requestTimestamp as a fallback for pending
   let showAcceptRejectActions = false;
   let showDeleteAction = false;
   let specialStatusText: string | null = null;
@@ -59,18 +59,18 @@ export function ChatItem({
     const otherParticipantName = (typeof otherParticipant === 'object' ? otherParticipant?.name : null) || name || "Seseorang";
     if (chat.pendingApprovalFromUserId === currentUser.id) {
       specialStatusText = `${otherParticipantName} ingin memulai chat.`;
-      statusTimestamp = chat.requestTimestamp;
+      statusTimestamp = chat.requestTimestamp; // For pending, timestamp is request time
       showAcceptRejectActions = true;
     } else if (chat.pendingApprovalFromUserId) {
       specialStatusText = `Permintaan dikirim. Menunggu ${name}...`;
-      statusTimestamp = chat.requestTimestamp;
+      statusTimestamp = chat.requestTimestamp; // For pending, timestamp is request time
     } else if (chat.isRejected) {
       if (chat.rejectedByUserId === currentUser.id) {
         specialStatusText = `Anda menolak permintaan dari ${name}.`;
       } else {
         specialStatusText = `${name} menolak permintaan Anda.`;
       }
-      statusTimestamp = chat.lastMessageTimestamp; // Could be requestTimestamp if lastMessageTimestamp is not set after rejection
+      statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
       showDeleteAction = true;
     }
   }
@@ -90,11 +90,11 @@ export function ChatItem({
      statusMessage = `${chat.participants.length} anggota`;
   } else if (chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
      statusMessage = "Mulai percakapan";
-  } else if (!chat.lastMessage && !specialStatusText) { // If no last message and no special text
+  } else if (!chat.lastMessage && !specialStatusText) {
     statusMessage = "Belum ada pesan";
   }
-  // The generic "Aktivitas terakhir" or "Aktivitas grup terakhir" is removed.
-  // If there is a lastMessage but no specialStatusText, statusMessage will remain null.
+  // If there is a lastMessage but no specialStatusText, statusMessage remains null,
+  // and the lastMessage content itself is not displayed in this line.
 
   return (
     <div
@@ -130,20 +130,18 @@ export function ChatItem({
             >
               {name}
             </h4>
-            {/* Display unread badge (if >0) or '0' badge (if 0 and active), but not if specialStatusText is present */}
             {!specialStatusText ? (
               unreadCount > 0 ? (
                 <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0 ml-2">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </Badge>
-              ) : statusTimestamp ? ( // If unreadCount is 0 or undefined, but there was activity
-                <Badge variant="outline" className="h-5 px-1.5 text-xs shrink-0 ml-2 text-sidebar-foreground/70 border-sidebar-foreground/30 bg-transparent">
-                  {unreadCount || 0}
-                </Badge>
-              ) : null // No special text, no positive unread, no timestamp (e.g. truly empty new chat)
-            ) : null /* specialStatusText exists, so it's handled in statusMessage below */}
+              ) : statusTimestamp ? (
+                <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
+                  {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
+                </span>
+              ) : null
+            ) : null}
           </div>
-          {/* Display status message (previously last message or special status) */}
           {statusMessage && (
             <p className="text-xs text-sidebar-foreground/70 truncate overflow-hidden">
               {statusMessage}
@@ -185,5 +183,3 @@ export function ChatItem({
     </div>
   );
 }
-
-    
