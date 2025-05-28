@@ -15,6 +15,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { HTMLAttributes } from 'react';
+
 
 interface MessageBubbleProps {
   message: Message;
@@ -76,22 +78,36 @@ export function MessageBubble({
     }
   }
 
-  const BubbleContentLayout = ({ className: bubbleClassName }: { className?: string }) => (
-    <div className={cn(
-      "shadow-sm flex flex-col px-3 py-2 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative",
-      isCurrentUserMessage
-        ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl"
-        : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
-      bubbleClassName
-    )}>
-      {((isCurrentUserMessage && chatType === 'group') || (!isCurrentUserMessage && chatType === 'group')) && (
+  interface BubbleContentLayoutProps extends HTMLAttributes<HTMLDivElement> {
+    children: React.ReactNode;
+  }
+
+  const BubbleContentLayout = React.forwardRef<HTMLDivElement, BubbleContentLayoutProps>(
+    ({ className: bubbleClassName, children, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "shadow-sm flex flex-col px-3 py-3 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative", // Changed py-2 to py-3
+        isCurrentUserMessage
+          ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl"
+          : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
+        bubbleClassName
+      )}
+      {...props}
+    >
+      {(isCurrentUserMessage && chatType === 'group') || (!isCurrentUserMessage && chatType === 'group') || (isCurrentUserMessage && chatType === 'direct') ? (
           <div className={cn(
               "text-xs font-semibold mb-0.5",
               isCurrentUserMessage ? "text-primary-foreground/90" : "text-accent-foreground"
           )}>
-              <span>{isCurrentUserMessage ? "Anda" : senderName}</span>
+              <span>
+                {isCurrentUserMessage 
+                  ? (chatType === 'group' ? senderName + " Anda" : "Anda") 
+                  : senderName
+                }
+              </span>
           </div>
-      )}
+      ) : null}
 
 
       {message.replyToMessageId && message.replyToMessageSenderName && message.replyToMessageContent && (
@@ -135,18 +151,19 @@ export function MessageBubble({
             {isReadByAtLeastOneOther ? (
               <CheckCheck size={14} className="text-blue-500" />
             ) : (
-              <Check size={14} className={cn(chatType === 'group' ? "text-primary-foreground/70" : "text-primary-foreground/70")} />
+              <Check size={14} className={cn("text-primary-foreground/70")} />
             )}
           </span>
         )}
       </div>
     </div>
-  );
+  ));
+  BubbleContentLayout.displayName = "BubbleContentLayout";
 
 
   const SenderActionButtons = ({ className }: { className?: string }) => (
     onDeleteMessage && onEditMessage && onReplyMessage && (
-      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0", className)}>
+      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-center", className)}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-muted-foreground hover:text-primary">
@@ -185,7 +202,7 @@ export function MessageBubble({
 
   const ReceiverActionButton = ({ className }: { className?: string }) => (
     onReplyMessage && (
-      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0", className)}>
+      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-center", className)}>
         <Button
           variant="ghost"
           size="icon"
@@ -202,7 +219,7 @@ export function MessageBubble({
   const UserAvatarComponent = ({ className }: { className?: string }) => (
     chatType === 'group' ? (
       <Avatar className={cn("h-8 w-8 shrink-0 self-start", className)}>
-        <AvatarImage src={senderAvatarUrl} alt={senderName} data-ai-hint="person" />
+        <AvatarImage src={senderAvatarUrl} alt={senderName} data-ai-hint="person abstract"/>
         <AvatarFallback>{senderInitial}</AvatarFallback>
       </Avatar>
     ) : null
@@ -214,17 +231,22 @@ export function MessageBubble({
         // My messages (Outgoing)
         <div className="flex w-full justify-end items-start group mb-3">
           <SenderActionButtons className="order-1 mr-1 self-center" />
-          <BubbleContentLayout className="order-2 mr-2" />
-          <UserAvatarComponent className="order-3 self-start" />
+          <BubbleContentLayout className="order-2 mr-2">
+            {/* Content is rendered inside BubbleContentLayout */}
+          </BubbleContentLayout>
+          {chatType === 'group' && <UserAvatarComponent className="order-3 self-start ml-0" />}
         </div>
       ) : (
         // Others' messages (Incoming)
         <div className="flex w-full justify-start items-start group mb-3">
-          <UserAvatarComponent className="mr-2 self-start" />
-          <BubbleContentLayout className="mr-1"/>
+          {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
+          <BubbleContentLayout className="mr-1">
+             {/* Content is rendered inside BubbleContentLayout */}
+          </BubbleContentLayout>
           <ReceiverActionButton className="ml-1 self-center" />
         </div>
       )}
     </>
   );
 }
+
