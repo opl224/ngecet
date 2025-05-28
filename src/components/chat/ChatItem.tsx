@@ -90,11 +90,11 @@ export function ChatItem({
      statusMessage = `${chat.participants.length} anggota`;
   } else if (chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
      statusMessage = "Mulai percakapan";
-  } else if (!chat.lastMessage && !specialStatusText) {
+  } else if (!chat.lastMessage && !specialStatusText) { // If no last message and no special text
     statusMessage = "Belum ada pesan";
-  } else if (chat.lastMessage && !specialStatusText) {
-      statusMessage = chat.type === 'group' ? 'Aktivitas grup terakhir' : 'Aktivitas terakhir';
   }
+  // The generic "Aktivitas terakhir" or "Aktivitas grup terakhir" is removed.
+  // If there is a lastMessage but no specialStatusText, statusMessage will remain null.
 
   return (
     <div
@@ -183,5 +183,3 @@ export function ChatItem({
     </div>
   );
 }
-
-    
