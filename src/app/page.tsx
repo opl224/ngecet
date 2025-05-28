@@ -85,7 +85,7 @@ export default function ChatPage() {
       id: userId,
       name,
       avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
-      status: "Online"
+      "Online"
     };
     setCurrentUser(profile);
     toast({ title: "Profil Disimpan", description: `Selamat datang, ${name}!` });
@@ -105,7 +105,7 @@ export default function ChatPage() {
       id: recipientId,
       name: recipientName,
       avatarUrl: `https://placehold.co/100x100.png?text=${recipientInitial}`,
-      status: "Offline" 
+      "Offline" 
     };
 
     const participantsArray: User[] = [currentUser, recipientUser].sort((a, b) => a.id.localeCompare(b.id));
@@ -252,7 +252,7 @@ export default function ChatPage() {
                 finalMemberUsers.push({
                     id: memberId, name: name,
                     avatarUrl: `https://placehold.co/100x100.png?text=${memberInitial}`,
-                    status: "Offline" 
+                    "Offline" 
                 });
             }
         } else {

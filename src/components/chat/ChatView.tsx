@@ -439,7 +439,7 @@ export function ChatView({
                 disabled={!!chat.blockedByUser} // Disable if chat is blocked
                >
                 <Users className="mr-2 h-4 w-4" />
-                Buat Grup dengan {displayDetails.name}
+                Buat grup dengan {displayDetails.name}
                </Button>
             </div>
           )}
@@ -447,10 +447,10 @@ export function ChatView({
           {chat.type === 'group' && (
             <div className="py-2">
               <div className="flex justify-between items-center mb-2 px-1">
-                  <h4 className="font-semibold text-sm">Participants</h4>
+                  <h4 className="font-semibold text-sm">Anggota</h4>
                   {isChatActive && chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerAddUserToGroup && (
                       <Button variant="outline" size="sm" onClick={onTriggerAddUserToGroup}>
-                          <UserPlus className="mr-2 h-4 w-4" /> Add User
+                          <UserPlus className="mr-2 h-4 w-4" /> Tambah
                       </Button>
                   )}
               </div>
