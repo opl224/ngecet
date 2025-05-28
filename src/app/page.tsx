@@ -60,8 +60,8 @@ export default function ChatPage() {
     const profile: User = {
       id: userId,
       name,
-      avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
-      status: "Online"
+      avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`, // Placeholder avatar
+      status: "Online" 
     };
     setCurrentUser(profile);
     toast({ title: "Profil Disimpan", description: `Selamat datang, ${name}!` });
@@ -300,10 +300,12 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       } else if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected) {
-         // Update lastMessageTimestamp for other chats to reflect new activity for sorting
         return {
           ...chat,
-          lastMessage: "Aktivitas baru", 
+          // lastReadBy is NOT updated for other chats here.
+          // This will effectively make them "unread" if the current user is a participant.
+          // We also update lastMessage and timestamp to reflect new activity for sorting
+          lastMessage: "Aktivitas baru", // Or use actual content if preferred for all chats
           lastMessageTimestamp: newMessage.timestamp 
         };
       }
@@ -410,7 +412,7 @@ export default function ChatPage() {
 
     toast({ title: "Pesan Diedit", description: "Pesan Anda telah berhasil diperbarui." });
     setEditingMessageDetails(null); // Keluar dari mode edit
-  }, [currentUser, allMessages, setAllMessages, setChats, toast, editingMessageDetails]);
+  }, [currentUser, setAllMessages, setChats, toast, editingMessageDetails]);
 
   const handleCancelEditInInput = useCallback(() => {
     setEditingMessageDetails(null);
@@ -461,18 +463,7 @@ export default function ChatPage() {
   }
 
   if (!currentUser) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-primary/20 to-background">
-        <div className="p-8 bg-card shadow-xl rounded-lg w-full max-w-md space-y-6">
-            <div className="flex flex-col items-center space-y-2">
-                 <AppLogo className="w-12 h-12 text-primary" />
-                 <h1 className="text-2xl font-bold text-center text-foreground">Selamat Datang di SimplicChat</h1>
-                 <p className="text-sm text-muted-foreground text-center">Silakan atur profil Anda untuk memulai.</p>
-            </div>
-           <UserProfileForm currentUser={null} onSaveProfile={handleSaveProfile} />
-        </div>
-      </div>
-    );
+    return <UserProfileForm currentUser={null} onSaveProfile={handleSaveProfile} />;
   }
 
 
@@ -482,13 +473,22 @@ export default function ChatPage() {
         <Sidebar className="border-r" collapsible="icon" variant="sidebar">
           <SidebarHeader className="p-0">
              <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0 mr-2"> {/* Added shrink-0 and mr-2 */}
                     <AppLogo className="h-7 w-7 text-primary" />
                     <h1 className="text-xl font-semibold text-sidebar-primary-foreground">SimplicChat</h1>
                 </div>
-                <SidebarTrigger className="md:hidden" />
+                <div className="flex items-center gap-2">
+                    {currentUser && (
+                        <UserProfileForm
+                            currentUser={currentUser}
+                            onSaveProfile={handleSaveProfile}
+                            displayMode="compact"
+                        />
+                    )}
+                    <SidebarTrigger className="md:hidden" />
+                </div>
              </div>
-            <UserProfileForm currentUser={currentUser} onSaveProfile={handleSaveProfile} />
+            {/* Full UserProfileForm removed from here as it's now compact in the header */}
           </SidebarHeader>
           <SidebarContent className="p-0">
             <ChatList
