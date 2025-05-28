@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useState, useEffect, useMemo } from "react";
-import type { User, Chat } from "@/types"; // Added Chat
+import type { User, Chat } from "@/types"; 
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,8 +20,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, X } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area"; // Added ScrollArea
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Added Popover
+import { ScrollArea } from "@/components/ui/scroll-area"; 
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; 
 
 const groupChatFormSchema = z.object({
   groupName: z.string().min(2, "Nama grup minimal 2 karakter.").max(30, "Nama grup terlalu panjang."),
@@ -34,10 +34,11 @@ interface NewGroupChatDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   onCreateChat: (groupName: string, memberNames: string[]) => void;
   currentUserId: string | undefined;
-  chats: Chat[]; // Added chats prop
+  chats: Chat[]; 
+  currentUserObj: User | null; // Pass current user object
 }
 
-export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, currentUserId, chats }: NewGroupChatDialogProps) {
+export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, currentUserId, chats, currentUserObj }: NewGroupChatDialogProps) {
   const { toast } = useToast();
   const [currentMemberNameInput, setCurrentMemberNameInput] = useState('');
   const [addedMembers, setAddedMembers] = useState<string[]>([]);
@@ -49,7 +50,6 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
     defaultValues: { groupName: "" },
   });
 
-  // Memoize the list of users current user has active direct chats with
   const activeDirectContacts = useMemo(() => {
     if (!currentUserId || !chats) return [];
     const contacts: User[] = [];
@@ -62,7 +62,7 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
       }
     });
     return contacts.filter((contact, index, self) =>
-      index === self.findIndex((c) => c.id === contact.id) // Ensure unique contacts
+      index === self.findIndex((c) => c.id === contact.id) 
     );
   }, [chats, currentUserId]);
 
@@ -90,25 +90,25 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
 
     if (!nameToAdd) return;
 
-    if (currentUserId && nameToAdd.toLowerCase() === (localStorage.getItem(LS_USER_KEY) ? JSON.parse(localStorage.getItem(LS_USER_KEY)!).name.toLowerCase() : '')) {
+    if (currentUserObj && nameToAdd.toLowerCase() === currentUserObj.name.toLowerCase()) {
       toast({ title: "Info", description: "Anda otomatis termasuk dalam grup." });
       setCurrentMemberNameInput('');
+      setShowSuggestions(false);
       return;
     }
 
     if (addedMembers.map(m => m.toLowerCase()).includes(nameToAdd.toLowerCase())) {
       toast({ title: "Info", description: `${nameToAdd} sudah ditambahkan.` });
       setCurrentMemberNameInput('');
+      setShowSuggestions(false);
       return;
     }
     
-    // Basic validation for member name format
     if (!/^[a-zA-Z0-9\s_']+$/.test(nameToAdd) || nameToAdd.length < 2 || nameToAdd.length > 50) {
         toast({ title: "Nama Tidak Valid", description: "Nama anggota harus antara 2 dan 50 karakter, dan hanya boleh berisi huruf, angka, spasi, garis bawah, dan apostrof.", variant: "destructive" });
         return;
     }
 
-    // Check if this user is an active direct contact
     const isActiveContact = activeDirectContacts.some(contact => contact.name.toLowerCase() === nameToAdd.toLowerCase());
     if (!isActiveContact) {
         toast({
@@ -125,7 +125,6 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
   };
 
   const handleSelectSuggestion = (suggestedUser: User) => {
-    // Directly add the suggested user's name
      if (addedMembers.map(m => m.toLowerCase()).includes(suggestedUser.name.toLowerCase())) {
       toast({ title: "Info", description: `${suggestedUser.name} sudah ditambahkan.` });
       setCurrentMemberNameInput('');
@@ -154,7 +153,6 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
     onOpenChange(false);
   }
   
-  const LS_USER_KEY = "simplicchat_user"; // Define if not globally available
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -208,10 +206,9 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
-                            if (!showSuggestions || suggestions.length === 0) { // If no suggestions, try to add input directly
+                            if (!showSuggestions || suggestions.length === 0) { 
                                 handleAddMemberToList();
-                            } else if (suggestions.length > 0) { // If suggestions, maybe select first one or let user choose
-                                // For now, let's just attempt to add what's typed
+                            } else if (suggestions.length > 0) { 
                                 handleAddMemberToList();
                             }
                           }
@@ -290,3 +287,4 @@ export function NewGroupChatDialog({ isOpen, onOpenChange, onCreateChat, current
     </Dialog>
   );
 }
+

@@ -221,39 +221,31 @@ export default function ChatPage() {
     const finalMemberUsers: User[] = [currentUser]; // Start with the current user
 
     for (const name of memberDisplayNames) {
-        // We receive display names from the dialog. We need to find/create User objects.
-        // The dialog's local validation should ensure these names correspond to active contacts.
-        // Here, we re-verify and fetch/create the User object.
         const memberId = name.toLowerCase().replace(/\s+/g, "_") || `user_member_${Date.now()}_${Math.random().toString(36).substring(2,7)}`;
 
-        if (memberId === currentUser.id) { // Should be caught by dialog, but double-check
+        if (memberId === currentUser.id) { 
             continue;
         }
-        if (finalMemberUsers.find(u => u.id === memberId)) { // Avoid duplicates
+        if (finalMemberUsers.find(u => u.id === memberId)) { 
             continue;
         }
-
-        // Check if user has an active direct chat with the member
         const potentialDirectChatIdParts = [currentUser.id, memberId].sort();
         const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
         const existingDirectChat = chats.find(c => c.id === potentialDirectChatId);
 
         if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected) {
-            // This member is valid, try to get their User object from the direct chat participants
             const memberUserObject = existingDirectChat.participants.find(p => p.id === memberId);
             if (memberUserObject) {
                 finalMemberUsers.push(memberUserObject);
             } else {
-                 // Fallback: create a new user object if not found in the direct chat (should be rare if IDs are consistent)
                 const memberInitial = name.substring(0,1).toUpperCase() || 'M';
                 finalMemberUsers.push({
                     id: memberId, name: name,
                     avatarUrl: `https://placehold.co/100x100.png?text=${memberInitial}`,
-                    status: "Offline" // Or try to get from a global user list if available
+                    status: "Offline" 
                 });
             }
         } else {
-            // If no active direct chat, this member is invalid for group creation
             invalidMemberDisplayNames.push(name);
         }
     }
@@ -380,12 +372,14 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
-      // Update other active chats' last message and timestamp for sorting and unread calculation
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected) {
+        const updatedLastReadBy = { ...(chat.lastReadBy || {}) };
+        // Don't update lastReadBy for other chats, only the one receiving the message implicitly
          return {
           ...chat,
           lastMessage: chat.type === 'direct' ? `Aktivitas di chat dengan ${chat.name}` : `Aktivitas di ${chat.name}`, 
-          lastMessageTimestamp: newMessage.timestamp, 
+          lastMessageTimestamp: newMessage.timestamp,
+          lastReadBy: updatedLastReadBy, 
          };
       }
       return chat;
@@ -422,7 +416,6 @@ export default function ChatPage() {
         return c;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
-    // No toast for deleting message as per user request
   }, [setAllMessages, setChats]);
 
   const handleRequestEditMessageInInput = useCallback((messageToEdit: Message) => {
@@ -542,12 +535,12 @@ export default function ChatPage() {
         if (chat.id === chatId) {
           return {
             ...chat,
-            lastMessage: "Semua pesan telah dihapus.", // This will be the indicator for the current user
+            lastMessage: "Semua pesan telah dihapus.", 
             lastMessageTimestamp: now,
             lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: now },
             clearedTimestamp: { 
               ...(chat.clearedTimestamp || {}),
-              [currentUser.id]: now, // Record when this user cleared the chat
+              [currentUser.id]: now, 
             }
           };
         }
@@ -580,7 +573,6 @@ export default function ChatPage() {
         return; 
     }
 
-    // Check for active direct chat with the user to be added
     const potentialDirectChatIdParts = [currentUser.id, newUserId].sort();
     const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
     const existingDirectChat = chats.find(c => c.id === potentialDirectChatId);
@@ -588,17 +580,15 @@ export default function ChatPage() {
     let userObjectToAdd: User;
 
     if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected) {
-        // User has an active direct chat, proceed to get their details
         const foundUser = existingDirectChat.participants.find(p => p.id === newUserId);
         if (!foundUser) {
-             // This case should ideally not happen if IDs are consistent from name
             toast({ title: "Error Internal", description: `Tidak dapat menemukan detail untuk ${userName}. Coba mulai chat langsung dulu.`, variant: "destructive" });
             return;
         }
         userObjectToAdd = foundUser;
     } else {
         let reason = "Anda harus memiliki chat langsung yang aktif dengannya terlebih dahulu.";
-        if (existingDirectChat) { // Direct chat exists but is not active
+        if (existingDirectChat) { 
             if (existingDirectChat.pendingApprovalFromUserId === newUserId) reason = `permintaan chat Anda kepada ${userName} masih tertunda.`;
             else if (existingDirectChat.pendingApprovalFromUserId === currentUser.id) reason = `Anda belum menerima permintaan chat dari ${userName}.`;
             else if (existingDirectChat.isRejected) reason = `chat langsung dengan ${userName} sebelumnya ditolak.`;
@@ -608,14 +598,15 @@ export default function ChatPage() {
     }
     
     const now = Date.now();
+    const systemMessage = `${userObjectToAdd.name} telah ditambahkan ke grup.`;
     setChats(prevChats => {
       const currentChatToUpdate = prevChats.find(c => c.id === chatIdToAddTo);
-      if (!currentChatToUpdate) return prevChats; // Should not happen
+      if (!currentChatToUpdate) return prevChats; 
 
       const updatedParticipants = [...currentChatToUpdate.participants, userObjectToAdd];
       const updatedLastReadBy = { ...(currentChatToUpdate.lastReadBy || {}), [userObjectToAdd.id]: 0 };
       const updatedClearedTimestamp = { ...(currentChatToUpdate.clearedTimestamp || {}), [userObjectToAdd.id]: 0 };
-      const systemMessage = `${userObjectToAdd.name} telah ditambahkan ke grup.`;
+      
 
       return prevChats.map(c =>
         c.id === chatIdToAddTo
@@ -663,6 +654,58 @@ export default function ChatPage() {
     setIsDeleteGroupConfirmOpen(false);
     setGroupToDeleteId(null);
   }, []);
+
+  const handleRemoveParticipantFromGroup = useCallback((chatId: string, participantIdToRemove: string) => {
+    if (!currentUser) return;
+
+    setChats(prevChats => {
+      const chatToUpdate = prevChats.find(c => c.id === chatId);
+      if (!chatToUpdate || chatToUpdate.type !== 'group' || chatToUpdate.createdByUserId !== currentUser.id) {
+        toast({ title: "Aksi Gagal", description: "Anda tidak memiliki izin untuk mengeluarkan pengguna dari grup ini.", variant: "destructive" });
+        return prevChats;
+      }
+      if (participantIdToRemove === currentUser.id) {
+        toast({ title: "Aksi Gagal", description: "Anda tidak dapat mengeluarkan diri sendiri dari grup.", variant: "destructive" });
+        return prevChats;
+      }
+
+      const participantToRemove = chatToUpdate.participants.find(p => p.id === participantIdToRemove);
+      if (!participantToRemove) {
+        toast({ title: "Error", description: "Pengguna tidak ditemukan di grup.", variant: "destructive" });
+        return prevChats;
+      }
+
+      const updatedParticipants = chatToUpdate.participants.filter(p => p.id !== participantIdToRemove);
+      
+      const updatedLastReadBy = { ...chatToUpdate.lastReadBy };
+      delete updatedLastReadBy[participantIdToRemove];
+
+      const updatedClearedTimestamp = { ...chatToUpdate.clearedTimestamp };
+      delete updatedClearedTimestamp[participantIdToRemove];
+
+      const now = Date.now();
+      const removalMessage = `${participantToRemove.name} telah dikeluarkan dari grup.`;
+
+      toast({ title: "Pengguna Dikeluarkan", description: removalMessage });
+
+      const updatedChat = {
+        ...chatToUpdate,
+        participants: updatedParticipants,
+        lastReadBy: updatedLastReadBy,
+        clearedTimestamp: updatedClearedTimestamp,
+        lastMessage: removalMessage,
+        lastMessageTimestamp: now,
+      };
+      
+      // If selected chat is the one being updated, update selectedChat as well
+      if (selectedChat?.id === chatId) {
+        setSelectedChat(updatedChat);
+      }
+
+      return prevChats.map(c => c.id === chatId ? updatedChat : c)
+                      .sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
+    });
+  }, [currentUser, setChats, toast, selectedChat]);
 
 
   if (!isClient) {
@@ -768,6 +811,7 @@ export default function ChatPage() {
               onDeleteAllMessagesInChat={handleDeleteAllMessagesInChat}
               onTriggerAddUserToGroup={() => handleOpenAddUserToGroupDialog(selectedChat.id)}
               onTriggerDeleteGroup={handleTriggerDeleteGroup}
+              onRemoveParticipant={handleRemoveParticipantFromGroup}
             />
           ) : (
             <WelcomeMessage />
@@ -786,7 +830,8 @@ export default function ChatPage() {
         onOpenChange={setIsNewGroupChatDialogOpen}
         onCreateChat={handleCreateGroupChat}
         currentUserId={currentUser?.id}
-        chats={chats} // Pass chats
+        chats={chats} 
+        currentUserObj={currentUser}
       />
       <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}

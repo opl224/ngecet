@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus, UserMinus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -41,6 +41,7 @@ interface ChatViewProps {
   onDeleteAllMessagesInChat: (chatId: string) => void;
   onTriggerAddUserToGroup?: () => void;
   onTriggerDeleteGroup?: (chatId: string) => void;
+  onRemoveParticipant?: (chatId: string, participantIdToRemove: string) => void;
 }
 
 export function ChatView({
@@ -57,6 +58,7 @@ export function ChatView({
   onDeleteAllMessagesInChat,
   onTriggerAddUserToGroup,
   onTriggerDeleteGroup,
+  onRemoveParticipant,
 }: ChatViewProps) {
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState("");
@@ -73,11 +75,10 @@ export function ChatView({
     }
   }, [messages, chat.id]);
 
-  // Effect for handling edit mode start/stop and reply mode start
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      if (replyingToMessage) { // If switching from reply to edit
+      if (replyingToMessage) { 
         setReplyingToMessage(null);
       }
       setTimeout(() => {
@@ -88,26 +89,22 @@ export function ChatView({
           messageInputRef.current.selectionEnd = len;
         }
       }, 0);
-    } else if (!replyingToMessage) { // Only clear newMessage if not editing AND not replying
+    } else if (!replyingToMessage) {
         setNewMessage("");
     }
-    // Auto-adjust height if not editing
     if (messageInputRef.current && !editingMessageDetails) {
         messageInputRef.current.style.height = 'auto';
     }
   }, [editingMessageDetails, replyingToMessage]);
 
 
-  // Effect for handling chat ID changes (switching chats)
   useEffect(() => {
-    // Reset states when chat.id changes
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-      onCancelEditMessage(); // This will set editingMessageDetails to null
+      onCancelEditMessage(); 
     }
     if (replyingToMessage && replyingToMessage.chatId !== chat.id) {
         setReplyingToMessage(null);
     }
-    // Clear newMessage only if not in edit for current chat and not in reply for current chat
     if ((!editingMessageDetails || editingMessageDetails.chatId !== chat.id) &&
         (!replyingToMessage || replyingToMessage.chatId !== chat.id)) {
       setNewMessage("");
@@ -117,7 +114,7 @@ export function ChatView({
         messageInputRef.current.style.height = 'auto';
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chat.id, onCancelEditMessage]); // editingMessageDetails and replyingToMessage removed to avoid conflicts
+  }, [chat.id, onCancelEditMessage]); 
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -131,26 +128,26 @@ export function ChatView({
         onSaveEditedMessage(editingMessageDetails.id, newMessage.trim());
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
-        setReplyingToMessage(null); // Clear reply state after sending
-        setNewMessage(""); // Clear input after sending
+        setReplyingToMessage(null); 
+        setNewMessage(""); 
       }
 
       if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto'; // Reset height after send/save
+        messageInputRef.current.style.height = 'auto'; 
       }
     }
   };
 
   const handleReplyToMessageInView = (messageToReply: Message) => {
     if(!isChatActive) return;
-    if (editingMessageDetails) onCancelEditMessage(); // Cancel edit mode if starting reply
+    if (editingMessageDetails) onCancelEditMessage(); 
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); // Clear input for reply
+    setNewMessage(""); 
     setTimeout(() => messageInputRef.current?.focus(), 0);
   };
 
   const handleCancelEditClick = () => {
-    onCancelEditMessage(); // This will set editingMessageDetails to null and clear newMessage via useEffect
+    onCancelEditMessage(); 
   };
 
   const getChatDisplayDetails = () => {
@@ -210,7 +207,7 @@ export function ChatView({
     setNewMessage(event.target.value);
     if (messageInputRef.current) {
       messageInputRef.current.style.height = 'auto';
-      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120) // Max height 120px (approx 5-6 lines)
+      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120) 
       messageInputRef.current.style.height = `${newHeight}px`;
     }
   };
@@ -336,21 +333,41 @@ export function ChatView({
                     </Button>
                 )}
             </div>
-            <ScrollArea className="h-[calc(100vh-380px)]"> {/* Adjusted height based on typical content */}
+            <ScrollArea className="h-[calc(100vh-380px)]"> 
               <ul className="space-y-1 text-sm">
                 {chat.participants?.map(participantUser => {
                   const isCurrentUserParticipant = participantUser.id === currentUser.id;
                   const participantName = participantUser.name || "Unknown User";
+                  const isChatAdmin = participantUser.id === chat.createdByUserId;
+
                   return (
-                    <li key={participantUser.id} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md">
-                       <Avatar className="h-8 w-8">
-                         <AvatarImage src={participantUser.avatarUrl} alt={participantName} data-ai-hint="person abstract small"/>
-                         <AvatarFallback>{participantUser?.name?.substring(0,1).toUpperCase() || '?'}</AvatarFallback>
-                       </Avatar>
-                       <span className="truncate">
-                        {participantName}
-                        {isCurrentUserParticipant && " (Anda)"}
-                      </span>
+                    <li key={participantUser.id} className="flex items-center justify-between space-x-2 p-2 hover:bg-muted/50 rounded-md">
+                       <div className="flex items-center space-x-2 min-w-0">
+                         <Avatar className="h-8 w-8">
+                           <AvatarImage src={participantUser.avatarUrl} alt={participantName} data-ai-hint="person abstract small"/>
+                           <AvatarFallback>{participantUser?.name?.substring(0,1).toUpperCase() || '?'}</AvatarFallback>
+                         </Avatar>
+                         <div className="truncate">
+                            <span className="font-medium truncate">{participantName}</span>
+                            {isCurrentUserParticipant && <span className="text-xs text-muted-foreground"> (Anda)</span>}
+                            {isChatAdmin && !isCurrentUserParticipant && chat.type === 'group' && <span className="text-xs text-primary ml-1">(Admin)</span>}
+                            {isChatAdmin && isCurrentUserParticipant && chat.type === 'group' && <span className="text-xs text-primary ml-1">(Admin Anda)</span>}
+                         </div>
+                       </div>
+                       {currentUser.id === chat.createdByUserId && 
+                        participantUser.id !== currentUser.id && 
+                        chat.type === 'group' &&
+                        onRemoveParticipant && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0"
+                            onClick={() => onRemoveParticipant(chat.id, participantUser.id)}
+                            aria-label={`Keluarkan ${participantName}`}
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                       )}
                     </li>
                   );
                 })}
@@ -419,7 +436,7 @@ export function ChatView({
               className="h-7 w-7 shrink-0"
               onClick={editingMessageDetails ? handleCancelEditClick : () => {
                 setReplyingToMessage(null);
-                setNewMessage(""); // Clear input when cancelling reply
+                setNewMessage(""); 
               }}
               aria-label={editingMessageDetails ? "Batalkan Edit" : "Batalkan Balasan"}
             >
@@ -458,7 +475,7 @@ export function ChatView({
                   handleCancelEditClick();
                 } else if (replyingToMessage) {
                   setReplyingToMessage(null);
-                  setNewMessage(""); // Clear input when cancelling reply via Escape
+                  setNewMessage(""); 
                 }
               }
             }}
