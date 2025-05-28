@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, Info, X, AlertTriangle, Lock, Edit2, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -17,6 +17,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +36,8 @@ interface ChatViewProps {
   onRequestEditMessage: (messageToEdit: Message) => void;
   onCancelEditMessage: () => void;
   onDeleteMessage: (messageId: string, chatId: string) => void;
-  onGoBack?: () => void; // New prop
+  onGoBack?: () => void;
+  onDeleteAllMessagesInChat: (chatId: string) => void; // New prop
 }
 
 export function ChatView({
@@ -43,7 +50,8 @@ export function ChatView({
   onRequestEditMessage,
   onCancelEditMessage,
   onDeleteMessage,
-  onGoBack
+  onGoBack,
+  onDeleteAllMessagesInChat
 }: ChatViewProps) {
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState("");
@@ -63,8 +71,8 @@ export function ChatView({
   useEffect(() => {
     if (editingMessageDetails) {
       setNewMessage(editingMessageDetails.content);
-      if (replyingToMessage) {
-        setReplyingToMessage(null); // Ensure reply mode is off when edit mode starts
+      if (replyingToMessage) { // If starting to edit, cancel any active reply
+        setReplyingToMessage(null);
       }
       setTimeout(() => {
         messageInputRef.current?.focus();
@@ -84,12 +92,11 @@ export function ChatView({
     if (messageInputRef.current && !editingMessageDetails) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [editingMessageDetails]);
+  }, [editingMessageDetails, replyingToMessage]);
 
 
   useEffect(() => {
     // This effect specifically handles resets when the chat.id (active chat) changes.
-    // It should not interfere with starting edit/reply modes for the *current* chat.
     if (!editingMessageDetails || (editingMessageDetails && editingMessageDetails.chatId !== chat.id)) {
       if (!replyingToMessage || (replyingToMessage && replyingToMessage.chatId !== chat.id)) {
         setNewMessage("");
@@ -100,7 +107,6 @@ export function ChatView({
         setReplyingToMessage(null); 
     }
     
-    // If we switched to a new chat and were editing a message from the *previous* chat, cancel that edit.
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
       onCancelEditMessage(); 
     }
@@ -108,7 +114,7 @@ export function ChatView({
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
-  }, [chat.id, onCancelEditMessage]); // Keep editingMessageDetails and replyingToMessage out of here
+  }, [chat.id, onCancelEditMessage]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -120,7 +126,6 @@ export function ChatView({
     if (newMessage.trim()) {
       if (editingMessageDetails) {
         onSaveEditedMessage(editingMessageDetails.id, newMessage.trim());
-        // newMessage will be cleared by the useEffect reacting to editingMessageDetails becoming null
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
         setReplyingToMessage(null);
@@ -212,7 +217,7 @@ export function ChatView({
     <div className="flex flex-col flex-1 bg-background overflow-hidden">
       <Sheet>
         <header className="p-4 border-b flex items-center justify-between shadow-sm">
-          <div className="flex items-center space-x-1 flex-1 min-w-0"> {/* Adjusted space-x */}
+          <div className="flex items-center space-x-1 flex-1 min-w-0">
             {onGoBack && (
               <Button variant="ghost" size="icon" className="md:hidden mr-1 shrink-0" onClick={onGoBack}>
                 <ArrowLeft className="h-5 w-5" />
@@ -238,12 +243,38 @@ export function ChatView({
               </div>
             </SheetTrigger>
           </div>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="ml-2 shrink-0">
-              <Info className="h-5 w-5" />
-              <span className="sr-only">Chat Info</span>
-            </Button>
-          </SheetTrigger>
+          
+          <div className="flex items-center space-x-1">
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="shrink-0">
+                <Info className="h-5 w-5" />
+                <span className="sr-only">Info Detail Chat</span>
+              </Button>
+            </SheetTrigger>
+             {isChatActive && onGoBack && ( // Only show dropdown if chat is active and onGoBack is available
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="shrink-0">
+                        <MoreVertical className="h-5 w-5" />
+                        <span className="sr-only">Opsi Chat</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={onGoBack}>
+                            <LogOut className="mr-2 h-4 w-4" />
+                            <span>Tutup Chat</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                        onClick={() => onDeleteAllMessagesInChat(chat.id)}
+                        className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10"
+                        >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>Hapus Semua Pesan</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+             )}
+          </div>
         </header>
 
         <SheetContent>
