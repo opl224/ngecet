@@ -555,12 +555,11 @@ export function ChatView({
               <Image
                 src="/mulai.png"
                 alt="Belum ada pesan"
-                width={300}
-                height={200}
+                width={250}
+                height={250}
                 className="mb-4 rounded-lg object-contain"
                 data-ai-hint="empty chat"
               />
-              <p className="text-sm">Belum ada pesan. Mulai percakapan!</p>
             </div>
           )}
            {displayedMessages.length === 0 && !isChatActive && !chatOverlayMessage && (
@@ -568,8 +567,8 @@ export function ChatView({
                <Image
                 src="/mulai.png"
                 alt="Chat tidak aktif"
-                width={300}
-                height={200}
+                width={250}
+                height={250}
                 className="mb-4 rounded-lg object-contain"
                 data-ai-hint="inactive chat"
               />
