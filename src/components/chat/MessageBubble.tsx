@@ -5,7 +5,7 @@ import type { Message, User, ChatType, Chat } from "@/types";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
-import { Undo2, MoreVertical, Edit3, Trash2, Check, CheckCheck } from "lucide-react"; 
+import { Undo2, MoreVertical, Edit3, Trash2, Check, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,7 +21,7 @@ interface MessageBubbleProps {
   isCurrentUserMessage: boolean;
   senderDetails: User;
   chatType: ChatType;
-  chat: Chat; 
+  chat: Chat;
   onReplyMessage?: (message: Message) => void;
   onEditMessage?: (message: Message) => void;
   onDeleteMessage?: (messageId: string, chatId: string) => void;
@@ -32,7 +32,7 @@ export function MessageBubble({
   isCurrentUserMessage,
   senderDetails,
   chatType,
-  chat, 
+  chat,
   onReplyMessage,
   onEditMessage,
   onDeleteMessage,
@@ -69,7 +69,7 @@ export function MessageBubble({
           const theirLastReadTimestamp = chat.lastReadBy[participant.id] || 0;
           if (messageTimestamp <= theirLastReadTimestamp) {
             isReadByAtLeastOneOther = true;
-            break; 
+            break;
           }
         }
       }
@@ -78,28 +78,25 @@ export function MessageBubble({
 
   const BubbleContentLayout = ({ className: bubbleClassName }: { className?: string }) => (
     <div className={cn(
-      "shadow-sm flex flex-col px-3 py-2 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative", 
+      "shadow-sm flex flex-col px-3 py-2 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative",
       isCurrentUserMessage
         ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl"
         : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
       bubbleClassName
     )}>
-      {((isCurrentUserMessage && chatType === 'group')) ? (
+      {(isCurrentUserMessage && chatType === 'group') && (
           <div className={cn(
               "text-xs font-semibold mb-0.5",
-              isCurrentUserMessage ? "text-primary-foreground/90" : "text-accent-foreground" 
+              isCurrentUserMessage ? "text-primary-foreground/90" : "text-accent-foreground"
           )}>
-              {isCurrentUserMessage ? "Anda" : <span>{senderName}</span>}
+              Anda
           </div>
-      ) : isCurrentUserMessage && chatType === 'direct' ? (
-          <div className={cn("text-xs font-semibold mb-0.5 text-primary-foreground/90")}>
-            {/* No "Anda" for direct messages from current user */}
-          </div>
-      ) : (!isCurrentUserMessage && chatType === 'group') ? (
+      )}
+       {(!isCurrentUserMessage && chatType === 'group') && (
           <div className={cn("text-xs font-semibold mb-0.5 text-accent-foreground")}>
               <span>{senderName}</span>
           </div>
-      ) : null}
+      )}
 
 
       {message.replyToMessageId && message.replyToMessageSenderName && message.replyToMessageContent && (
@@ -124,11 +121,11 @@ export function MessageBubble({
       <p className="whitespace-pre-wrap break-words">{message.content}</p>
 
       <div className={cn(
-          "flex items-center mt-1 self-end", 
+          "flex items-center mt-1 self-end",
       )}>
         {message.isEdited && (
            <span className={cn(
-              "text-[10px] italic mr-1.5", 
+              "text-[10px] italic mr-1.5",
               isCurrentUserMessage ? "text-primary-foreground/70" : "text-muted-foreground/70"
           )}>(edited)</span>
         )}
@@ -143,7 +140,7 @@ export function MessageBubble({
             {isReadByAtLeastOneOther ? (
               <CheckCheck size={14} className="text-blue-500" />
             ) : (
-              <Check size={14} className={cn(chatType === 'group' ? "text-primary-foreground/70" : "text-primary-foreground/70")} /> 
+              <Check size={14} className={cn(chatType === 'group' ? "text-primary-foreground/70" : "text-primary-foreground/70")} />
             )}
           </span>
         )}
@@ -193,21 +190,16 @@ export function MessageBubble({
 
   const ReceiverActionButton = ({ className }: { className?: string }) => (
     onReplyMessage && (
-      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-start shrink-0", className)}>
-         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-muted-foreground hover:text-primary">
-              <MoreVertical size={16} />
-              <span className="sr-only">Opsi pesan</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={handleReply}>
-              <Undo2 size={14} className="mr-2" />
-              Balas
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-center shrink-0", className)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 p-1 text-muted-foreground hover:text-primary"
+          onClick={handleReply}
+          aria-label="Balas"
+        >
+          <Undo2 size={16} />
+        </Button>
       </div>
     )
   );
@@ -226,14 +218,14 @@ export function MessageBubble({
         <div className="flex w-full justify-end items-start group mb-3">
           <SenderActionButtons className="mr-1 order-1 self-center" />
           <BubbleContentLayout className="mr-2 order-2" />
-          {chatType === 'group' && <UserAvatarComponent className="ml-0 order-3 self-start" />}
+          {chatType === 'group' && <UserAvatarComponent className="order-3 self-start" />}
         </div>
       ) : (
         // Others' messages (Incoming)
         <div className="flex w-full justify-start items-start group mb-3">
           {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
-          <BubbleContentLayout className={cn(chatType === 'group' ? "mr-1" : "ml-0")} />
-          <ReceiverActionButton className="ml-1 self-start" />
+          <BubbleContentLayout className={cn("mr-1", chatType === 'direct' && 'ml-0')} />
+          <ReceiverActionButton className="ml-1 self-center" />
         </div>
       )}
     </>
