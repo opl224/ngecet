@@ -238,6 +238,7 @@ export default function ChatPage() {
             if (memberUserObject) {
                 finalMemberUsers.push(memberUserObject);
             } else {
+                 // This case should ideally not happen if chats array is consistent
                 const memberInitial = name.substring(0,1).toUpperCase() || 'M';
                 finalMemberUsers.push({
                     id: memberId, name: name,
@@ -372,14 +373,12 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
+      // Update last message for other active chats to trigger re-sorting
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected) {
-        const updatedLastReadBy = { ...(chat.lastReadBy || {}) };
-        // Don't update lastReadBy for other chats, only the one receiving the message implicitly
          return {
           ...chat,
-          lastMessage: chat.type === 'direct' ? `Aktivitas di chat dengan ${chat.name}` : `Aktivitas di ${chat.name}`, 
-          lastMessageTimestamp: newMessage.timestamp,
-          lastReadBy: updatedLastReadBy, 
+          lastMessage: chat.type === 'direct' ? `Aktivitas di chat dengan ${chat.name}` : `Aktivitas di ${chat.name}`, // Generic message
+          lastMessageTimestamp: newMessage.timestamp, // Use current message timestamp for sorting
          };
       }
       return chat;
@@ -582,6 +581,7 @@ export default function ChatPage() {
     if (existingDirectChat && !existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected) {
         const foundUser = existingDirectChat.participants.find(p => p.id === newUserId);
         if (!foundUser) {
+            // This case should ideally not happen if chat data is consistent
             toast({ title: "Error Internal", description: `Tidak dapat menemukan detail untuk ${userName}. Coba mulai chat langsung dulu.`, variant: "destructive" });
             return;
         }
@@ -837,6 +837,8 @@ export default function ChatPage() {
         isOpen={isAddUserToGroupDialogOpen}
         onOpenChange={setIsAddUserToGroupDialogOpen}
         onAddUser={handleAddNewUserToGroup}
+        chats={chats} 
+        currentUserObj={currentUser}
       />
        <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
         <AlertDialogContent>
@@ -860,5 +862,3 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
-
-    
