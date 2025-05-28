@@ -94,7 +94,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage("");
+    setNewMessage(""); // Clear input when canceling reply
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -142,7 +142,6 @@ export function ChatView({
         }
       }, 50);
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
-      // Logic to reset input height when editing is cancelled for the current chat.
       if (messageInputRef.current && !replyingToMessage ) {
           messageInputRef.current.style.height = 'auto';
       }
@@ -165,10 +164,9 @@ export function ChatView({
     }
     prevChatIdRef.current = chat.id;
 
-    if (messageInputRef.current) { // This check should be outside the chatJustSwitched block for height reset
-      // Reset height if not editing THIS chat or not replying
+    if (messageInputRef.current) {
       if (!propsEditingMessageDetails || propsEditingMessageDetails.chatId !== chat.id) {
-         if(!replyingToMessage) { // Only reset height if not replying
+         if(!replyingToMessage) { 
             messageInputRef.current.style.height = 'auto';
          }
       }
@@ -176,7 +174,6 @@ export function ChatView({
 
     if (isChatActive && messageInputRef.current && chatJustSwitched) {
        setTimeout(() => {
-        // Ensure not trying to focus if another effect (like edit mode) will also try to focus
         const currentEditingForThisChat = propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id;
         if (!currentEditingForThisChat && !replyingToMessage) {
           messageInputRef.current?.focus();
@@ -212,7 +209,7 @@ export function ChatView({
     if(!isChatActive) return;
     if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage("");
+    setNewMessage(""); // Clear input before focusing for reply
     setTimeout(() => messageInputRef.current?.focus(), 50);
   }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
@@ -310,19 +307,11 @@ export function ChatView({
       const isACurrentUser = a.id === currentUser.id;
       const isBCurrentUser = b.id === currentUser.id;
 
-      if (isAAdmin && !isBAdmin) return -1;
+      if (isAAdmin && !isBAdmin) return -1; // Admin always first
       if (!isAAdmin && isBAdmin) return 1;
-      
-      if (isACurrentUser && !isBCurrentUser) { // currentUser (not admin) comes after admin
-        if(isAAdmin) return 1; // if A is admin, B (currentUser) comes after
-        if(isBAdmin) return -1; // if B is admin, A (currentUser) comes after B. This case handled above.
-        return -1; // A (currentUser) comes before B (non-admin, non-currentUser)
-      }
-      if (!isACurrentUser && isBCurrentUser) { // B is currentUser (not admin)
-         if(isBAdmin) return -1; // if B is admin, A comes after. This case handled above.
-         if(isAAdmin) return 1; // if A is admin, B (currentUser) comes after A.
-        return 1; // B (currentUser) comes before A (non-admin, non-currentUser)
-      }
+
+      if (isACurrentUser && !isBCurrentUser) return -1; // Current user (if not admin) comes after admin, but before others
+      if (!isACurrentUser && isBCurrentUser) return 1;
       
       return (a.name || '').localeCompare(b.name || '');
     });
@@ -423,7 +412,7 @@ export function ChatView({
 
         <SheetContent>
           <SheetHeader className="mb-4 pb-2 border-b">
-            {chat.type === 'direct' ? (
+            {chat.type === 'direct' && displayDetails.otherParticipantObject ? (
               <div className="flex flex-col items-center text-center space-y-3 pt-4">
                 <Avatar className="h-24 w-24">
                   <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'User Avatar'} data-ai-hint="person abstract large"/>
@@ -438,7 +427,7 @@ export function ChatView({
                       : (chat.blockedByUser === currentUser.id ? "Diblokir oleh Anda" : "Tidak Aktif")}
                   </span>
                 </SheetDescription>
-                {displayDetails.otherParticipantObject && onStartGroupWithUser && isChatActive && (
+                {onStartGroupWithUser && isChatActive && (
                     <Button
                         variant="outline"
                         className="w-full mt-4"
@@ -450,7 +439,7 @@ export function ChatView({
                     </Button>
                 )}
               </div>
-            ) : ( 
+            ) : chat.type === 'group' ? ( 
               <div className="text-center pt-4">
                  <Avatar className="h-24 w-24 mx-auto mb-3">
                     <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Group Avatar'} data-ai-hint="group abstract large"/>
@@ -463,7 +452,7 @@ export function ChatView({
                   {`Group Chat - ${chat.participants?.length || 0} anggota`}
                 </SheetDescription>
               </div>
-            )}
+            ) : null}
           </SheetHeader>
 
           {chat.type === 'group' && (
@@ -527,6 +516,7 @@ export function ChatView({
       </Sheet>
 
       <ScrollArea className="flex-1" viewportRef={viewportRef} ref={scrollAreaRef}>
+        <div className="p-4 space-y-0 mb-4 flex-1"> {}
         {chatOverlayMessage && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4 z-10">
                 {chatOverlayMessage.icon}
@@ -534,7 +524,7 @@ export function ChatView({
                 <div className="text-muted-foreground">{chatOverlayMessage.text}</div>
             </div>
         )}
-        <div className={cn("p-4 space-y-0 mb-4 flex-1", chatOverlayMessage && "blur-sm pointer-events-none")}>
+        <div className={cn("space-y-0 flex-1", chatOverlayMessage && "blur-sm pointer-events-none")}>
           {displayedMessages.map((msg) => {
             const sender = msg.senderId === currentUser.id
               ? currentUser
@@ -561,31 +551,32 @@ export function ChatView({
             );
           })}
           {displayedMessages.length === 0 && isChatActive && (
-             <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-75">
+             <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-75 pt-10">
               <Image
-                src="https://placehold.co/300x200.png"
+                src="/mulai.png"
                 alt="Belum ada pesan"
                 width={300}
                 height={200}
-                className="mb-4 rounded-lg"
+                className="mb-4 rounded-lg object-contain"
                 data-ai-hint="empty chat"
               />
               <p className="text-sm">Belum ada pesan. Mulai percakapan!</p>
             </div>
           )}
            {displayedMessages.length === 0 && !isChatActive && !chatOverlayMessage && (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-75">
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-75 pt-10">
                <Image
-                src="https://placehold.co/300x200.png"
+                src="/mulai.png"
                 alt="Chat tidak aktif"
                 width={300}
                 height={200}
-                className="mb-4 rounded-lg"
+                className="mb-4 rounded-lg object-contain"
                 data-ai-hint="inactive chat"
               />
               <p className="text-sm">Chat ini tidak aktif.</p>
             </div>
           )}
+        </div>
         </div>
       </ScrollArea>
 
@@ -656,3 +647,4 @@ export function ChatView({
     </div>
   );
 }
+
