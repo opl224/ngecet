@@ -3,6 +3,7 @@
 
 import type { Chat, Message, User, ChatType } from "@/types";
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import Image from "next/image"; // Import next/image
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -73,7 +74,6 @@ export function ChatView({
   const viewportRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const prevChatIdRef = useRef<string | undefined>(chat.id);
-  const prevEditingMessageDetailsRef = useRef<Message | null>(propsEditingMessageDetails);
 
 
   const isChatEffectivelyBlocked = chat.type === 'direct' &&
@@ -93,7 +93,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage("");
+    setNewMessage(""); // Clear input when reply is cancelled
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -124,7 +124,7 @@ export function ChatView({
   useEffect(() => {
     if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
       setNewMessage(propsEditingMessageDetails.content);
-      if (replyingToMessage) { // If editing while replying, cancel reply.
+      if (replyingToMessage) {
         setReplyingToMessage(null);
       }
       setTimeout(() => {
@@ -134,30 +134,24 @@ export function ChatView({
           messageInputRef.current.selectionStart = len;
           messageInputRef.current.selectionEnd = len;
           
-          // Adjust height after populating for edit
-          messageInputRef.current.style.height = 'auto';
-          // Ensure the ref's value matches the state before calculating scrollHeight
           if (messageInputRef.current.value !== propsEditingMessageDetails.content) {
             messageInputRef.current.value = propsEditingMessageDetails.content;
           }
           const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
           messageInputRef.current.style.height = `${newHeight}px`;
         }
-      }, 50); // Slightly increased delay
+      }, 50);
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
-      // Editing was just cancelled for the current chat
-      if (messageInputRef.current && !replyingToMessage ) { // Only clear if not also in reply mode
-          // setNewMessage(""); // This should be handled by onCancelEditClick or chat switch effect
+      if (messageInputRef.current && !replyingToMessage ) {
           messageInputRef.current.style.height = 'auto';
       }
     }
     prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propsEditingMessageDetails, chat.id, replyingToMessage]);
 
 
   // Effect for handling chat switches (resetting input, focus)
-  useEffect(() => {
+ useEffect(() => {
     let chatJustSwitched = false;
     if (prevChatIdRef.current !== chat.id) {
       chatJustSwitched = true;
@@ -165,31 +159,27 @@ export function ChatView({
       setReplyingToMessage(null);
 
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
-        onCancelEditMessage();
+        onCancelEditMessage(); // Cancel edit if it was for a different chat
       }
     }
     prevChatIdRef.current = chat.id;
 
-    if (chatJustSwitched && isChatActive && messageInputRef.current) {
-      setTimeout(() => {
-        const currentEditingDetails = propsEditingMessageDetails; // Capture prop for use in timeout
-        if (
-          (!currentEditingDetails || currentEditingDetails.chatId !== chat.id) &&
-          !replyingToMessage // Check local state `replyingToMessage` directly
-        ) {
+    if (chatJustSwitched && messageInputRef.current) {
+      if (!propsEditingMessageDetails || propsEditingMessageDetails.chatId !== chat.id) {
+          messageInputRef.current.style.height = 'auto'; // Reset height
+      }
+    }
+
+    if (isChatActive && messageInputRef.current && chatJustSwitched) {
+       setTimeout(() => {
+        const currentEditingForThisChat = propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id;
+        if (!currentEditingForThisChat && !replyingToMessage) {
           messageInputRef.current?.focus();
         }
-      }, 50); // Slightly increased delay
+      }, 50);
     }
-    
-    // Reset textarea height on chat switch if not entering edit mode for the new chat
-    if (chatJustSwitched && messageInputRef.current) {
-        if (!propsEditingMessageDetails || propsEditingMessageDetails.chatId !== chat.id) {
-            messageInputRef.current.style.height = 'auto';
-        }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chat.id, isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
+  }, [chat.id, isChatActive, propsEditingMessageDetails, onCancelEditMessage, replyingToMessage]);
+
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -215,10 +205,10 @@ export function ChatView({
 
   const handleReplyToMessageInView = useCallback((messageToReply: Message) => {
     if(!isChatActive) return;
-    if (propsEditingMessageDetails) onCancelEditMessage(); // Cancel edit if active
+    if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
     setNewMessage(""); 
-    setTimeout(() => messageInputRef.current?.focus(), 50); // Increased delay
+    setTimeout(() => messageInputRef.current?.focus(), 50);
   }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
   const getChatDisplayDetails = useMemo(() => {
@@ -299,7 +289,7 @@ export function ChatView({
     setNewMessage(event.target.value);
     if (messageInputRef.current) {
       messageInputRef.current.style.height = 'auto';
-      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
+      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); // Max height 120px
       messageInputRef.current.style.height = `${newHeight}px`;
     }
   };
@@ -318,7 +308,7 @@ export function ChatView({
       if (isAAdmin && !isBAdmin) return -1;
       if (!isAAdmin && isBAdmin) return 1;
 
-      if (isACurrentUser && !isBCurrentUser && !isAAdmin) return -1; 
+      if (isACurrentUser && !isBCurrentUser && !isAAdmin) return -1;
       if (!isACurrentUser && isBCurrentUser && !isBAdmin) return 1;
       
       return (a.name || '').localeCompare(b.name || '');
@@ -447,7 +437,7 @@ export function ChatView({
                     </Button>
                 )}
               </div>
-            ) : (
+            ) : ( // Group chat
               <div className="text-center pt-4">
                  <Avatar className="h-24 w-24 mx-auto mb-3">
                     <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Group Avatar'} data-ai-hint="group abstract large"/>
@@ -537,9 +527,9 @@ export function ChatView({
 
             const senderToDisplay : User = sender || {
               id: msg.senderId,
-              name: msg.senderName, // Use senderName from message as fallback
-              avatarUrl: undefined, // No avatar if user not in participants
-              status: "Offline" // Default status if user not found
+              name: msg.senderName, 
+              avatarUrl: undefined, 
+              status: "Offline" 
             };
 
             return (
@@ -556,13 +546,29 @@ export function ChatView({
             );
           })}
           {displayedMessages.length === 0 && isChatActive && (
-            <div className="text-center text-muted-foreground py-10">
-              No messages yet. Be the first to send one!
+             <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-75">
+              <Image
+                src="https://placehold.co/300x200.png"
+                alt="No messages yet"
+                width={300}
+                height={200}
+                className="mb-4 rounded-lg"
+                data-ai-hint="empty chat"
+              />
+              <p className="text-sm">Belum ada pesan. Mulai percakapan!</p>
             </div>
           )}
            {displayedMessages.length === 0 && !isChatActive && !chatOverlayMessage && (
-            <div className="text-center text-muted-foreground py-10">
-              Chat ini tidak aktif.
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-75">
+               <Image
+                src="https://placehold.co/300x200.png"
+                alt="Chat inactive"
+                width={300}
+                height={200}
+                className="mb-4 rounded-lg"
+                data-ai-hint="inactive chat"
+              />
+              <p className="text-sm">Chat ini tidak aktif.</p>
             </div>
           )}
         </div>
@@ -635,3 +641,4 @@ export function ChatView({
     </div>
   );
 }
+
