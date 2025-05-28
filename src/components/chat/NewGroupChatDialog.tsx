@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useState, useEffect, useMemo } from "react";
-import type { User, Chat } from "@/types"; 
+import type { User, Chat } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,8 +20,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, X } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area"; 
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"; 
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 
 const groupChatFormSchema = z.object({
   groupName: z.string().min(2, "Nama grup minimal 2 karakter.").max(30, "Nama grup terlalu panjang."),
@@ -33,20 +33,18 @@ interface NewGroupChatDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onCreateChat: (groupName: string, memberNames: string[]) => void;
-  currentUserId: string | undefined;
-  chats: Chat[]; 
-  currentUserObj: User | null; 
+  chats: Chat[];
+  currentUserObj: User | null;
   initialMemberName?: string | null;
 }
 
-export function NewGroupChatDialog({ 
-    isOpen, 
-    onOpenChange, 
-    onCreateChat, 
-    currentUserId, 
-    chats, 
-    currentUserObj, 
-    initialMemberName 
+export function NewGroupChatDialog({
+    isOpen,
+    onOpenChange,
+    onCreateChat,
+    chats,
+    currentUserObj,
+    initialMemberName
 }: NewGroupChatDialogProps) {
   const { toast } = useToast();
   const [currentMemberNameInput, setCurrentMemberNameInput] = useState('');
@@ -62,26 +60,26 @@ export function NewGroupChatDialog({
   });
 
   const activeDirectContacts = useMemo(() => {
-    if (!currentUserId || !chats) return [];
+    if (!currentUserObj || !chats) return [];
     const contacts: User[] = [];
     chats.forEach(chat => {
       if (chat.type === 'direct' && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
-        const otherParticipant = chat.participants.find(p => p.id !== currentUserId);
+        const otherParticipant = chat.participants.find(p => p.id !== currentUserObj.id);
         if (otherParticipant) {
           contacts.push(otherParticipant);
         }
       }
     });
     return contacts.filter((contact, index, self) =>
-      index === self.findIndex((c) => c.id === contact.id) 
+      index === self.findIndex((c) => c.id === contact.id)
     );
-  }, [chats, currentUserId]);
-  
+  }, [chats, currentUserObj]);
+
   useEffect(() => {
     if (isOpen && initialMemberName && !addedMembers.includes(initialMemberName)) {
         const isActiveContact = activeDirectContacts.some(contact => contact.name.toLowerCase() === initialMemberName.toLowerCase());
         if (isActiveContact) {
-            setAddedMembers(prev => [...new Set([...prev, initialMemberName])]); // Use Set to ensure uniqueness
+            setAddedMembers(prev => [...new Set([...prev, initialMemberName])]);
         } else if (currentUserObj?.name.toLowerCase() !== initialMemberName.toLowerCase()) {
             toast({
                 title: "Info Tambahan",
@@ -91,14 +89,14 @@ export function NewGroupChatDialog({
             });
         }
     }
-    if (!isOpen) { 
+    if (!isOpen) {
         form.reset({ groupName: "" });
         setAddedMembers([]);
         setCurrentMemberNameInput('');
         setShowSuggestions(false);
         setIsMemberInputFocused(false);
     }
-  }, [isOpen, initialMemberName, currentUserObj, activeDirectContacts, toast]); 
+  }, [isOpen, initialMemberName, currentUserObj, activeDirectContacts, toast, form, addedMembers]);
 
 
   useEffect(() => {
@@ -139,7 +137,7 @@ export function NewGroupChatDialog({
       setShowSuggestions(false);
       return;
     }
-    
+
     if (!/^[a-zA-Z0-9\s_']+$/.test(nameToAdd) || nameToAdd.length < 2 || nameToAdd.length > 50) {
         toast({ title: "Nama Tidak Valid", description: "Nama anggota harus antara 2 dan 50 karakter, dan hanya boleh berisi huruf, angka, spasi, garis bawah, dan apostrof.", variant: "destructive" });
         return;
@@ -175,19 +173,15 @@ export function NewGroupChatDialog({
     setIsMemberInputFocused(false);
   };
 
-  const handleRemoveMemberFromList = (nameToRemove: string) => {
-    setAddedMembers(addedMembers.filter(name => name !== nameToRemove));
-  };
-
   function onSubmit(data: GroupChatFormValues) {
     if (addedMembers.length === 0) {
-      toast({ title: "Anggota Diperlukan", description: "Harap tambahkan minimal satu anggota yang valid.", variant: "destructive" });
+      toast({ title: "Anggota Diperlukan", description: "Harap tambahkan minimal satu anggota lain yang valid.", variant: "destructive" });
       return;
     }
     onCreateChat(data.groupName, addedMembers);
-    onOpenChange(false); // Reset is handled by useEffect
+    onOpenChange(false);
   }
-  
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -195,7 +189,7 @@ export function NewGroupChatDialog({
         <DialogHeader>
           <DialogTitle>Buat Grup Chat Baru</DialogTitle>
           <DialogDescription>
-            Buat grup chat baru. Hanya pengguna dengan chat langsung aktif yang dapat ditambahkan.
+            Buat grup chat baru. Hanya pengguna dengan chat langsung aktif yang dapat ditambahkan sebagai saran.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -213,11 +207,15 @@ export function NewGroupChatDialog({
                 </FormItem>
               )}
             />
-            
+
             <FormItem>
               <FormLabel>Tambah Anggota</FormLabel>
-              <Popover open={isMemberInputFocused && showSuggestions && suggestions.length > 0} onOpenChange={(open) => {
-                  // Popover visibility managed by focus and suggestions state
+              <Popover open={isMemberInputFocused && showSuggestions} onOpenChange={(openState) => {
+                 // Manages Popover visibility based on focus and whether suggestions should be shown.
+                 // If Popover is forced closed (e.g. by Escape), update focus state.
+                 if (!openState) {
+                   setIsMemberInputFocused(false);
+                 }
               }}>
                 <PopoverAnchor asChild>
                     <div className="flex space-x-2">
@@ -227,6 +225,7 @@ export function NewGroupChatDialog({
                         onChange={(e) => setCurrentMemberNameInput(e.target.value)}
                         onFocus={() => {
                             setIsMemberInputFocused(true);
+                            // Trigger suggestion update based on current input value
                             const currentInputVal = currentMemberNameInput.trim();
                             if (currentInputVal === "") {
                                 setShowSuggestions(false);
@@ -257,35 +256,32 @@ export function NewGroupChatDialog({
                       </Button>
                     </div>
                 </PopoverAnchor>
-                <PopoverContent 
-                    className="w-[calc(theme(space.96)-theme(space.12))] p-0" 
-                    side="bottom" 
-                    align="start"
-                    onOpenAutoFocus={(e) => e.preventDefault()}
-                    onInteractOutside={() => {
-                        setIsMemberInputFocused(false);
-                    }}
-                >
-                  <ScrollArea className="max-h-40">
-                    {suggestions.length > 0 ? (
-                      <div className="py-1">
-                        {suggestions.map(user => (
-                          <div
-                            key={user.id}
-                            className="px-3 py-2 text-sm hover:bg-accent cursor-pointer"
-                            onClick={() => handleSelectSuggestion(user)}
-                            onMouseDown={(e) => e.preventDefault()}
-                          >
-                            {user.name}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                       currentMemberNameInput.trim() !== "" && <p className="p-3 text-sm text-muted-foreground">Pengguna tidak ditemukan, belum punya chat aktif, atau sudah ditambahkan.</p>
-                    )}
-                    {activeDirectContacts.length === 0 && currentMemberNameInput.trim() === "" && <p className="p-3 text-sm text-muted-foreground">Tidak ada kontak aktif untuk disarankan.</p>}
-                  </ScrollArea>
-                </PopoverContent>
+                {showSuggestions && suggestions.length > 0 && (
+                  <PopoverContent
+                      className="w-[calc(theme(space.96)-theme(space.12))] p-0"
+                      side="bottom"
+                      align="start"
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                      onInteractOutside={() => {
+                          setIsMemberInputFocused(false);
+                      }}
+                  >
+                    <ScrollArea className="max-h-40">
+                        <div className="py-1">
+                          {suggestions.map(user => (
+                            <div
+                              key={user.id}
+                              className="px-3 py-2 text-sm hover:bg-accent cursor-pointer"
+                              onClick={() => handleSelectSuggestion(user)}
+                              onMouseDown={(e) => e.preventDefault()} // Prevents input blur on click
+                            >
+                              {user.name}
+                            </div>
+                          ))}
+                        </div>
+                    </ScrollArea>
+                  </PopoverContent>
+                )}
               </Popover>
             </FormItem>
 
@@ -314,7 +310,7 @@ export function NewGroupChatDialog({
 
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => {
-                  onOpenChange(false); 
+                  onOpenChange(false);
                 }}>Batal</Button>
               <Button type="submit">Buat Grup</Button>
             </DialogFooter>
@@ -325,3 +321,4 @@ export function NewGroupChatDialog({
   );
 }
 
+    
