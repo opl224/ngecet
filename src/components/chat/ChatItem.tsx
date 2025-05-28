@@ -74,8 +74,7 @@ export function ChatItem({
       statusTimestamp = chat.requestTimestamp;
     } else if (chat.isRejected) {
       if (chat.rejectedByUserId === currentUser.id) {
-        // Do not set specialStatusText, delete button will be shown
-        specialStatusText = null;
+        specialStatusText = null; // Tidak ada teks khusus jika Anda yang menolak, hanya ikon hapus
       } else {
         specialStatusText = `${name} menolak permintaan Anda.`;
       }
@@ -88,15 +87,16 @@ export function ChatItem({
   const handleItemClick = () => {
     const canSelectChat = !(
       (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
-      (chat.isRejected && !isActive) ||
+      // (chat.isRejected && !isActive) || // Chat yang ditolak bisa dipilih untuk dihapus
       (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive)
     );
 
     if (chat.pendingApprovalFromUserId === currentUser.id) {
+        // Jika permintaan menunggu persetujuan Anda, jangan pilih chat, biarkan tombol Terima/Tolak yang bekerja
         return;
     }
 
-    if (canSelectChat) {
+    if (canSelectChat || (chat.isRejected && !isActive)) { // Memungkinkan memilih chat yang ditolak
       onSelectChat(chat);
     }
   };
@@ -120,7 +120,7 @@ export function ChatItem({
 
   const isClickDisabled =
     (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
-    (chat.isRejected && !isActive) ||
+    // (chat.isRejected && !isActive) || // Tetap bisa diklik untuk membuka ChatView (nanti ada overlay)
     (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive) ||
     (chat.pendingApprovalFromUserId === currentUser.id);
 
@@ -130,7 +130,7 @@ export function ChatItem({
       className={cn(
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        isClickDisabled && "opacity-70 cursor-not-allowed"
+        isClickDisabled && !showAcceptRejectActions && "opacity-70 cursor-not-allowed" // Tombol terima/tolak harus tetap bisa diklik
       )}
     >
       <div
@@ -164,6 +164,19 @@ export function ChatItem({
               </h4>
             </div>
             {(() => {
+              if (showDeleteAction) { // Jika chat ditolak
+                return (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={(e) => { e.stopPropagation(); onDeleteChatPermanently(chat.id); }}
+                    className="h-7 w-7 p-1 text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0 ml-2"
+                    aria-label="Hapus Chat"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                );
+              }
               if (showAcceptRejectActions && chat.type === "direct" && chat.pendingApprovalFromUserId === currentUser.id) {
                 return (
                   <div className="flex items-center space-x-1 shrink-0 ml-2">
@@ -171,7 +184,7 @@ export function ChatItem({
                       size="icon"
                       variant="ghost"
                       onClick={(e) => { e.stopPropagation(); onRejectChat(chat.id); }}
-                      className="h-7 w-7 p-1 text-destructive hover:bg-destructive/5 hover:text-destructive"
+                      className="h-7 w-7 p-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
                       aria-label="Tolak Permintaan"
                     >
                       <X className="h-4 w-4" />
@@ -180,7 +193,7 @@ export function ChatItem({
                       size="icon"
                       variant="ghost"
                       onClick={(e) => { e.stopPropagation(); onAcceptChat(chat.id); }}
-                      className="h-7 w-7 p-1 text-green-600 hover:bg-green-500/5 hover:text-green-700"
+                      className="h-7 w-7 p-1 text-green-600 hover:bg-green-500/10 hover:text-green-700"
                       aria-label="Terima Permintaan"
                     >
                       <Check className="h-4 w-4" />
@@ -209,7 +222,7 @@ export function ChatItem({
                 );
               }
               if (statusTimestamp && (!specialStatusText || (showPendingClockIcon && !chat.isRejected && chat.type === 'direct')) && calculatedUnreadCount === 0) {
-                 if (chat.type === 'group' || (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) || (chat.type === 'direct' && !chat.isRejected && !chat.pendingApprovalFromUserId && !chat.blockedByUser) ) { // Added condition for active direct chats
+                 if (chat.type === 'group' || (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) || (chat.type === 'direct' && !chat.isRejected && !chat.pendingApprovalFromUserId && !chat.blockedByUser) ) {
                      return (
                         <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
                           {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
@@ -227,21 +240,18 @@ export function ChatItem({
           )}
         </div>
       </div>
-      {showDeleteAction && (
-        <div className="mt-2 flex justify-end space-x-2">
+      {/* Tombol Hapus Chat lama dihilangkan dari sini */}
+      {chat.type === "direct" && chat.blockedByUser === currentUser.id && (
+         <div className="mt-2 flex justify-end space-x-2">
+           {/* Tombol Buka Blokir ada di ChatView, atau bisa ditambahkan di sini jika diinginkan */}
             <Button
                 size="sm"
-                variant="destructive"
-                className="bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground"
-                onClick={(e) => { e.stopPropagation(); onDeleteChatPermanently(chat.id); }}
+                variant="outline"
+                className="text-green-600 border-green-500 hover:bg-green-500/10 hover:text-green-700 focus:border-green-600 focus:bg-green-500/10"
+                onClick={(e) => { e.stopPropagation(); onUnblockUser(chat.id); }}
             >
-                <Trash2 className="mr-1 h-4 w-4" /> Hapus Chat
+                <ShieldOff className="mr-1 h-4 w-4" /> Buka Blokir
             </Button>
-        </div>
-      )}
-      {chat.type === "direct" && chat.blockedByUser === currentUser.id && (
-        <div className="mt-2 flex justify-end space-x-2">
-          {/* Tombol Buka Blokir ada di ChatView, bukan di sini */}
         </div>
       )}
     </div>
