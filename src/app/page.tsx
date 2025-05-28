@@ -80,8 +80,9 @@ export default function ChatPage() {
     };
 
     const participantsArray: User[] = [currentUser, recipientUser].sort((a, b) => a.id.localeCompare(b.id));
-    const chatParticipantIds = participantsArray.map(p => p.id);
-    const chatId = `direct_${chatParticipantIds.join("_")}`;
+    // const chatParticipantIds = participantsArray.map(p => p.id); // No longer used for ID generation directly
+    const chatId = `direct_${participantsArray.map(p=>p.id).join("_")}`;
+
 
     const existingChat = chats.find(c => c.id === chatId);
     if (existingChat) {
@@ -110,7 +111,7 @@ export default function ChatPage() {
       requestTimestamp: now,
       lastMessage: "Permintaan chat dikirim...",
       lastMessageTimestamp: now,
-      lastReadBy: {
+      lastReadBy: { // Initialize lastReadBy
         [currentUser.id]: now, 
         [recipientUser.id]: 0,  
       },
@@ -136,7 +137,7 @@ export default function ChatPage() {
             rejectedByUserId: undefined,
             lastMessage: "Permintaan chat diterima.",
             lastMessageTimestamp: now,
-            lastReadBy: {
+            lastReadBy: { // Update lastReadBy for current user
               ...(chat.lastReadBy || {}),
               [currentUser!.id]: now, 
             },
@@ -170,7 +171,7 @@ export default function ChatPage() {
             rejectedByUserId: currentUser?.id,
             lastMessage: "Permintaan chat ditolak.",
             lastMessageTimestamp: now,
-            lastReadBy: {
+            lastReadBy: { // Update lastReadBy for current user
               ...(chat.lastReadBy || {}),
               [currentUser!.id]: now, 
             },
@@ -205,23 +206,23 @@ export default function ChatPage() {
     });
 
     const allParticipantUsers: User[] = [currentUser];
-    const initialLastReadBy: Record<string, number> = { [currentUser.id]: Date.now() };
+    const initialLastReadBy: Record<string, number> = { [currentUser.id]: Date.now() }; // Initialize for current user
 
     memberUsers.forEach(memberUser => {
       if (!allParticipantUsers.find(p => p.id === memberUser.id)) {
         allParticipantUsers.push(memberUser);
       }
-      initialLastReadBy[memberUser.id] = 0; 
+      initialLastReadBy[memberUser.id] = 0; // Initialize for other members
     });
 
     const newChat: Chat = {
       id: chatId,
       type: "group",
       name: groupName,
-      participants: allParticipantUsers,
+      participants: allParticipantUsers, // Store full user objects
       lastMessageTimestamp: Date.now(),
       avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`,
-      lastReadBy: initialLastReadBy,
+      lastReadBy: initialLastReadBy, // Assign initialized lastReadBy
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
@@ -288,16 +289,15 @@ export default function ChatPage() {
           ...chat, 
           lastMessage: content, 
           lastMessageTimestamp: newMessage.timestamp,
-          lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp }, // Current user has "read" their own message
+          lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       } else if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected) {
-        // For other active chats, update their last message timestamp to reflect new activity in the app
-        // This helps with sorting, but doesn't mean they have a new unread message from *this* action.
-        // The unread calculation in ChatList will handle messages from other users.
+        // For other active chats, update their last message timestamp and generic last message
         return {
           ...chat,
-          lastMessage: "Aktivitas baru", // Generic message or could be more specific if needed
-          lastMessageTimestamp: newMessage.timestamp, // Use the new message's timestamp for consistent sorting
+          lastMessage: "Aktivitas baru",
+          lastMessageTimestamp: newMessage.timestamp,
+          // lastReadBy for other users in this chat is not updated here by sender
         };
       }
       return chat;
@@ -345,7 +345,7 @@ export default function ChatPage() {
     const newContentPrompt = window.prompt("Edit pesan Anda:", messageToEdit.content);
 
     if (newContentPrompt === null) {
-      toast({ title: "Edit Dibatalkan", description: "Tidak ada perubahan pada pesan.", variant: "default" });
+      toast({ title: "Edit Dibatalkan", description: "Operasi edit dibatalkan atau prompt ditutup.", variant: "default" });
       return;
     }
     if (newContentPrompt.trim() === "") {
@@ -366,12 +366,16 @@ export default function ChatPage() {
       const chatMessages = (prevAllMessages[messageToEdit.chatId] || []).map(msg =>
         msg.id === messageToEdit.id ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg
       );
+      // Ensure messages are sorted by their potentially new timestamp after edit
       const sortedChatMessages = [...chatMessages].sort((a, b) => a.timestamp - b.timestamp);
       
       if (sortedChatMessages.length > 0) {
         const lastMsg = sortedChatMessages[sortedChatMessages.length - 1];
         latestMessageDetailsForChat = { content: lastMsg.content, timestamp: lastMsg.timestamp };
       } else {
+        // This case should ideally not happen if we're editing a message,
+        // as it implies the chat became empty after an edit, which is odd.
+        // But for safety, handle it.
         latestMessageDetailsForChat = null; 
       }
       return { ...prevAllMessages, [messageToEdit.chatId]: sortedChatMessages };
@@ -387,6 +391,8 @@ export default function ChatPage() {
               lastMessageTimestamp: latestMessageDetailsForChat.timestamp 
             };
           } else {
+             // Fallback if for some reason latestMessageDetailsForChat is null
+             // (e.g., all messages were deleted, which shouldn't happen from an edit)
              const fallbackMsg = (chat.type === 'direct' && (chat.pendingApprovalFromUserId || chat.isRejected) ? (chat.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan");
              const fallbackTs = (chat.requestTimestamp || chat.lastMessageTimestamp || Date.now());
              return { 
@@ -398,6 +404,7 @@ export default function ChatPage() {
         }
         return chat;
       });
+      // Re-sort all chats as lastMessageTimestamp might have changed for the edited chat
       return updatedChats.sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
 
@@ -544,3 +551,4 @@ export default function ChatPage() {
     
 
     
+
