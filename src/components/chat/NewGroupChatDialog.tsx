@@ -61,37 +61,11 @@ export function NewGroupChatDialog({
     defaultValues: { groupName: "" },
   });
 
-  useEffect(() => {
-    if (isOpen && initialMemberName && !addedMembers.includes(initialMemberName)) {
-        // Validate if initialMemberName can be added (is an active contact)
-        const isActiveContact = activeDirectContacts.some(contact => contact.name.toLowerCase() === initialMemberName.toLowerCase());
-        if (isActiveContact) {
-            setAddedMembers(prev => [...prev, initialMemberName]);
-        } else if (currentUserObj?.name.toLowerCase() !== initialMemberName.toLowerCase()) {
-            // Only toast if it's not the current user and not an active contact
-            toast({
-                title: "Info Tambahan",
-                description: `Pengguna "${initialMemberName}" tidak dapat ditambahkan secara otomatis karena tidak ada chat langsung aktif. Anda bisa menambahkannya secara manual jika memenuhi syarat.`,
-                variant: "default"
-            });
-        }
-    }
-    if (!isOpen) { // Reset when dialog closes
-        setAddedMembers([]);
-        setCurrentMemberNameInput('');
-        setShowSuggestions(false);
-        setIsMemberInputFocused(false);
-        form.reset({ groupName: "" });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialMemberName, currentUserObj]); // activeDirectContacts is not needed here as it might cause loop
-
-
   const activeDirectContacts = useMemo(() => {
     if (!currentUserId || !chats) return [];
     const contacts: User[] = [];
     chats.forEach(chat => {
-      if (chat.type === 'direct' && !chat.pendingApprovalFromUserId && !chat.isRejected) {
+      if (chat.type === 'direct' && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
         const otherParticipant = chat.participants.find(p => p.id !== currentUserId);
         if (otherParticipant) {
           contacts.push(otherParticipant);
@@ -102,6 +76,30 @@ export function NewGroupChatDialog({
       index === self.findIndex((c) => c.id === contact.id) 
     );
   }, [chats, currentUserId]);
+  
+  useEffect(() => {
+    if (isOpen && initialMemberName && !addedMembers.includes(initialMemberName)) {
+        const isActiveContact = activeDirectContacts.some(contact => contact.name.toLowerCase() === initialMemberName.toLowerCase());
+        if (isActiveContact) {
+            setAddedMembers(prev => [...new Set([...prev, initialMemberName])]); // Use Set to ensure uniqueness
+        } else if (currentUserObj?.name.toLowerCase() !== initialMemberName.toLowerCase()) {
+            toast({
+                title: "Info Tambahan",
+                description: `Pengguna "${initialMemberName}" tidak dapat ditambahkan secara otomatis. Pastikan Anda memiliki chat langsung yang aktif dengannya.`,
+                variant: "default",
+                duration: 7000,
+            });
+        }
+    }
+    if (!isOpen) { 
+        form.reset({ groupName: "" });
+        setAddedMembers([]);
+        setCurrentMemberNameInput('');
+        setShowSuggestions(false);
+        setIsMemberInputFocused(false);
+    }
+  }, [isOpen, initialMemberName, currentUserObj, activeDirectContacts, toast]); 
+
 
   useEffect(() => {
     const currentInput = currentMemberNameInput.trim();
@@ -153,6 +151,7 @@ export function NewGroupChatDialog({
             title: "Penambahan Gagal",
             description: `Tidak dapat menambahkan ${nameToAdd}. Anda harus memiliki chat langsung yang aktif dengan pengguna ini.`,
             variant: "destructive",
+            duration: 7000,
         });
         return;
     }
@@ -186,27 +185,17 @@ export function NewGroupChatDialog({
       return;
     }
     onCreateChat(data.groupName, addedMembers);
-    // Reset is handled by useEffect on isOpen changing to false
-    onOpenChange(false);
+    onOpenChange(false); // Reset is handled by useEffect
   }
   
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-        // if (!open) { // Reset logic moved to useEffect for better coordination with initialMemberName
-        //     form.reset({ groupName: "" });
-        //     setAddedMembers([]);
-        //     setCurrentMemberNameInput('');
-        //     setShowSuggestions(false);
-        //     setIsMemberInputFocused(false);
-        // }
-        onOpenChange(open);
-    }}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Buat Grup Chat Baru</DialogTitle>
           <DialogDescription>
-            Buat grup chat baru dengan beberapa pengguna. Anda hanya bisa menambahkan pengguna yang sudah memiliki chat langsung aktif dengan Anda.
+            Buat grup chat baru. Hanya pengguna dengan chat langsung aktif yang dapat ditambahkan.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -328,7 +317,6 @@ export function NewGroupChatDialog({
 
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => {
-                  // Reset logic is now mainly in useEffect on isOpen
                   onOpenChange(false); 
                 }}>Batal</Button>
               <Button type="submit">Buat Grup</Button>
@@ -339,3 +327,4 @@ export function NewGroupChatDialog({
     </Dialog>
   );
 }
+

@@ -37,6 +37,7 @@ export interface Chat {
 
   lastReadBy?: Record<string, number>;
   clearedTimestamp?: Record<string, number>;
-  createdByUserId?: string; // ADDED: ID of the user who created the group
+  createdByUserId?: string; 
+  blockedByUser?: string; // ID of the user who initiated the block
 }
 

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
-import { Users, User as UserIcon, Check, X, Trash2 } from "lucide-react";
+import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert } from "lucide-react";
 
 interface ChatItemProps {
   chat: Chat & { calculatedUnreadCount?: number };
@@ -42,7 +42,7 @@ export function ChatItem({
         avatarUrl: chat.avatarUrl,
         initials: (groupName.substring(0, 2) || "GR").toUpperCase(),
         Icon: Users,
-        otherParticipantStatus: null, // Not applicable for groups in this context
+        otherParticipantStatus: null, 
       };
     }
   };
@@ -59,9 +59,19 @@ export function ChatItem({
   if (chat.type === "direct") {
     const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
     const otherParticipantNameDisplay = otherParticipant?.name || name || "Seseorang";
-    if (chat.pendingApprovalFromUserId === currentUser.id) {
+
+    if (chat.blockedByUser === currentUser.id) {
+        specialStatusText = `Anda memblokir ${otherParticipantNameDisplay}.`;
+        statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
+    } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
+        // This case (other user blocked current user) is harder to manage client-side for display in ChatItem
+        // For now, we can show a generic message or rely on ChatView to handle interaction.
+        // specialStatusText = `Interaksi dengan ${otherParticipantNameDisplay} terbatas.`;
+        // For simplicity, we might not show a special status here, and let ChatView handle it.
+        // Or, treat it like any other active chat in the list until clicked.
+    } else if (chat.pendingApprovalFromUserId === currentUser.id) {
       specialStatusText = `${otherParticipantNameDisplay} ingin memulai chat.`;
-      statusTimestamp = chat.requestTimestamp; // Use request timestamp for sorting/display
+      statusTimestamp = chat.requestTimestamp; 
       showAcceptRejectActions = true;
     } else if (chat.pendingApprovalFromUserId) {
       specialStatusText = `Permintaan dikirim. Menunggu ${name}...`;
@@ -72,7 +82,6 @@ export function ChatItem({
       } else {
         specialStatusText = `${name} menolak permintaan Anda.`;
       }
-      // Use lastMessageTimestamp for rejected state as it's set upon rejection
       statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
       showDeleteAction = true;
     }
@@ -83,17 +92,17 @@ export function ChatItem({
     onSelectChat(chat);
   };
 
-  const isItemActiveInList = isActive && !chat.pendingApprovalFromUserId && !chat.isRejected;
+  const isItemActiveInList = isActive && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser;
   
   let statusMessage: React.ReactNode = null;
   if (specialStatusText) {
     statusMessage = specialStatusText;
   } else if (chat.type === "group" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
      statusMessage = `${chat.participants.length} anggota`;
-  } else if (chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
+  } else if (chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
      statusMessage = "Mulai percakapan";
   }
-  // If chat.lastMessage exists and no specialStatusText, statusMessage remains null here, so nothing on the second line.
+
 
   return (
     <div
@@ -101,7 +110,8 @@ export function ChatItem({
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
         ( (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) ||
-          (chat.isRejected && !isActive) // Dim if rejected AND not the currently selected (active) chat
+          (chat.isRejected && !isActive) || // Dim if rejected AND not the currently selected (active) chat
+          (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive) // Dim if blocked by other and not active
         ) && "opacity-70"
       )}
     >
@@ -109,7 +119,8 @@ export function ChatItem({
         onClick={handleItemClick}
         disabled={
            (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
-           (chat.isRejected && !isActive)
+           (chat.isRejected && !isActive) ||
+           (chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive)
         }
         className="w-full flex items-center space-x-3"
       >
@@ -124,12 +135,13 @@ export function ChatItem({
             <h4 className={cn(
                 "font-semibold text-sm truncate",
                 chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
-                chat.isRejected && "text-destructive"
+                chat.isRejected && "text-destructive",
+                chat.blockedByUser === currentUser.id && "text-destructive flex items-center"
               )}
             >
+              {chat.blockedByUser === currentUser.id && <ShieldAlert className="h-4 w-4 mr-1.5 shrink-0" />}
               {name}
             </h4>
-            {/* Top-right element: Unread badge, Online/Offline status, or Timestamp */}
             {(() => {
               if (!specialStatusText && calculatedUnreadCount > 0) {
                 return (
@@ -138,8 +150,8 @@ export function ChatItem({
                   </Badge>
                 );
               }
-              if (!specialStatusText && calculatedUnreadCount === 0) {
-                if (chat.type === 'direct') {
+              if (!specialStatusText && calculatedUnreadCount === 0 && statusTimestamp) {
+                if (chat.type === 'direct' && !chat.blockedByUser) { // Don't show online status if chat is blocked
                   const status = otherParticipantStatus || "Offline";
                   const isOnline = status === "Online";
                   return (
@@ -151,7 +163,7 @@ export function ChatItem({
                       <span className="text-xs text-sidebar-foreground/70">{status}</span>
                     </div>
                   );
-                } else if (chat.type === 'group' && statusTimestamp) {
+                } else if (chat.type === 'group') { // For groups, always show timestamp if no unread
                   return (
                     <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
                       {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
@@ -159,7 +171,6 @@ export function ChatItem({
                   );
                 }
               }
-              // If specialStatusText is present, or other conditions aren't met, show nothing in this slot.
               return null;
             })()}
           </div>
@@ -189,11 +200,11 @@ export function ChatItem({
           </Button>
         </div>
       )}
-      {showDeleteAction && ( // This applies if chat.isRejected is true
+      {showDeleteAction && ( 
         <div className="mt-2 flex justify-end space-x-2">
             <Button
                 size="sm"
-                variant="destructive" // Standard destructive button
+                variant="destructive" 
                 className="bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground"
                 onClick={(e) => { e.stopPropagation(); onDeleteChatPermanently(chat.id); }}
             >
