@@ -1,6 +1,7 @@
 
 "use client";
 
+import * as React from "react"; // Added this line
 import type { Message, User, ChatType, Chat } from "@/types";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
@@ -87,7 +88,7 @@ export function MessageBubble({
     <div
       ref={ref}
       className={cn(
-        "shadow-sm flex flex-col px-3 py-3 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative", // Changed py-2 to py-3
+        "shadow-sm flex flex-col px-3 py-3 text-sm max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg relative",
         isCurrentUserMessage
           ? "bg-primary text-primary-foreground rounded-l-xl rounded-tr-xl"
           : "bg-card text-card-foreground rounded-r-xl rounded-tl-xl border",
@@ -95,18 +96,24 @@ export function MessageBubble({
       )}
       {...props}
     >
-      {(isCurrentUserMessage && chatType === 'group') || (!isCurrentUserMessage && chatType === 'group') || (isCurrentUserMessage && chatType === 'direct') ? (
+      {(isCurrentUserMessage && chatType === 'group') || (!isCurrentUserMessage && chatType === 'group') ? (
           <div className={cn(
               "text-xs font-semibold mb-0.5",
               isCurrentUserMessage ? "text-primary-foreground/90" : "text-accent-foreground"
           )}>
               <span>
-                {isCurrentUserMessage 
-                  ? (chatType === 'group' ? senderName + " Anda" : "Anda") 
+                {isCurrentUserMessage && chatType === 'group'
+                  ? "Anda"
                   : senderName
                 }
               </span>
           </div>
+      ) : isCurrentUserMessage && chatType === 'direct' ? (
+        <div className={cn(
+          "text-xs font-semibold mb-0.5 text-primary-foreground/90"
+        )}>
+          {/* No name for self in direct chat */}
+        </div>
       ) : null}
 
 
@@ -162,7 +169,7 @@ export function MessageBubble({
 
 
   const SenderActionButtons = ({ className }: { className?: string }) => (
-    onDeleteMessage && onEditMessage && onReplyMessage && (
+    onEditMessage && onDeleteMessage && (
       <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-center", className)}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -202,17 +209,15 @@ export function MessageBubble({
 
   const ReceiverActionButton = ({ className }: { className?: string }) => (
     onReplyMessage && (
-      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-center", className)}>
-        <Button
+       <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 p-1 text-muted-foreground hover:text-primary"
+          className={cn("h-7 w-7 p-1 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity self-center", className)}
           onClick={handleReply}
           aria-label="Balas"
         >
           <Undo2 size={16} />
         </Button>
-      </div>
     )
   );
 
@@ -226,27 +231,24 @@ export function MessageBubble({
   );
 
   return (
-    <>
+    <div className={cn("flex w-full items-start group mb-3", isCurrentUserMessage ? "justify-end" : "justify-start")}>
       {isCurrentUserMessage ? (
-        // My messages (Outgoing)
-        <div className="flex w-full justify-end items-start group mb-3">
+        <>
           <SenderActionButtons className="order-1 mr-1 self-center" />
           <BubbleContentLayout className="order-2 mr-2">
             {/* Content is rendered inside BubbleContentLayout */}
           </BubbleContentLayout>
           {chatType === 'group' && <UserAvatarComponent className="order-3 self-start ml-0" />}
-        </div>
+        </>
       ) : (
-        // Others' messages (Incoming)
-        <div className="flex w-full justify-start items-start group mb-3">
+        <>
           {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
           <BubbleContentLayout className="mr-1">
              {/* Content is rendered inside BubbleContentLayout */}
           </BubbleContentLayout>
           <ReceiverActionButton className="ml-1 self-center" />
-        </div>
+        </>
       )}
-    </>
+    </div>
   );
 }
-
