@@ -35,9 +35,15 @@ export interface Chat {
   rejectedByUserId?: string;
   requestTimestamp?: number;
 
-  lastReadBy?: Record<string, number>;
-  clearedTimestamp?: Record<string, number>;
-  createdByUserId?: string; 
+  lastReadBy: Record<string, number>; // Changed from optional
+  clearedTimestamp: Record<string, number>; // Changed from optional
+  createdByUserId?: string;
   blockedByUser?: string; // ID of the user who initiated the block
 }
 
+// New type for registered user data stored in localStorage
+export interface RegisteredUser {
+  username: string; // This will be unique and used for login
+  password: string; // For mock auth, plain text (NOT SECURE FOR PRODUCTION)
+  profile: User;    // The User object associated with this registration
+}
