@@ -223,7 +223,7 @@ export default function ChatPage() {
       avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`,
       lastReadBy: initialLastReadBy,
     };
-    setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0)));
+    setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
     setAllMessages(prev => ({ ...prev, [chatId]: [] }));
     toast({ title: "Grup Dibuat", description: `Grup "${groupName}" telah siap.` });
@@ -288,13 +288,16 @@ export default function ChatPage() {
           ...chat, 
           lastMessage: content, 
           lastMessageTimestamp: newMessage.timestamp,
-          lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
+          lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp }, // Current user has "read" their own message
         };
-      } else if (!chat.pendingApprovalFromUserId && !chat.isRejected) {
+      } else if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected) {
+        // For other active chats, update their last message timestamp to reflect new activity in the app
+        // This helps with sorting, but doesn't mean they have a new unread message from *this* action.
+        // The unread calculation in ChatList will handle messages from other users.
         return {
           ...chat,
-          lastMessage: "Aktivitas baru", 
-          lastMessageTimestamp: newMessage.timestamp,
+          lastMessage: "Aktivitas baru", // Generic message or could be more specific if needed
+          lastMessageTimestamp: newMessage.timestamp, // Use the new message's timestamp for consistent sorting
         };
       }
       return chat;
@@ -350,7 +353,7 @@ export default function ChatPage() {
       return;
     }
     if (newContentPrompt === messageToEdit.content) {
-      // No change, do nothing or provide feedback
+      toast({ title: "Info Pesan", description: "Konten pesan tidak berubah." });
       return;
     }
 
@@ -369,7 +372,7 @@ export default function ChatPage() {
         const lastMsg = sortedChatMessages[sortedChatMessages.length - 1];
         latestMessageDetailsForChat = { content: lastMsg.content, timestamp: lastMsg.timestamp };
       } else {
-        latestMessageDetailsForChat = null;
+        latestMessageDetailsForChat = null; 
       }
       return { ...prevAllMessages, [messageToEdit.chatId]: sortedChatMessages };
     });
@@ -384,11 +387,12 @@ export default function ChatPage() {
               lastMessageTimestamp: latestMessageDetailsForChat.timestamp 
             };
           } else {
-             // Fallback if chat becomes empty (shouldn't happen on edit but good for robustness)
+             const fallbackMsg = (chat.type === 'direct' && (chat.pendingApprovalFromUserId || chat.isRejected) ? (chat.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan");
+             const fallbackTs = (chat.requestTimestamp || chat.lastMessageTimestamp || Date.now());
              return { 
                ...chat, 
-               lastMessage: (chat.type === 'direct' && (chat.pendingApprovalFromUserId || chat.isRejected) ? (chat.lastMessage || "Status permintaan diperbarui") : "Belum ada pesan"), 
-               lastMessageTimestamp: (chat.requestTimestamp || chat.lastMessageTimestamp || Date.now()) 
+               lastMessage: fallbackMsg, 
+               lastMessageTimestamp: fallbackTs
              };
           }
         }
