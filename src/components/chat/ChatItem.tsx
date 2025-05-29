@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
-import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert, Clock } from "lucide-react";
+import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert, Clock, ShieldOff } from "lucide-react";
+import { useSidebar } from "@/components/ui/sidebar"; // Import useSidebar
 
 interface ChatItemProps {
   chat: Chat & { calculatedUnreadCount?: number };
@@ -18,6 +19,7 @@ interface ChatItemProps {
   onAcceptChat: (chatId: string) => void;
   onRejectChat: (chatId: string) => void;
   onDeleteChatPermanently: (chatId: string) => void;
+  onUnblockUser: (chatId: string) => void;
 }
 
 export function ChatItem({
@@ -28,11 +30,14 @@ export function ChatItem({
   onAcceptChat,
   onRejectChat,
   onDeleteChatPermanently,
+  onUnblockUser,
 }: ChatItemProps) {
+  const { isMobile, setOpenMobile } = useSidebar(); // Get mobile state and setter
+
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
       const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
-      const nameForDisplay = otherParticipant?.name || chat.name || "";
+      const nameForDisplay = otherParticipant?.name || "";
       const avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
       const initials = (nameForDisplay ? nameForDisplay.substring(0, 2) : "??").toUpperCase();
       return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials, Icon: UserIcon, otherParticipantStatus: otherParticipant?.status };
@@ -59,7 +64,7 @@ export function ChatItem({
 
   if (chat.type === "direct") {
     if (chat.blockedByUser === currentUser.id) {
-        specialStatusText = null; // Overlay in ChatView handles this, ChatItem shows shield icon
+        specialStatusText = null; 
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
         specialStatusText = `${name} mungkin memblokir Anda.`;
@@ -67,36 +72,34 @@ export function ChatItem({
     } else if (chat.pendingApprovalFromUserId === currentUser.id) {
       statusTimestamp = chat.requestTimestamp;
       showAcceptRejectActions = true;
-      specialStatusText = "Permintaan chat baru"; // This text will be shown below the name
+      specialStatusText = "Permintaan chat baru";
     } else if (chat.pendingApprovalFromUserId) {
       showPendingClockIcon = true;
       statusTimestamp = chat.requestTimestamp;
-      // No specialStatusText here, clock icon implies pending
     } else if (chat.isRejected) {
       if (chat.rejectedByUserId === currentUser.id) {
-        specialStatusText = null; // No text, just show delete icon
+        specialStatusText = null; 
       } else {
         specialStatusText = `${name} menolak permintaan Anda.`;
       }
       statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
-      showDeleteActionForRejected = true; // Show delete icon next to name
+      showDeleteActionForRejected = true;
     }
   }
 
-  // Determine if the item body should be clickable
   const isClickDisabled =
     (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
     (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive);
-    // REMOVED: || (chat.pendingApprovalFromUserId === currentUser.id) to allow selection
 
   const handleItemClick = () => {
-    // If this function is called, it means !isClickDisabled was true.
-    // The onSelectChat function in page.tsx will handle toasts for different states.
     onSelectChat(chat);
+    if (isMobile) {
+      setOpenMobile(false); // Close mobile sidebar on chat selection
+    }
   };
 
   const isItemActiveInList = isActive &&
-    !chat.pendingApprovalFromUserId && // Don't show active style if it's a pending request for the current user
+    !chat.pendingApprovalFromUserId &&
     !chat.isRejected &&
     !(chat.type === 'direct' && chat.blockedByUser);
 
@@ -111,13 +114,14 @@ export function ChatItem({
      statusMessageToDisplay = "Mulai percakapan";
   }
 
+
   return (
     <div
       onClick={!isClickDisabled ? handleItemClick : undefined}
       className={cn(
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        isClickDisabled && !showAcceptRejectActions && "opacity-70 cursor-not-allowed" // This handles visual cue for non-actionable items
+        isClickDisabled && !showAcceptRejectActions && "opacity-70 cursor-not-allowed"
       )}
     >
       <div
@@ -127,7 +131,7 @@ export function ChatItem({
         )}
       >
         <Avatar className="h-10 w-10">
-          <AvatarImage src={avatarUrl} alt={name || 'Chat Avatar'} data-ai-hint={chat.type === 'group' ? 'group people' : 'person abstract'} />
+          <AvatarImage src={avatarUrl} alt={name || 'Chat Avatar'} data-ai-hint={chat.type === 'group' ? 'group people' : 'person abstract'}/>
           <AvatarFallback>
             {initials || <Icon className="h-5 w-5 text-sidebar-foreground/70" />}
           </AvatarFallback>
@@ -208,11 +212,10 @@ export function ChatItem({
                       </div>
                     );
                  }
-                 // For group chats, or pending sent requests, or active direct chats with no unread messages
                  if (chat.type === 'group' || (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) || (chat.type === 'direct' && !chat.isRejected && !chat.pendingApprovalFromUserId && !chat.blockedByUser && calculatedUnreadCount === 0)) {
                      return (
                         <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
-                          {formatDistanceToNowStrict(new Date(statusTimestamp), { locale: idLocale })}
+                          {formatDistanceToNowStrict(new Date(statusTimestamp), { locale: idLocale, addSuffix: false })}
                         </span>
                       );
                  }
@@ -230,4 +233,3 @@ export function ChatItem({
     </div>
   );
 }
-
