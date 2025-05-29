@@ -176,12 +176,10 @@ export function MessageBubble({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={handleReply}>
-              <Undo2 size={14} className="mr-2" />
               Balas
             </DropdownMenuItem>
             {isCurrentUserMessage && onEditMessage && (
               <DropdownMenuItem onClick={handleEdit}>
-                <Edit3 size={14} className="mr-2" />
                 Edit Pesan
               </DropdownMenuItem>
             )}
@@ -192,7 +190,6 @@ export function MessageBubble({
                   onClick={handleDelete}
                   className="text-destructive hover:!bg-destructive/10 focus:!bg-destructive/10 focus:!text-destructive"
                 >
-                  <Trash2 size={14} className="mr-2" />
                   Hapus
                 </DropdownMenuItem>
               </>

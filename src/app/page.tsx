@@ -82,6 +82,9 @@ export default function ChatPage() {
 
   const [isAboutDialogOpen, setIsAboutDialogOpen] = useState(false);
 
+  const [isDeleteAllMessagesConfirmOpen, setIsDeleteAllMessagesConfirmOpen] = useState(false);
+  const [chatIdToDeleteAllMessagesFrom, setChatIdToDeleteAllMessagesFrom] = useState<string | null>(null);
+
 
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
@@ -93,30 +96,24 @@ export default function ChatPage() {
       toast({ title: "Registrasi Gagal", description: "Username ini sudah ada.", variant: "destructive" });
       return false;
     }
-    // Optionally, check for email uniqueness too
-    // if (registeredUsers.find(u => u.email?.toLowerCase() === email.toLowerCase())) {
-    //   toast({ title: "Registrasi Gagal", description: "Email sudah digunakan.", variant: "destructive" });
-    //   return false;
-    // }
 
     const userId = username.toLowerCase().replace(/\s+/g, "_") || `user_${Date.now()}`;
-    // Use username as initial display name, or part of email if username is not desired as display name
     const nameInitial = username.substring(0,1).toUpperCase() || 'U';
     const newUserProfile: User = {
       id: userId,
-      name: username, // Using username as the initial display name
+      name: username,
       avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
       status: "Online"
     };
     const newRegisteredUser: RegisteredUser = {
       username,
-      password: password_mock, // Storing plain text for mock, NOT SECURE
+      password: password_mock, 
       profile: newUserProfile,
-      email: email // Storing email if needed for RegisteredUser type
+      email: email 
     };
     setRegisteredUsers(prev => [...prev, newRegisteredUser]);
     setCurrentUser(newUserProfile);
-    toast({ title: "Registrasi Berhasil", description: "Akun Anda berhasil dibuat." });
+    toast({ title: "Registrasi Berhasil!" });
     return true;
   }, [registeredUsers, setRegisteredUsers, setCurrentUser, toast]);
 
@@ -124,7 +121,7 @@ export default function ChatPage() {
     const foundUser = registeredUsers.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password_mock);
     if (foundUser) {
       setCurrentUser(foundUser.profile);
-      toast({ title: "Login Berhasil", description: "Selamat datang kembali!" });
+      toast({ title: "Login Berhasil!" });
       return true;
     }
     toast({ title: "Login Gagal", description: "Username atau password salah.", variant: "destructive" });
@@ -163,7 +160,7 @@ export default function ChatPage() {
             id: recipientId,
             name: recipientName,
             avatarUrl: `https://placehold.co/100x100.png?text=${recipientInitial}`,
-            status: "Offline" // Assume new contacts are offline until they log in
+            status: "Offline" 
         };
     }
 
@@ -175,18 +172,15 @@ export default function ChatPage() {
     if (existingChat) {
       setSelectedChat(existingChat);
        if (existingChat.blockedByUser && existingChat.blockedByUser === currentUser.id) {
-        // Toast "Anda telah memblokir..." is handled in ChatView overlay now
+        // Handled in ChatView
       } else if (existingChat.blockedByUser && existingChat.blockedByUser !== currentUser.id) {
-        // Toast for being blocked by other user
+        // Handled in ChatView
       } else if (existingChat.pendingApprovalFromUserId === currentUser.id) {
         toast({ title: "Permintaan Tertunda", description: `Anda memiliki permintaan chat dari ${recipientUser.name}. Terima atau tolak dari daftar chat.` });
       } else if (existingChat.pendingApprovalFromUserId) {
         toast({ title: "Permintaan Terkirim", description: `Anda sudah mengirim permintaan ke ${recipientUser.name}. Menunggu respon.` });
       } else if (existingChat.isRejected) {
          toast({ title: "Chat Ditolak", description: `Permintaan chat dengan ${recipientUser.name} sebelumnya ditolak.` });
-      }
-      else {
-        // toast({ title: "Chat Sudah Ada", description: `Membuka chat yang sudah ada dengan ${recipientUser.name}.` });
       }
       return;
     }
@@ -195,8 +189,8 @@ export default function ChatPage() {
       id: chatId,
       type: "direct",
       participants: participantsArray,
-      name: recipientUser.name, // Store recipient name for ChatItem display
-      avatarUrl: recipientUser.avatarUrl, // Store recipient avatar for ChatItem display
+      name: recipientUser.name, 
+      avatarUrl: recipientUser.avatarUrl, 
       pendingApprovalFromUserId: recipientUser.id,
       isRejected: false,
       requestTimestamp: now,
@@ -331,14 +325,20 @@ export default function ChatPage() {
                  reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}`;
             }
         } else {
-             reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}`;
+             const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === name.toLowerCase() || ru.username.toLowerCase() === name.toLowerCase());
+            if (registeredMember) {
+                userObjectToAdd = registeredMember.profile;
+                reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}`;
+            } else {
+                reasonForInvalid = `Pengguna ${name} tidak ditemukan. Anda hanya dapat menambahkan pengguna yang ada di kontak Anda dan memiliki chat aktif.`;
+            }
         }
 
         if(canAdd && userObjectToAdd) {
             finalMemberUsers.push(userObjectToAdd);
         } else if (reasonForInvalid) {
             invalidMemberDisplayNames.push(reasonForInvalid);
-        } else { // Fallback if no direct chat but user exists (e.g., from registeredUsers)
+        } else { 
             const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === name.toLowerCase() || ru.username.toLowerCase() === name.toLowerCase());
             if (registeredMember) {
                 userObjectToAdd = registeredMember.profile;
@@ -361,7 +361,7 @@ export default function ChatPage() {
         return;
     }
 
-    if (finalMemberUsers.length < 2 && memberDisplayNames.length > 0) { // If members were provided but none were valid
+    if (finalMemberUsers.length < 2 && memberDisplayNames.length > 0) { 
         toast({
             title: "Gagal Membuat Grup",
             description: "Tidak ada anggota valid yang dapat ditambahkan.",
@@ -369,7 +369,7 @@ export default function ChatPage() {
         });
         return;
     }
-     if (finalMemberUsers.length < 2) { // If no members were provided or only self remains
+     if (finalMemberUsers.length < 2) { 
          toast({
             title: "Anggota Diperlukan",
             description: "Harap tambahkan minimal satu anggota lain yang valid.",
@@ -411,9 +411,7 @@ export default function ChatPage() {
   }, [currentUser, chats, setChats, setAllMessages, toast, registeredUsers]);
 
   const handleSelectChat = useCallback((chat: Chat) => {
-    if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser === currentUser?.id) {
-        // Handled by ChatView overlay
-    } else if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
+    if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
         // Handled by ChatView overlay
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
         toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
@@ -486,11 +484,11 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
-      // Update last message and timestamp for other active chats to reflect new activity for sorting/unread
+      
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
          return {
           ...chat,
-          lastMessage: "Aktivitas baru", // Keep it generic or use actual content if preferred
+          lastMessage: content,
           lastMessageTimestamp: newMessage.timestamp,
          };
       }
@@ -659,12 +657,17 @@ export default function ChatPage() {
     setEditingMessageDetails(null);
   }, []);
 
-  const handleDeleteAllMessagesInChat = useCallback((chatId: string) => {
-    if (!currentUser) return;
+  const handleTriggerDeleteAllMessages = useCallback((chatId: string) => {
+    setChatIdToDeleteAllMessagesFrom(chatId);
+    setIsDeleteAllMessagesConfirmOpen(true);
+  }, []);
+
+  const handleDeleteAllMessagesInChat = useCallback(() => {
+    if (!currentUser || !chatIdToDeleteAllMessagesFrom) return;
     const now = Date.now();
     setChats(prevChats =>
       prevChats.map(chat => {
-        if (chat.id === chatId) {
+        if (chat.id === chatIdToDeleteAllMessagesFrom) {
           return {
             ...chat,
             lastMessage: "Semua pesan telah dihapus.",
@@ -679,8 +682,15 @@ export default function ChatPage() {
         return chat;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0))
     );
-    toast({ title: "Tampilan Pesan Dikosongkan", description: "Riwayat pesan sebelumnya dalam chat ini telah disembunyikan untuk Anda." });
-  }, [currentUser, setChats, toast]);
+    toast({ title: "Pesan Dihapus", description: "Semua pesan dalam chat ini telah dihapus untuk Anda." });
+    setIsDeleteAllMessagesConfirmOpen(false);
+    setChatIdToDeleteAllMessagesFrom(null);
+  }, [currentUser, setChats, toast, chatIdToDeleteAllMessagesFrom]);
+
+  const handleCancelDeleteAllMessages = useCallback(() => {
+    setIsDeleteAllMessagesConfirmOpen(false);
+    setChatIdToDeleteAllMessagesFrom(null);
+  }, []);
 
   const handleOpenAddUserToGroupDialog = useCallback((chatId: string) => {
     setChatIdToAddTo(chatId);
@@ -729,8 +739,7 @@ export default function ChatPage() {
         } else if (existingDirectChat.isRejected) {
             reasonForInvalid = `chat langsung dengan ${userName} sebelumnya ditolak.`;
         } else if (!existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected && !existingDirectChat.blockedByUser) {
-            // Chat is active, can add
-            if (!userObjectToAdd) { // Should be set if direct chat exists and valid
+            if (!userObjectToAdd) { 
                 const newUserInitial = userName.substring(0,1).toUpperCase() || 'N';
                 userObjectToAdd = { id: newUserId, name: userName, avatarUrl: `https://placehold.co/100x100.png?text=${newUserInitial}`, status: "Offline" };
             }
@@ -738,11 +747,9 @@ export default function ChatPage() {
             reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${userName}.`;
         }
     } else {
-        // Check if user exists in registeredUsers if no direct chat exists
         const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === userName.toLowerCase() || ru.username.toLowerCase() === userName.toLowerCase());
         if (registeredMember) {
             userObjectToAdd = registeredMember.profile;
-            // This path means user exists but no direct active chat - this is the scenario to block
             reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${userName}. Harap mulai chat langsung dan tunggu penerimaan.`;
         } else {
             reasonForInvalid = `Pengguna ${userName} tidak ditemukan.`;
@@ -754,7 +761,7 @@ export default function ChatPage() {
         return;
     }
     
-    if (!userObjectToAdd) { // Should be set if reasonForInvalid is empty
+    if (!userObjectToAdd) { 
        toast({ title: "Error Internal", description: `Gagal memproses detail pengguna untuk ${userName}.`, variant: "destructive" });
        return;
     }
@@ -1048,7 +1055,7 @@ export default function ChatPage() {
               selectedChatId={selectedChat?.id}
               onNewDirectChat={() => setIsNewDirectChatDialogOpen(true)}
               onNewGroupChat={() => {
-                setGroupDialogInitialMemberName(null); // Reset initial member when opening for general group creation
+                setGroupDialogInitialMemberName(null); 
                 setIsNewGroupChatDialogOpen(true);
               }}
               onAcceptChat={handleAcceptChatRequest}
@@ -1068,7 +1075,6 @@ export default function ChatPage() {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                  <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
-                    <Palette className="mr-2 h-4 w-4" />
                     <span>Tema</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
@@ -1089,16 +1095,13 @@ export default function ChatPage() {
                   </DropdownMenuPortal>
                 </DropdownMenuSub>
                 <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
-                    <InfoIcon className="mr-2 h-4 w-4" />
                     <span>Tentang Aplikasi</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleLogout(false)}>
-                  <LogOut className="mr-2 h-4 w-4" />
                   <span>Keluar (Simpan Data)</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
-                  <Trash2 className="mr-2 h-4 w-4" />
                   <span>Keluar & Hapus Data</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -1133,7 +1136,7 @@ export default function ChatPage() {
               onCancelEditMessage={handleCancelEditInInput}
               onDeleteMessage={handleDeleteMessage}
               onGoBack={handleGoBack}
-              onDeleteAllMessagesInChat={handleDeleteAllMessagesInChat}
+              onTriggerDeleteAllMessages={handleTriggerDeleteAllMessages}
               onTriggerAddUserToGroup={() => handleOpenAddUserToGroupDialog(selectedChat.id)}
               onTriggerDeleteGroup={handleTriggerDeleteGroup}
               onRemoveParticipant={handleRemoveParticipantFromGroup}
@@ -1165,14 +1168,13 @@ export default function ChatPage() {
         onCreateChat={handleCreateGroupChat}
         currentUserObj={currentUser}
         initialMemberName={groupDialogInitialMemberName}
-        // chats={chats} // No longer needed for simple input
       />
       <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}
         onOpenChange={setIsAddUserToGroupDialogOpen}
         onAddUser={handleAddNewUserToGroup}
         currentUserObj={currentUser}
-        // chats={chats} // No longer needed for simple input
+        chats={chats}
       />
        <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
         <AlertDialogContent>
@@ -1213,8 +1215,26 @@ export default function ChatPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={isDeleteAllMessagesConfirmOpen} onOpenChange={setIsDeleteAllMessagesConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Semua Pesan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus semua pesan dalam chat ini? Tindakan ini hanya akan menghapus pesan dari tampilan Anda dan tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDeleteAllMessages}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAllMessagesInChat}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </SidebarProvider>
   );
 }
-
-    

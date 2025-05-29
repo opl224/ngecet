@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Chat, Message, User } from "@/types";
+import type { Chat, Message, User, ChatType } from "@/types";
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ interface ChatViewProps {
   onCancelEditMessage: () => void;
   onDeleteMessage: (messageId: string, chatId: string) => void;
   onGoBack?: () => void;
-  onDeleteAllMessagesInChat: (chatId: string) => void;
+  onTriggerDeleteAllMessages: (chatId: string) => void; // Changed from onDeleteAllMessagesInChat
   onTriggerAddUserToGroup?: () => void;
   onTriggerDeleteGroup?: (chatId: string) => void;
   onRemoveParticipant?: (chatId: string, participantIdToRemove: string) => void;
@@ -60,7 +60,7 @@ export function ChatView({
   onCancelEditMessage,
   onDeleteMessage,
   onGoBack,
-  onDeleteAllMessagesInChat,
+  onTriggerDeleteAllMessages, // Changed from onDeleteAllMessagesInChat
   onTriggerAddUserToGroup,
   onTriggerDeleteGroup,
   onRemoveParticipant,
@@ -89,7 +89,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); // Clear input when canceling reply
+    setNewMessage(""); 
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -115,7 +115,6 @@ export function ChatView({
   }, [propsEditingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
-  // Effect for handling message editing state
   useEffect(() => {
     if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
       if (newMessage !== propsEditingMessageDetails.content) {
@@ -126,7 +125,7 @@ export function ChatView({
       }
       setTimeout(() => {
         if (messageInputRef.current) {
-          if (messageInputRef.current.value !== propsEditingMessageDetails.content) { // Avoid unnecessary value setting
+          if (messageInputRef.current.value !== propsEditingMessageDetails.content) { 
             messageInputRef.current.value = propsEditingMessageDetails.content;
           }
           messageInputRef.current.style.height = 'auto';
@@ -137,18 +136,16 @@ export function ChatView({
           messageInputRef.current.selectionStart = len;
           messageInputRef.current.selectionEnd = len;
         }
-      }, 50); // Slightly increased delay
+      }, 50); 
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
-      // Only reset height if not replying
       if (messageInputRef.current && !replyingToMessage ) {
           messageInputRef.current.style.height = 'auto';
       }
     }
     prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
-  }, [propsEditingMessageDetails, chat.id, replyingToMessage, newMessage]); // Added newMessage to deps, re-evaluating
+  }, [propsEditingMessageDetails, chat.id, replyingToMessage, newMessage]); 
 
 
-  // Effect for handling chat switches
   useEffect(() => {
     const chatJustSwitched = prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id;
 
@@ -158,7 +155,6 @@ export function ChatView({
       if (messageInputRef.current) {
         messageInputRef.current.style.setProperty('height', 'auto', 'important');
       }
-      // Cancel edit if the editing message is not from the current chat
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
         onCancelEditMessage();
       }
@@ -170,7 +166,7 @@ export function ChatView({
         (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
       setTimeout(() => {
         messageInputRef.current?.focus();
-      }, 50); // Delay focus slightly
+      }, 50);
     }
     prevChatIdRef.current = chat.id;
   }, [chat.id, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage]);
@@ -200,7 +196,7 @@ export function ChatView({
         name: otherParticipantName,
         avatarUrl: otherParticipantAvatar,
         Icon: UserIcon,
-        description: `Status: ${otherParticipantStatus}`, // Kept for potential future use, not directly displayed in header
+        description: `Status: ${otherParticipantStatus}`, 
         status: otherParticipantStatus,
         otherParticipantObject: otherParticipant
       };
@@ -294,7 +290,7 @@ export function ChatView({
     if(!isChatActive) return;
     if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); // Clear input when starting reply
+    setNewMessage(""); 
     setTimeout(() => messageInputRef.current?.focus(), 50);
   }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
@@ -303,7 +299,7 @@ export function ChatView({
     setNewMessage(event.target.value);
     if (messageInputRef.current) {
       messageInputRef.current.style.height = 'auto';
-      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); // Max height of 120px
+      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); 
       messageInputRef.current.style.height = `${newHeight}px`;
     }
   };
@@ -319,14 +315,12 @@ export function ChatView({
       const isACurrentUser = a.id === currentUser.id;
       const isBCurrentUser = b.id === currentUser.id;
 
-      if (isACreator && !isBCreator) return -1; // A is admin, B is not
-      if (!isACreator && isBCreator) return 1;  // B is admin, A is not
+      if (isACreator && !isBCreator) return -1; 
+      if (!isACreator && isBCreator) return 1;  
 
-      // If both are admin or neither are admin, then sort by current user status
-      if (isACurrentUser && !isBCurrentUser) return -1; // A is current user (and not admin, or B is also admin), B is not
-      if (!isACurrentUser && isBCurrentUser) return 1;  // B is current user (and not admin, or A is also admin), A is not
+      if (isACurrentUser && !isBCurrentUser) return -1; 
+      if (!isACurrentUser && isBCurrentUser) return 1;  
       
-      // If both are current user (not possible) or neither are, or admin status is same, sort by name
       return (a.name || '').localeCompare(b.name || '');
     });
   }, [chat.participants, chat.createdByUserId, currentUser.id]);
@@ -334,7 +328,7 @@ export function ChatView({
 
   return (
     <div className="flex flex-col flex-1 bg-background overflow-hidden">
-      <Dialog>
+      <Dialog> 
         <header className="p-4 border-b flex items-center justify-between shadow-sm">
           <div className="flex items-center space-x-1 flex-1 min-w-0">
             {onGoBack && (
@@ -377,12 +371,12 @@ export function ChatView({
                     <DropdownMenuContent align="end">
                         {onGoBack && (
                             <DropdownMenuItem onClick={onGoBack} className="py-2">
-                                <span>Tutup pesan</span>
+                                <span>Tutup Chat</span>
                             </DropdownMenuItem>
                         )}
-                        <DropdownMenuSeparator/>
+                        
                         <DropdownMenuItem
-                            onClick={() => onDeleteAllMessagesInChat(chat.id)}
+                            onClick={() => onTriggerDeleteAllMessages(chat.id)}
                             className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
                         >
                             <span>Hapus Semua Pesan</span>
@@ -393,7 +387,7 @@ export function ChatView({
                                onClick={() => onTriggerDeleteGroup(chat.id)}
                                className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
                              >
-                               <span>Hapus Grup</span>
+                               <span>Hapus Grup Ini</span>
                              </DropdownMenuItem>
                          )}
 
@@ -406,6 +400,7 @@ export function ChatView({
                                     </DropdownMenuItem>
                                 ) : (
                                     <DropdownMenuItem onClick={() => onBlockUser && onBlockUser(chat.id)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2">
+                                        <ShieldAlert className="mr-2 h-4 w-4"/>
                                         <span>Blokir Pengguna</span>
                                     </DropdownMenuItem>
                                 )}
@@ -545,7 +540,7 @@ export function ChatView({
                             onClick={() => onTriggerDeleteGroup(chat.id)}
                             size="sm"
                         >
-                            Hapus Grup
+                            Hapus Grup Ini
                         </Button>
                     </div>
                 )}
