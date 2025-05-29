@@ -396,7 +396,8 @@ export default function ChatPage() {
         const rejectedTargetName = chat.rejectedByUserId === currentUser?.id ? (chat.participants.find(p => p.id !== currentUser?.id)?.name || "Pengguna lain") : "Anda";
         toast({ title: "Chat Ditolak", description: `${rejecterName} telah menolak permintaan dengan ${rejectedTargetName}.`, variant: "destructive"});
     } else if (chat.pendingApprovalFromUserId === currentUser?.id) {
-        toast({ title: "Tindakan Diperlukan", description: "Harap terima atau tolak permintaan chat ini dari daftar chat." });
+        // toast({ title: "Tindakan Diperlukan", description: "Harap terima atau tolak permintaan chat ini dari daftar chat." });
+        // Allow selection
     }
 
     setSelectedChat(chat);
@@ -1080,7 +1081,7 @@ export default function ChatPage() {
 
         <SidebarInset className="flex-1 flex flex-col">
            <div className="md:hidden p-2 border-b flex items-center">
-             <SidebarTrigger />
+             {!selectedChat && <SidebarTrigger />}
              {selectedChat && (
                 <Button variant="ghost" size="icon" className="mr-1 shrink-0" onClick={handleGoBack}>
                     <ArrowLeft className="h-5 w-5" />
@@ -1174,7 +1175,7 @@ export default function ChatPage() {
               Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
               Fitur-fitur meliputi pesan langsung, grup chat dan penyimpanan lokal.
             </AlertDialogDescription>
-            <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
+             <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
               Tech: Next.js, React, ShadCN UI, Tailwind CSS dan Genkit.
             </AlertDialogDescription>
             <AlertDialogDescription className="text-sm text-muted-foreground font-semibold pt-4 pb-6">
@@ -1213,4 +1214,5 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+
 
