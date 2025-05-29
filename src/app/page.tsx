@@ -90,7 +90,7 @@ export default function ChatPage() {
 
   const handleRegister = useCallback((email: string, username: string, password_mock: string): boolean => {
     if (registeredUsers.find(u => u.username.toLowerCase() === username.toLowerCase())) {
-      toast({ title: "Registrasi Gagal", description: "Username sudah digunakan.", variant: "destructive" });
+      toast({ title: "Registrasi Gagal", description: "Username ini sudah ada.", variant: "destructive" });
       return false;
     }
     // Optionally, check for email uniqueness too
@@ -116,7 +116,7 @@ export default function ChatPage() {
     };
     setRegisteredUsers(prev => [...prev, newRegisteredUser]);
     setCurrentUser(newUserProfile);
-    toast({ title: "Registrasi Berhasil", description: `Selamat datang, ${username}!` });
+    toast({ title: "Registrasi Berhasil", description: "Akun Anda berhasil dibuat." });
     return true;
   }, [registeredUsers, setRegisteredUsers, setCurrentUser, toast]);
 
@@ -124,7 +124,7 @@ export default function ChatPage() {
     const foundUser = registeredUsers.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password_mock);
     if (foundUser) {
       setCurrentUser(foundUser.profile);
-      toast({ title: "Login Berhasil", description: `Selamat datang kembali, ${foundUser.profile.name}!` });
+      toast({ title: "Login Berhasil", description: "Selamat datang kembali!" });
       return true;
     }
     toast({ title: "Login Gagal", description: "Username atau password salah.", variant: "destructive" });
@@ -1007,7 +1007,11 @@ export default function ChatPage() {
   }
 
   if (!currentUser) {
-    return <AuthPage onLogin={handleLogin} onRegister={handleRegister} />;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <AuthPage onLogin={handleLogin} onRegister={handleRegister} />
+      </div>
+    );
   }
 
 
@@ -1161,7 +1165,7 @@ export default function ChatPage() {
         onCreateChat={handleCreateGroupChat}
         currentUserObj={currentUser}
         initialMemberName={groupDialogInitialMemberName}
-        // chats={chats} // No longer needed here as validation is in page.tsx
+        chats={chats}
       />
       <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}
