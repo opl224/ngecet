@@ -75,7 +75,6 @@ export function ChatView({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
-
   const prevChatIdRef = useRef<string | undefined>(undefined);
   const prevEditingMessageDetailsRef = useRef<Message | null>(null);
 
@@ -90,7 +89,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); 
+    setNewMessage("");
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -116,7 +115,7 @@ export function ChatView({
   }, [propsEditingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
-   useEffect(() => {
+  useEffect(() => {
     if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
       if (newMessage !== propsEditingMessageDetails.content) {
         setNewMessage(propsEditingMessageDetails.content);
@@ -126,10 +125,10 @@ export function ChatView({
       }
       setTimeout(() => {
         if (messageInputRef.current) {
-          messageInputRef.current.style.height = 'auto';
-           if (messageInputRef.current.value !== propsEditingMessageDetails.content) {
+          if (messageInputRef.current.value !== propsEditingMessageDetails.content) {
             messageInputRef.current.value = propsEditingMessageDetails.content;
           }
+          messageInputRef.current.style.height = 'auto';
           const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
           messageInputRef.current.style.height = `${newHeight}px`;
           messageInputRef.current.focus();
@@ -158,10 +157,10 @@ export function ChatView({
       setReplyingToMessage(null);
 
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
-        onCancelEditMessage(); 
+        onCancelEditMessage();
       }
     }
-    
+
     if (isChatActive && messageInputRef.current &&
         (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
       setTimeout(() => {
@@ -185,35 +184,6 @@ export function ChatView({
     }
   }, [messages, chat.id]);
 
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isChatActive) {
-      toast({ title: "Chat Tidak Aktif", description: "Anda tidak dapat mengirim pesan di chat ini.", variant: "destructive"});
-      return;
-    }
-    if (newMessage.trim()) {
-      if (propsEditingMessageDetails) {
-        onSaveEditedMessage(propsEditingMessageDetails.id, newMessage.trim());
-      } else {
-        onSendMessage(newMessage.trim(), replyingToMessage);
-        if (replyingToMessage !== null) setReplyingToMessage(null);
-      }
-      setNewMessage("");
-
-      if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto';
-      }
-    }
-  };
-
-  const handleReplyToMessageInView = useCallback((messageToReply: Message) => {
-    if(!isChatActive) return;
-    if (propsEditingMessageDetails) onCancelEditMessage(); 
-    setReplyingToMessage(messageToReply);
-    setNewMessage(""); 
-    setTimeout(() => messageInputRef.current?.focus(), 50);
-  }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
   const getChatDisplayDetails = useMemo(() => {
     if (chat.type === "direct") {
@@ -294,6 +264,36 @@ export function ChatView({
     }
   }
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isChatActive) {
+      toast({ title: "Chat Tidak Aktif", description: "Anda tidak dapat mengirim pesan di chat ini.", variant: "destructive"});
+      return;
+    }
+    if (newMessage.trim()) {
+      if (propsEditingMessageDetails) {
+        onSaveEditedMessage(propsEditingMessageDetails.id, newMessage.trim());
+      } else {
+        onSendMessage(newMessage.trim(), replyingToMessage);
+        if (replyingToMessage !== null) setReplyingToMessage(null);
+      }
+      setNewMessage("");
+
+      if (messageInputRef.current) {
+        messageInputRef.current.style.height = 'auto';
+      }
+    }
+  };
+
+  const handleReplyToMessageInView = useCallback((messageToReply: Message) => {
+    if(!isChatActive) return;
+    if (propsEditingMessageDetails) onCancelEditMessage();
+    setReplyingToMessage(messageToReply);
+    setNewMessage("");
+    setTimeout(() => messageInputRef.current?.focus(), 50);
+  }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
+
+
   const handleTextareaInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setNewMessage(event.target.value);
     if (messageInputRef.current) {
@@ -314,23 +314,27 @@ export function ChatView({
       const isACurrentUser = a.id === currentUser.id;
       const isBCurrentUser = b.id === currentUser.id;
 
-      if (isACreator && !isBCreator) return -1; 
+      if (isACreator && !isBCreator) return -1;
       if (!isACreator && isBCreator) return 1;
 
-      if (isACreator && isACurrentUser && !isBCreator) return -1; 
-      if (isBCreator && isBCurrentUser && !isACreator) return 1;
+      if (isACurrentUser && !isBCurrentUser) {
+         // If A is current user and not creator, and B is not current user (could be creator or other)
+         // Current user (non-admin) should come after admin but before others.
+         return isBCreator ? 1 : -1;
+      }
+      if (!isACurrentUser && isBCurrentUser) {
+        // If B is current user and not creator, and A is not current user (could be creator or other)
+        return isACreator ? -1 : 1;
+      }
 
-      if (isACurrentUser && !isBCurrentUser) return -1; 
-      if (!isACurrentUser && isBCurrentUser) return 1;
-      
-      return (a.name || '').localeCompare(b.name || ''); 
+      return (a.name || '').localeCompare(b.name || '');
     });
   }, [chat.participants, chat.createdByUserId, currentUser.id]);
 
 
   return (
     <div className="flex flex-col flex-1 bg-background overflow-hidden">
-      <Dialog> 
+      <Dialog>
         <header className="p-4 border-b flex items-center justify-between shadow-sm">
           <div className="flex items-center space-x-1 flex-1 min-w-0">
             {onGoBack && (
@@ -373,16 +377,13 @@ export function ChatView({
                     <DropdownMenuContent align="end">
                         {onGoBack && (
                             <DropdownMenuItem onClick={onGoBack} className="py-2">
-                                <LogOut className="mr-2 h-4 w-4" />
                                 <span>Tutup Chat</span>
                             </DropdownMenuItem>
                         )}
-                        
                         <DropdownMenuItem
                             onClick={() => onDeleteAllMessagesInChat(chat.id)}
                             className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
                         >
-                            <Trash2 className="mr-2 h-4 w-4" />
                             <span>Hapus Semua Pesan</span>
                         </DropdownMenuItem>
 
@@ -391,7 +392,6 @@ export function ChatView({
                                onClick={() => onTriggerDeleteGroup(chat.id)}
                                className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
                              >
-                               <Trash2 className="mr-2 h-4 w-4" />
                                <span>Hapus Grup</span>
                              </DropdownMenuItem>
                          )}
@@ -450,14 +450,14 @@ export function ChatView({
               </div>
             ) : null}
           </DialogHeader>
-          
+
           {chat.type === 'direct' && onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
               <>
                 <DropdownMenuSeparator />
                 <div className="py-2">
                     <Button
                         variant="outline"
-                        className="w-full mt-2" 
+                        className="w-full mt-2"
                         onClick={() => onStartGroupWithUser(displayDetails.otherParticipantObject!)}
                         disabled={!!chat.blockedByUser}
                     >
@@ -598,7 +598,7 @@ export function ChatView({
             const senderToDisplay : User = sender || {
               id: msg.senderId,
               name: msg.senderName,
-              avatarUrl: `https://placehold.co/100x100.png?text=${msg.senderName?.substring(0,1).toUpperCase() || 'U'}`, 
+              avatarUrl: `https://placehold.co/100x100.png?text=${msg.senderName?.substring(0,1).toUpperCase() || 'U'}`,
               status: "Offline"
             };
 
@@ -687,5 +687,3 @@ export function ChatView({
     </div>
   );
 }
-
-
