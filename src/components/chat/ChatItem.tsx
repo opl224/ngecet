@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale/id'; // Import Indonesian locale
 import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert, ShieldOff, Clock } from "lucide-react";
 
 interface ChatItemProps {
@@ -17,7 +18,7 @@ interface ChatItemProps {
   onAcceptChat: (chatId: string) => void;
   onRejectChat: (chatId: string) => void;
   onDeleteChatPermanently: (chatId: string) => void;
-  onUnblockUser: (chatId: string) => void;
+  // onUnblockUser is handled in ChatView
 }
 
 export function ChatItem({
@@ -28,7 +29,6 @@ export function ChatItem({
   onAcceptChat,
   onRejectChat,
   onDeleteChatPermanently,
-  onUnblockUser,
 }: ChatItemProps) {
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
@@ -61,7 +61,7 @@ export function ChatItem({
 
   if (chat.type === "direct") {
     if (chat.blockedByUser === currentUser.id) {
-        specialStatusText = null; // Deskripsi dihapus
+        specialStatusText = null;
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
         specialStatusText = `${name} mungkin memblokir Anda.`;
@@ -75,7 +75,7 @@ export function ChatItem({
       statusTimestamp = chat.requestTimestamp;
     } else if (chat.isRejected) {
       if (chat.rejectedByUserId === currentUser.id) {
-        specialStatusText = null; 
+        specialStatusText = null;
       } else {
         specialStatusText = `${name} menolak permintaan Anda.`;
       }
@@ -95,7 +95,7 @@ export function ChatItem({
         return;
     }
 
-    if (canSelectChat || (chat.isRejected && !isActive)) { 
+    if (canSelectChat || (chat.isRejected && !isActive)) {
       onSelectChat(chat);
     }
   };
@@ -126,7 +126,7 @@ export function ChatItem({
       className={cn(
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        isClickDisabled && !showAcceptRejectActions && "opacity-70 cursor-not-allowed" 
+        isClickDisabled && !showAcceptRejectActions && "opacity-70 cursor-not-allowed"
       )}
     >
       <div
@@ -160,7 +160,7 @@ export function ChatItem({
               </h4>
             </div>
             {(() => {
-              if (showDeleteAction) { 
+              if (showDeleteAction) {
                 return (
                   <Button
                     size="icon"
@@ -204,24 +204,24 @@ export function ChatItem({
                   </Badge>
                 );
               }
-              if (chat.type === 'direct' && !chat.blockedByUser && !showAcceptRejectActions && !showPendingClockIcon && !chat.isRejected && calculatedUnreadCount === 0) {
-                const status = otherParticipantStatus || "Offline";
-                const isOnline = status === "Online";
-                return (
-                  <div className="flex items-center space-x-1.5 shrink-0 ml-2">
-                    <span className={cn(
-                      "h-2 w-2 rounded-full block",
-                      isOnline ? "bg-green-500" : "bg-sidebar-foreground/30"
-                    )}></span>
-                    <span className="text-xs text-sidebar-foreground/70">{status}</span>
-                  </div>
-                );
-              }
-              if (statusTimestamp && (!specialStatusText || (showPendingClockIcon && !chat.isRejected && chat.type === 'direct')) && calculatedUnreadCount === 0 && !chat.blockedByUser && !chat.isRejected) {
-                 if (chat.type === 'group' || (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) || (chat.type === 'direct' && !chat.isRejected && !chat.pendingApprovalFromUserId && !chat.blockedByUser) ) {
+              if (statusTimestamp && !specialStatusText) {
+                 if (chat.type === 'direct' && !chat.blockedByUser && !showAcceptRejectActions && !showPendingClockIcon && !chat.isRejected && calculatedUnreadCount === 0) {
+                    const status = otherParticipantStatus || "Offline";
+                    const isOnline = status === "Online";
+                    return (
+                      <div className="flex items-center space-x-1.5 shrink-0 ml-2">
+                        <span className={cn(
+                          "h-2 w-2 rounded-full block",
+                          isOnline ? "bg-green-500" : "bg-sidebar-foreground/30"
+                        )}></span>
+                        <span className="text-xs text-sidebar-foreground/70">{status}</span>
+                      </div>
+                    );
+                 }
+                 if (chat.type === 'group' || (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) || (chat.type === 'direct' && !chat.isRejected && !chat.pendingApprovalFromUserId && !chat.blockedByUser && calculatedUnreadCount === 0)) {
                      return (
                         <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
-                          {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false })}
+                          {formatDistanceToNowStrict(new Date(statusTimestamp), { addSuffix: false, locale: idLocale })}
                         </span>
                       );
                  }
@@ -236,7 +236,6 @@ export function ChatItem({
           )}
         </div>
       </div>
-      {/* Tombol Buka Blokir dihapus dari sini */}
     </div>
   );
 }
