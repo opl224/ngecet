@@ -385,7 +385,7 @@ export function ChatView({
                         {onGoBack && (
                             <DropdownMenuItem onClick={onGoBack} className="py-2">
                                 <LogOut className="mr-2 h-4 w-4" />
-                                <span>Tutup Chat</span>
+                                <span>Tutup pesan</span>
                             </DropdownMenuItem>
                         )}
                         <DropdownMenuItem

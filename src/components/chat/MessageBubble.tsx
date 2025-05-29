@@ -80,7 +80,7 @@ export function MessageBubble({
   }
 
   interface BubbleContentLayoutProps extends HTMLAttributes<HTMLDivElement> {
-    children?: React.ReactNode; // Make children optional if not always needed
+    children?: React.ReactNode;
   }
 
   const BubbleContentLayout = React.forwardRef<HTMLDivElement, BubbleContentLayoutProps>(
@@ -109,7 +109,7 @@ export function MessageBubble({
               </span>
           </div>
       ) : isCurrentUserMessage && chatType === 'direct' ? (
-         null // No "Anda" for direct messages from self
+         null 
       ) : null}
 
 
@@ -166,7 +166,7 @@ export function MessageBubble({
 
   const SenderActionButtons = ({ className }: { className?: string }) => (
     onEditMessage && onDeleteMessage && (
-      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity self-center", className)}>
+      <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity", className)}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 p-1 text-muted-foreground hover:text-primary">
@@ -208,7 +208,7 @@ export function MessageBubble({
        <Button
           variant="ghost"
           size="icon"
-          className={cn("h-7 w-7 p-1 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity self-center", className)}
+          className={cn("h-7 w-7 p-1 text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity", className)}
           onClick={handleReply}
           aria-label="Balas"
         >
@@ -219,7 +219,7 @@ export function MessageBubble({
 
   const UserAvatarComponent = ({ className }: { className?: string }) => (
     chatType === 'group' ? (
-      <Avatar className={cn("h-8 w-8 shrink-0 self-start", className)}>
+      <Avatar className={cn("h-8 w-8 shrink-0", className)}>
         <AvatarImage src={senderAvatarUrl} alt={senderName} data-ai-hint="person abstract"/>
         <AvatarFallback>{senderInitial}</AvatarFallback>
       </Avatar>
@@ -228,26 +228,30 @@ export function MessageBubble({
 
   return (
     <div className={cn(
-      "flex w-full items-start group mb-3",
-      isCurrentUserMessage ? "justify-end" : "justify-start"
+      "flex w-full items-center group", // Changed from items-start to items-center
+      isCurrentUserMessage ? "justify-end" : "justify-start",
     )}>
       {isCurrentUserMessage ? (
         <>
-          {/* Order 1: Action Buttons */}
-          <SenderActionButtons className="order-1 mr-1 self-start" />
+          {/* Order 1: Action Buttons (Message Options) */}
+          <div className="order-1 mr-1 self-center">
+            <SenderActionButtons />
+          </div>
           {/* Order 2: Bubble Content */}
           <BubbleContentLayout className="order-2 mr-2" />
           {/* Order 3: Avatar (only for group chats) */}
-          {chatType === 'group' && <UserAvatarComponent className="order-3 ml-0 self-start" />}
+          {chatType === 'group' && <UserAvatarComponent className="order-3 ml-0 self-center" />}
         </>
       ) : (
         <>
           {/* Avatar (only for group chats) */}
-          {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
+          {chatType === 'group' && <UserAvatarComponent className="mr-2 self-center" />}
           {/* Bubble Content */}
           <BubbleContentLayout className={cn(chatType === 'direct' ? "ml-0" : "", "mr-1")} />
-          {/* Action Button */}
-          <ReceiverActionButton className="ml-1 self-start" />
+          {/* Action Button (Reply) */}
+          <div className="ml-1 self-center">
+            <ReceiverActionButton />
+          </div>
         </>
       )}
     </div>
