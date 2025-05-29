@@ -89,7 +89,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage("");
+    setNewMessage(""); // Clear input when canceling reply
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -115,6 +115,7 @@ export function ChatView({
   }, [propsEditingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
+  // Effect for handling message editing state
   useEffect(() => {
     if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
       if (newMessage !== propsEditingMessageDetails.content) {
@@ -125,7 +126,7 @@ export function ChatView({
       }
       setTimeout(() => {
         if (messageInputRef.current) {
-          if (messageInputRef.current.value !== propsEditingMessageDetails.content) {
+          if (messageInputRef.current.value !== propsEditingMessageDetails.content) { // Avoid unnecessary value setting
             messageInputRef.current.value = propsEditingMessageDetails.content;
           }
           messageInputRef.current.style.height = 'auto';
@@ -136,36 +137,40 @@ export function ChatView({
           messageInputRef.current.selectionStart = len;
           messageInputRef.current.selectionEnd = len;
         }
-      }, 50);
+      }, 50); // Slightly increased delay
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
+      // Only reset height if not replying
       if (messageInputRef.current && !replyingToMessage ) {
           messageInputRef.current.style.height = 'auto';
       }
     }
     prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
-  }, [propsEditingMessageDetails, chat.id, replyingToMessage, newMessage]);
+  }, [propsEditingMessageDetails, chat.id, replyingToMessage, newMessage]); // Added newMessage to deps, re-evaluating
 
 
+  // Effect for handling chat switches
   useEffect(() => {
     const chatJustSwitched = prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id;
 
     if (chatJustSwitched) {
       setNewMessage("");
+      setReplyingToMessage(null);
       if (messageInputRef.current) {
         messageInputRef.current.style.setProperty('height', 'auto', 'important');
       }
-      setReplyingToMessage(null);
-
+      // Cancel edit if the editing message is not from the current chat
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
         onCancelEditMessage();
       }
     }
 
-    if (isChatActive && messageInputRef.current &&
+    const isChatEffectivelyActive = chat.type === 'group' || (!chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser));
+
+    if (isChatEffectivelyActive && messageInputRef.current &&
         (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
       setTimeout(() => {
         messageInputRef.current?.focus();
-      }, 50);
+      }, 50); // Delay focus slightly
     }
     prevChatIdRef.current = chat.id;
   }, [chat.id, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage]);
@@ -195,7 +200,7 @@ export function ChatView({
         name: otherParticipantName,
         avatarUrl: otherParticipantAvatar,
         Icon: UserIcon,
-        description: `Status: ${otherParticipantStatus}`,
+        description: `Status: ${otherParticipantStatus}`, // Kept for potential future use, not directly displayed in header
         status: otherParticipantStatus,
         otherParticipantObject: otherParticipant
       };
@@ -205,7 +210,7 @@ export function ChatView({
         name: groupName,
         avatarUrl: chat.avatarUrl,
         Icon: Users,
-        description: `Group Chat - ${chat.participants?.length || 0} anggota`,
+        description: `Grup • ${chat.participants?.length || 0} anggota`,
         status: null,
         otherParticipantObject: undefined
       };
@@ -230,7 +235,7 @@ export function ChatView({
               <div className="flex flex-col items-center">
                 <p className="mb-3">{`Anda telah memblokir ${otherUserName}.`}</p>
                 <Button onClick={() => onUnblockUser(chat.id)} variant="outline" size="sm" className="text-green-600 border-green-500 hover:bg-green-500/10 hover:text-green-700 focus:border-green-600 focus:bg-green-500/10">
-                  <ShieldOff className="mr-2 h-4 w-4" /> Buka Blokir
+                  <ShieldOff className="mr-2 h-4 w-4" /> Buka Blokir Pengguna
                 </Button>
               </div>
             ),
@@ -289,7 +294,7 @@ export function ChatView({
     if(!isChatActive) return;
     if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage("");
+    setNewMessage(""); // Clear input when starting reply
     setTimeout(() => messageInputRef.current?.focus(), 50);
   }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
@@ -314,19 +319,14 @@ export function ChatView({
       const isACurrentUser = a.id === currentUser.id;
       const isBCurrentUser = b.id === currentUser.id;
 
-      if (isACreator && !isBCreator) return -1;
-      if (!isACreator && isBCreator) return 1;
+      if (isACreator && !isBCreator) return -1; // A is admin, B is not
+      if (!isACreator && isBCreator) return 1;  // B is admin, A is not
 
-      if (isACurrentUser && !isBCurrentUser) {
-         // If A is current user and not creator, and B is not current user (could be creator or other)
-         // Current user (non-admin) should come after admin but before others.
-         return isBCreator ? 1 : -1;
-      }
-      if (!isACurrentUser && isBCurrentUser) {
-        // If B is current user and not creator, and A is not current user (could be creator or other)
-        return isACreator ? -1 : 1;
-      }
-
+      // If both are admin or neither are admin, then sort by current user status
+      if (isACurrentUser && !isBCurrentUser) return -1; // A is current user (and not admin, or B is also admin), B is not
+      if (!isACurrentUser && isBCurrentUser) return 1;  // B is current user (and not admin, or A is also admin), A is not
+      
+      // If both are current user (not possible) or neither are, or admin status is same, sort by name
       return (a.name || '').localeCompare(b.name || '');
     });
   }, [chat.participants, chat.createdByUserId, currentUser.id]);
@@ -358,7 +358,7 @@ export function ChatView({
                       ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline"))
                         : (chat.blockedByUser === currentUser.id ? "Anda memblokir pengguna ini" : "Tidak Aktif")
                       )
-                      : `Group Chat - ${chat.participants?.length || 0} anggota`}
+                      : `Grup • ${chat.participants?.length || 0} anggota`}
                   </p>
                 </div>
               </div>
@@ -445,12 +445,12 @@ export function ChatView({
                 </Avatar>
                 <DialogTitle className="text-2xl">{displayDetails.name}</DialogTitle>
                  <DialogDescription className="text-base">
-                    {`Group Chat - ${chat.participants?.length || 0} anggota`}
+                    {`Grup • ${chat.participants?.length || 0} anggota`}
                 </DialogDescription>
               </div>
             ) : null}
           </DialogHeader>
-
+          
           {chat.type === 'direct' && onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
               <>
                 <DropdownMenuSeparator />
@@ -531,6 +531,7 @@ export function ChatView({
                             variant="destructive"
                             className="w-full"
                             onClick={() => onLeaveGroup(chat.id)}
+                            size="sm"
                         >
                             <LogOut className="mr-2 h-4 w-4" />
                             Keluar Grup
@@ -543,6 +544,7 @@ export function ChatView({
                             variant="destructive"
                             className="w-full"
                             onClick={() => onTriggerDeleteGroup(chat.id)}
+                            size="sm"
                         >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Hapus Grup Ini
