@@ -48,7 +48,7 @@ export function RegisterForm({ onRegister }: RegisterFormProps) {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., anda@contoh.com" {...field} />
+                <Input placeholder="test@gmail.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -61,7 +61,7 @@ export function RegisterForm({ onRegister }: RegisterFormProps) {
             <FormItem>
               <FormLabel>Username</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., johndoe (untuk login)" {...field} />
+                <Input placeholder="Masukkan username" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

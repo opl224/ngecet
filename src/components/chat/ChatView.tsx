@@ -226,12 +226,12 @@ export function ChatView({
     if (chat.blockedByUser === currentUser.id && onUnblockUser) {
         chatOverlayMessage = {
             icon: <ShieldAlert className="w-16 h-16 text-destructive mb-4" />,
-            title: "Pengguna Diblokir",
+            title: "Pengguna diblokir",
             text: (
               <div className="flex flex-col items-center">
                 <p className="mb-3">{`Anda telah memblokir ${otherUserName}.`}</p>
                 <Button onClick={() => onUnblockUser(chat.id)} variant="outline" size="sm" className="text-green-600 border-green-500 hover:bg-green-500/10 hover:text-green-700 focus:border-green-600 focus:bg-green-500/10">
-                  <ShieldOff className="mr-2 h-4 w-4" /> Buka Blokir Pengguna
+                  <ShieldOff className="mr-2 h-4 w-4" /> Buka blokir pengguna
                 </Button>
               </div>
             ),
@@ -371,15 +371,15 @@ export function ChatView({
                     <DropdownMenuContent align="end">
                         {onGoBack && (
                             <DropdownMenuItem onClick={onGoBack} className="py-2">
-                                <span>Tutup Chat</span>
+                                <span>Tutup pesan</span>
                             </DropdownMenuItem>
                         )}
-                        
+                        <DropdownMenuSeparator/>
                         <DropdownMenuItem
                             onClick={() => onTriggerDeleteAllMessages(chat.id)}
                             className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
                         >
-                            <span>Hapus Semua Pesan</span>
+                            <span>Hapus semua pesan</span>
                         </DropdownMenuItem>
 
                          {chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerDeleteGroup && (
@@ -396,12 +396,11 @@ export function ChatView({
                                 {chat.blockedByUser === currentUser.id ? (
                                     <DropdownMenuItem onClick={() => onUnblockUser && onUnblockUser(chat.id)} className="py-2">
                                         <ShieldOff className="mr-2 h-4 w-4" />
-                                        <span>Buka Blokir Pengguna</span>
+                                        <span>Buka blokir pengguna</span>
                                     </DropdownMenuItem>
                                 ) : (
                                     <DropdownMenuItem onClick={() => onBlockUser && onBlockUser(chat.id)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2">
-                                        <ShieldAlert className="mr-2 h-4 w-4"/>
-                                        <span>Blokir Pengguna</span>
+                                        <span>Blokir pengguna</span>
                                     </DropdownMenuItem>
                                 )}
                             </>

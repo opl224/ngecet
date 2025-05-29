@@ -682,7 +682,6 @@ export default function ChatPage() {
         return chat;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0))
     );
-    toast({ title: "Pesan Dihapus", description: "Semua pesan dalam chat ini telah dihapus untuk Anda." });
     setIsDeleteAllMessagesConfirmOpen(false);
     setChatIdToDeleteAllMessagesFrom(null);
   }, [currentUser, setChats, toast, chatIdToDeleteAllMessagesFrom]);
@@ -1218,7 +1217,7 @@ export default function ChatPage() {
       <AlertDialog open={isDeleteAllMessagesConfirmOpen} onOpenChange={setIsDeleteAllMessagesConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Semua Pesan?</AlertDialogTitle>
+            <AlertDialogTitle>Hapus semua pesan?</AlertDialogTitle>
             <AlertDialogDescription>
               Apakah Anda yakin ingin menghapus semua pesan dalam chat ini? Tindakan ini hanya akan menghapus pesan dari tampilan Anda dan tidak dapat dibatalkan.
             </AlertDialogDescription>

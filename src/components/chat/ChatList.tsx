@@ -145,11 +145,11 @@ export function ChatList({
           <DropdownMenuContent align="end" side="top" className="mb-2 w-56">
             <DropdownMenuItem onClick={onNewDirectChat} className="py-2.5">
               <MessageSquarePlus className="mr-2 h-4 w-4" />
-              Buat Pesan Baru
+              Buat pesan baru
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onNewGroupChat} className="py-2.5">
               <Users className="mr-2 h-4 w-4" />
-              Buat Grup Baru
+              Buat grup baru
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

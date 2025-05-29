@@ -45,7 +45,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
             <FormItem>
               <FormLabel>Username</FormLabel>
               <FormControl>
-                <Input placeholder="Masukkan username Anda" {...field} />
+                <Input placeholder="Masukkan username anda" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -58,7 +58,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="Masukkan password Anda" {...field} />
+                <Input type="password" placeholder="Masukkan password anda" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
