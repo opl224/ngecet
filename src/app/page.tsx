@@ -799,7 +799,7 @@ export default function ChatPage() {
 
     const groupToDelete = chats.find(chat => chat.id === groupToDeleteId);
     if (!groupToDelete || groupToDelete.createdByUserId !== currentUser.id) {
-        toast({ title: "Aksi Gagal", description: "Anda tidak memiliki izin untuk menghapus grup ini.", variant: "destructive" });
+        toast({ title: "Gagal hapus", description: "Anda tidak memiliki izin untuk menghapus grup ini.", variant: "destructive" });
         setIsDeleteGroupConfirmOpen(false);
         setGroupToDeleteId(null);
         return;
@@ -832,11 +832,11 @@ export default function ChatPage() {
     setChats(prevChats => {
       const chatToUpdate = prevChats.find(c => c.id === chatId);
       if (!chatToUpdate || chatToUpdate.type !== 'group' || chatToUpdate.createdByUserId !== currentUser.id) {
-        toast({ title: "Aksi Gagal", description: "Anda tidak memiliki izin untuk mengeluarkan pengguna dari grup ini.", variant: "destructive" });
+        toast({ title: "Hapus gagal", description: "Anda tidak memiliki izin untuk mengeluarkan pengguna dari grup ini.", variant: "destructive" });
         return prevChats;
       }
       if (participantIdToRemove === currentUser.id) {
-        toast({ title: "Aksi Gagal", description: "Anda tidak dapat mengeluarkan diri sendiri dari grup.", variant: "destructive" });
+        toast({ title: "Hapus gagal", description: "Anda tidak dapat mengeluarkan diri sendiri dari grup.", variant: "destructive" });
         return prevChats;
       }
 
@@ -926,7 +926,7 @@ export default function ChatPage() {
             delete newAllMessages[chatId];
             return newAllMessages;
         });
-        toast({ title: "Grup Ditinggalkan & Dihapus", description: `Anda keluar dari grup "${chatBeingLeft.name}", dan grup tersebut telah dihapus karena kosong.` });
+        toast({ title: "Grup ditinggalkan & dihapus", description: `Anda keluar dari grup "${chatBeingLeft.name}", dan grup tersebut telah dihapus karena kosong.` });
     } else if (chatBeingLeft) {
         toast({ title: "Keluar Grup Berhasil", description: `Anda telah keluar dari grup "${chatBeingLeft.name}".` });
     }
@@ -1008,8 +1008,8 @@ export default function ChatPage() {
 
   if (!currentUser) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <AuthPage onLogin={handleLogin} onRegister={handleRegister} />
+      <div className="flex flex-col items-center justify-center min-h-screen">
+         <AuthPage onLogin={handleLogin} onRegister={handleRegister} />
       </div>
     );
   }
@@ -1022,8 +1022,8 @@ export default function ChatPage() {
           <SidebarHeader className="p-0">
              <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
                 <div className="flex items-center gap-2 shrink-0 mr-2">
-                    <AppLogo className="h-7 w-7" data-ai-hint="app logo"/>
-                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">Ngecet</h1>
+                    <AppLogo className="h-7 w-7" />
+                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">SimplicChat</h1>
                 </div>
                 <div className="flex items-center gap-2">
                     {currentUser && (
@@ -1099,7 +1099,7 @@ export default function ChatPage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
                   <Trash2 className="mr-2 h-4 w-4" />
-                  <span>Logout & Hapus Data</span>
+                  <span>Keluar & Hapus Data</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1165,14 +1165,14 @@ export default function ChatPage() {
         onCreateChat={handleCreateGroupChat}
         currentUserObj={currentUser}
         initialMemberName={groupDialogInitialMemberName}
-        chats={chats}
+        // chats={chats} // No longer needed for simple input
       />
       <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}
         onOpenChange={setIsAddUserToGroupDialogOpen}
         onAddUser={handleAddNewUserToGroup}
         currentUserObj={currentUser}
-        chats={chats}
+        // chats={chats} // No longer needed for simple input
       />
        <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
         <AlertDialogContent>
@@ -1197,15 +1197,15 @@ export default function ChatPage() {
       <AlertDialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-muted-foreground pt-2">
-              Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
+            <AlertDialogTitle>Tentang SimplicChat</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-6">
+              SimplicChat adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
               Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
               Dibangun dengan Next.js, React, ShadCN UI, Tailwind CSS, dan Genkit.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex items-center justify-center mt-4">
-            <AppLogo className="h-10 w-10" data-ai-hint="app logo"/>
+            <AppLogo className="h-10 w-10" />
           </div>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setIsAboutDialogOpen(false)}>OK</AlertDialogAction>

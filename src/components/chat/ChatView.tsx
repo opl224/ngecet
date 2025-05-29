@@ -377,9 +377,10 @@ export function ChatView({
                     <DropdownMenuContent align="end">
                         {onGoBack && (
                             <DropdownMenuItem onClick={onGoBack} className="py-2">
-                                <span>Tutup Chat</span>
+                                <span>Tutup pesan</span>
                             </DropdownMenuItem>
                         )}
+                        <DropdownMenuSeparator/>
                         <DropdownMenuItem
                             onClick={() => onDeleteAllMessagesInChat(chat.id)}
                             className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
@@ -405,7 +406,6 @@ export function ChatView({
                                     </DropdownMenuItem>
                                 ) : (
                                     <DropdownMenuItem onClick={() => onBlockUser && onBlockUser(chat.id)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2">
-                                        <ShieldAlert className="mr-2 h-4 w-4" />
                                         <span>Blokir Pengguna</span>
                                     </DropdownMenuItem>
                                 )}
@@ -533,7 +533,6 @@ export function ChatView({
                             onClick={() => onLeaveGroup(chat.id)}
                             size="sm"
                         >
-                            <LogOut className="mr-2 h-4 w-4" />
                             Keluar Grup
                         </Button>
                     </div>
@@ -546,8 +545,7 @@ export function ChatView({
                             onClick={() => onTriggerDeleteGroup(chat.id)}
                             size="sm"
                         >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Hapus Grup Ini
+                            Hapus Grup
                         </Button>
                     </div>
                 )}
