@@ -355,14 +355,13 @@ export default function ChatPage() {
 
     const groupInitial = groupName.substring(0,1).toUpperCase() || 'G';
     const chatId = `group_${groupName.replace(/\s+/g, "_")}_${Date.now()}`;
-    const now = Date.now();
-    const createdBy = currentUser.id;
+    const createdBy = currentUser.id; // Pembuat grup adalah currentUser
 
     const initialLastReadBy: Record<string, number> = {};
     const initialClearedTimestamp: Record<string, number> = {};
 
     finalMemberUsers.forEach(p => {
-        initialLastReadBy[p.id] = p.id === currentUser.id ? now : 0;
+        initialLastReadBy[p.id] = p.id === currentUser.id ? Date.now() : 0;
         initialClearedTimestamp[p.id] = 0;
     });
 
@@ -372,11 +371,11 @@ export default function ChatPage() {
       name: groupName,
       participants: finalMemberUsers,
       lastMessage: "Grup telah dibuat.",
-      lastMessageTimestamp: now,
+      lastMessageTimestamp: Date.now(),
       avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`,
       lastReadBy: initialLastReadBy,
       clearedTimestamp: initialClearedTimestamp,
-      createdByUserId: createdBy,
+      createdByUserId: createdBy, 
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
@@ -466,7 +465,6 @@ export default function ChatPage() {
           ...chat,
           lastMessage: "Aktivitas baru di " + chat.name, // Generic message
           lastMessageTimestamp: newMessage.timestamp,
-          // unreadCount is calculated dynamically now
          };
       }
       return chat;
@@ -1082,17 +1080,7 @@ export default function ChatPage() {
         <SidebarInset className="flex-1 flex flex-col">
            <div className="md:hidden p-2 border-b flex items-center">
              {!selectedChat && <SidebarTrigger />}
-             {selectedChat && (
-                <Button variant="ghost" size="icon" className="mr-1 shrink-0" onClick={handleGoBack}>
-                    <ArrowLeft className="h-5 w-5" />
-                    <span className="sr-only">Kembali</span>
-                </Button>
-             )}
-             {selectedChat && <span className="ml-2 font-semibold truncate max-w-[calc(100vw-120px)]">
-                {selectedChat.type === 'direct' && selectedChat.participants
-                    ? selectedChat.participants.find(p => p.id !== currentUser.id)?.name || 'Direct Chat'
-                    : selectedChat.name || 'Group Chat'}
-                </span>}
+             {/* ArrowLeft and Username removed for mobile when chat is selected */}
            </div>
           {selectedChat ? (
             <ChatView
@@ -1138,7 +1126,7 @@ export default function ChatPage() {
         onCreateChat={handleCreateGroupChat}
         currentUserObj={currentUser}
         initialMemberName={groupDialogInitialMemberName}
-        // chats={chats} // Removed as suggestions are handled locally now
+        chats={chats} 
       />
       <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}
@@ -1173,7 +1161,7 @@ export default function ChatPage() {
             <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
               Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
-              Fitur-fitur meliputi pesan langsung, grup chat dan penyimpanan lokal.
+              Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
             </AlertDialogDescription>
              <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
               Tech: Next.js, React, ShadCN UI, Tailwind CSS dan Genkit.
@@ -1216,3 +1204,6 @@ export default function ChatPage() {
 }
 
 
+
+
+    
