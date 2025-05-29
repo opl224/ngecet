@@ -101,7 +101,7 @@ export default function ChatPage() {
     const nameInitial = username.substring(0,1).toUpperCase() || 'U';
     const newUserProfile: User = {
       id: userId,
-      name: username,
+      name: username, // Use username as initial display name
       avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
       status: "Online"
     };
@@ -282,18 +282,14 @@ export default function ChatPage() {
   const handleCreateGroupChat = useCallback((groupName: string, memberDisplayNames: string[]) => {
     if (!currentUser) return;
 
-    const invalidMemberDisplayNames: string[] = [];
+    const invalidMemberMessages: string[] = [];
     const finalMemberUsers: User[] = [currentUser];
 
     for (const name of memberDisplayNames) {
         const memberId = name.toLowerCase().replace(/\s+/g, "_") || `user_member_${Date.now()}_${Math.random().toString(36).substring(2,7)}`;
 
-        if (memberId === currentUser.id) {
-            continue;
-        }
-        if (finalMemberUsers.find(u => u.id === memberId)) {
-            continue;
-        }
+        if (memberId === currentUser.id) continue;
+        if (finalMemberUsers.find(u => u.id === memberId)) continue;
         
         const potentialDirectChatIdParts = [currentUser.id, memberId].sort();
         const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
@@ -302,74 +298,53 @@ export default function ChatPage() {
         let reasonForInvalid = "";
         let canAdd = false;
         let userObjectToAdd: User | undefined = undefined;
+        
+        const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === name.toLowerCase() || ru.username.toLowerCase() === name.toLowerCase());
+        userObjectToAdd = registeredMember?.profile;
 
-        if (existingDirectChat) {
-            const foundUserInDirectChat = existingDirectChat.participants.find(p => p.id === memberId);
-            if (foundUserInDirectChat) {
-                userObjectToAdd = foundUserInDirectChat;
-            }
-
+        if (existingDirectChat && userObjectToAdd) {
             if (existingDirectChat.blockedByUser === currentUser.id) {
-                reasonForInvalid = `Anda telah memblokir ${name}`;
+                reasonForInvalid = `Anda telah memblokir ${name}.`;
             } else if (existingDirectChat.blockedByUser === memberId) {
-                reasonForInvalid = `${name} telah memblokir Anda`;
+                reasonForInvalid = `${name} telah memblokir Anda.`;
             } else if (existingDirectChat.pendingApprovalFromUserId === memberId) {
-                reasonForInvalid = `permintaan chat Anda kepada ${name} masih tertunda`;
+                reasonForInvalid = `Permintaan chat Anda kepada ${name} masih tertunda.`;
             } else if (existingDirectChat.pendingApprovalFromUserId === currentUser.id) {
-                reasonForInvalid = `Anda belum menerima permintaan chat dari ${name}`;
+                reasonForInvalid = `Anda belum menerima permintaan chat dari ${name}.`;
             } else if (existingDirectChat.isRejected) {
-                reasonForInvalid = `chat dengan ${name} sebelumnya ditolak`;
+                reasonForInvalid = `Chat langsung dengan ${name} sebelumnya ditolak.`;
             } else if (!existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected && !existingDirectChat.blockedByUser) {
                 canAdd = true;
             } else {
-                 reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}`;
+                 reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}.`;
             }
-        } else {
-             const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === name.toLowerCase() || ru.username.toLowerCase() === name.toLowerCase());
-            if (registeredMember) {
-                userObjectToAdd = registeredMember.profile;
-                reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}`;
-            } else {
-                reasonForInvalid = `Pengguna ${name} tidak ditemukan. Anda hanya dapat menambahkan pengguna yang ada di kontak Anda dan memiliki chat aktif.`;
-            }
+        } else if (userObjectToAdd) { // User exists but no direct chat
+            reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}. Harap mulai chat dan tunggu penerimaan.`;
+        } else { // User not found
+            reasonForInvalid = `Pengguna ${name} tidak ditemukan.`;
         }
 
         if(canAdd && userObjectToAdd) {
             finalMemberUsers.push(userObjectToAdd);
         } else if (reasonForInvalid) {
-            invalidMemberDisplayNames.push(reasonForInvalid);
+            invalidMemberMessages.push(reasonForInvalid);
         } else { 
-            const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === name.toLowerCase() || ru.username.toLowerCase() === name.toLowerCase());
-            if (registeredMember) {
-                userObjectToAdd = registeredMember.profile;
-                 reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}`;
-                invalidMemberDisplayNames.push(reasonForInvalid);
-            } else {
-                 reasonForInvalid = `Pengguna ${name} tidak ditemukan atau tidak memiliki chat aktif.`;
-                invalidMemberDisplayNames.push(reasonForInvalid);
-            }
+            // Fallback for unexpected cases, should ideally not be reached
+            invalidMemberMessages.push(`Tidak dapat memvalidasi pengguna ${name}.`);
         }
     }
 
-    if (invalidMemberDisplayNames.length > 0) {
+    if (invalidMemberMessages.length > 0) {
         toast({
             title: "Gagal Membuat Grup",
-            description: `Pengguna berikut tidak dapat ditambahkan: ${invalidMemberDisplayNames.join("; ")}. Pastikan Anda memiliki chat langsung yang aktif dan tidak terblokir dengan mereka.`,
+            description: `Pengguna berikut tidak dapat ditambahkan: ${invalidMemberMessages.join("; ")}.`,
             variant: "destructive",
             duration: 7000,
         });
         return;
     }
 
-    if (finalMemberUsers.length < 2 && memberDisplayNames.length > 0) { 
-        toast({
-            title: "Gagal Membuat Grup",
-            description: "Tidak ada anggota valid yang dapat ditambahkan.",
-            variant: "destructive",
-        });
-        return;
-    }
-     if (finalMemberUsers.length < 2) { 
+    if (finalMemberUsers.length < 2) { 
          toast({
             title: "Anggota Diperlukan",
             description: "Harap tambahkan minimal satu anggota lain yang valid.",
@@ -377,7 +352,6 @@ export default function ChatPage() {
         });
         return;
     }
-
 
     const groupInitial = groupName.substring(0,1).toUpperCase() || 'G';
     const chatId = `group_${groupName.replace(/\s+/g, "_")}_${Date.now()}`;
@@ -411,7 +385,9 @@ export default function ChatPage() {
   }, [currentUser, chats, setChats, setAllMessages, toast, registeredUsers]);
 
   const handleSelectChat = useCallback((chat: Chat) => {
-    if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
+    if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser === currentUser?.id) {
+      // Allow selection to show the unblock overlay in ChatView
+    } else if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
         // Handled by ChatView overlay
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
         toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
@@ -454,7 +430,6 @@ export default function ChatPage() {
       return;
     }
 
-
     const newMessage: Message = {
       id: `msg_${Date.now()}`,
       chatId: selectedChat.id,
@@ -484,12 +459,13 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
-      
+      // Update last message for other active chats to bring them to top (simulating activity)
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
          return {
           ...chat,
-          lastMessage: content,
+          lastMessage: "Aktivitas baru di " + chat.name, // Generic message
           lastMessageTimestamp: newMessage.timestamp,
+          // unreadCount is calculated dynamically now
          };
       }
       return chat;
@@ -684,6 +660,7 @@ export default function ChatPage() {
     );
     setIsDeleteAllMessagesConfirmOpen(false);
     setChatIdToDeleteAllMessagesFrom(null);
+    toast({ title: "Pesan Dihapus", description: "Semua pesan dalam chat ini telah dihapus dari tampilan Anda."});
   }, [currentUser, setChats, toast, chatIdToDeleteAllMessagesFrom]);
 
   const handleCancelDeleteAllMessages = useCallback(() => {
@@ -720,13 +697,12 @@ export default function ChatPage() {
 
     let userObjectToAdd: User | undefined = undefined;
     let reasonForInvalid = "";
+    
+    const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === userName.toLowerCase() || ru.username.toLowerCase() === userName.toLowerCase());
+    userObjectToAdd = registeredMember?.profile;
 
-    if (existingDirectChat) {
-        const foundUserInDirectChat = existingDirectChat.participants.find(p => p.id === newUserId);
-        if (foundUserInDirectChat) {
-            userObjectToAdd = foundUserInDirectChat;
-        }
 
+    if (existingDirectChat && userObjectToAdd) {
         if (existingDirectChat.blockedByUser === currentUser.id) {
             reasonForInvalid = `Anda telah memblokir ${userName}.`;
         } else if (existingDirectChat.blockedByUser === newUserId) {
@@ -738,21 +714,15 @@ export default function ChatPage() {
         } else if (existingDirectChat.isRejected) {
             reasonForInvalid = `chat langsung dengan ${userName} sebelumnya ditolak.`;
         } else if (!existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected && !existingDirectChat.blockedByUser) {
-            if (!userObjectToAdd) { 
-                const newUserInitial = userName.substring(0,1).toUpperCase() || 'N';
-                userObjectToAdd = { id: newUserId, name: userName, avatarUrl: `https://placehold.co/100x100.png?text=${newUserInitial}`, status: "Offline" };
-            }
+            // User is valid to add
         } else {
             reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${userName}.`;
         }
-    } else {
-        const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === userName.toLowerCase() || ru.username.toLowerCase() === userName.toLowerCase());
-        if (registeredMember) {
-            userObjectToAdd = registeredMember.profile;
-            reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${userName}. Harap mulai chat langsung dan tunggu penerimaan.`;
-        } else {
-            reasonForInvalid = `Pengguna ${userName} tidak ditemukan.`;
-        }
+    } else if (userObjectToAdd) { // User exists but no direct chat
+         reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${userName}. Harap mulai chat langsung dan tunggu penerimaan.`;
+    }
+     else { // User not found
+        reasonForInvalid = `Pengguna ${userName} tidak ditemukan.`;
     }
 
     if (reasonForInvalid) {
@@ -1029,7 +999,7 @@ export default function ChatPage() {
              <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
                 <div className="flex items-center gap-2 shrink-0 mr-2">
                     <AppLogo className="h-7 w-7" />
-                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">SimplicChat</h1>
+                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">Ngecet</h1>
                 </div>
                 <div className="flex items-center gap-2">
                     {currentUser && (
@@ -1094,7 +1064,7 @@ export default function ChatPage() {
                   </DropdownMenuPortal>
                 </DropdownMenuSub>
                 <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
-                    <span>Tentang Aplikasi</span>
+                    <span>Tentang aplikasi</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleLogout(false)}>
@@ -1167,6 +1137,7 @@ export default function ChatPage() {
         onCreateChat={handleCreateGroupChat}
         currentUserObj={currentUser}
         initialMemberName={groupDialogInitialMemberName}
+        // chats={chats} // Removed as suggestions are handled locally now
       />
       <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}
@@ -1198,11 +1169,16 @@ export default function ChatPage() {
       <AlertDialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Tentang SimplicChat</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-6">
-              SimplicChat adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
-              Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
-              Dibangun dengan Next.js, React, ShadCN UI, Tailwind CSS, dan Genkit.
+            <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
+              Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
+              Fitur-fitur meliputi pesan langsung, grup chat dan penyimpanan lokal.
+            </AlertDialogDescription>
+            <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
+              Tech: Next.js, React, ShadCN UI, Tailwind CSS dan Genkit.
+            </AlertDialogDescription>
+            <AlertDialogDescription className="text-sm text-muted-foreground font-semibold pt-4 pb-6">
+              Jika ada bug atau ui error, mon map masih tahap pengembangan!
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex items-center justify-center mt-4">
@@ -1237,3 +1213,4 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+
