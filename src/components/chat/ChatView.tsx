@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, X, AlertTriangle, Lock, PencilLine, Check, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, ShieldAlert, ShieldOff, Palette, Sun, Moon, Laptop, InfoIcon, Clock, ArrowLeft } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, X, AlertTriangle, Lock, Check, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, ShieldAlert, ShieldOff, InfoIcon, Clock, ArrowLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -35,10 +35,10 @@ interface ChatViewProps {
   messages: Message[];
   currentUser: User;
   onSendMessage: (content: string, replyToMessage?: Message | null) => void;
-  editingMessageDetails: Message | null; // Changed from propsEditingMessageDetails for clarity
+  editingMessageDetails: Message | null;
   onSaveEditedMessage: (messageId: string, newContent: string) => void;
   onRequestEditMessage: (messageToEdit: Message) => void;
-  onCancelEditMessage: () => void; // This will call handleCancelEditInInput from page.tsx
+  onCancelEditMessage: () => void;
   onDeleteMessage: (messageId: string, chatId: string) => void;
   onGoBack?: () => void;
   onTriggerDeleteAllMessages: (chatId: string) => void;
@@ -56,7 +56,7 @@ export function ChatView({
   messages,
   currentUser,
   onSendMessage,
-  editingMessageDetails: propsEditingMessageDetails, // Keep using propsEditingMessageDetails internally for clarity of prop origin
+  editingMessageDetails: propsEditingMessageDetails,
   onSaveEditedMessage,
   onRequestEditMessage,
   onCancelEditMessage,
@@ -85,8 +85,8 @@ export function ChatView({
 
 
   const handleCancelEditClick = useCallback(() => {
-    onCancelEditMessage(); // This calls ChatPage's handleCancelEditInInput, which sets editingMessageDetails to null
-    setNewMessage("");    // Clears the local input
+    onCancelEditMessage(); 
+    setNewMessage("");    
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -100,7 +100,6 @@ export function ChatView({
     }
   }, []);
 
-  // Effect for Escape key to cancel edit/reply or go back
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -121,7 +120,6 @@ export function ChatView({
   }, [propsEditingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
-  // Effect for handling message editing state (loading content to input, focusing, and cleaning up)
   useEffect(() => {
     if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
       if (replyingToMessage) { 
@@ -147,19 +145,15 @@ export function ChatView({
         }, 50); 
       }
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
-      // Editing for THIS chat has just ended (either saved or cancelled by parent)
-      if (!replyingToMessage) { // Only clear if not also in reply mode
-        setNewMessage(""); // Ensure input is cleared
-      }
-      if (messageInputRef.current) { // Reset height only if not replying
-          if (!replyingToMessage) messageInputRef.current.style.height = 'auto';
+      if (messageInputRef.current && !replyingToMessage ) {
+          setNewMessage(""); 
+          messageInputRef.current.style.height = 'auto';
       }
     }
     prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
   }, [propsEditingMessageDetails, chat.id, replyingToMessage]);
 
 
-  // Effect for handling chat switching (resetting input, focusing)
   useEffect(() => {
     const chatJustSwitched = prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id;
 
@@ -177,7 +171,7 @@ export function ChatView({
     const isChatEffectivelyActive = chat.type === 'group' || (!chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser));
 
     if (isChatEffectivelyActive && messageInputRef.current &&
-        (chatJustSwitched && !propsEditingMessageDetails && !replyingToMessage)) { // Focus only if chat switched AND not starting in edit/reply
+        (chatJustSwitched && !propsEditingMessageDetails && !replyingToMessage)) { 
       setTimeout(() => {
         messageInputRef.current?.focus();
       }, 50);
@@ -186,7 +180,6 @@ export function ChatView({
   }, [chat.id, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage, chat.type, chat.pendingApprovalFromUserId, chat.isRejected, chat.blockedByUser]);
 
 
-  // Effect for auto-scrolling to the bottom
   useEffect(() => {
     if (viewportRef.current) {
       setTimeout(() => {
@@ -201,34 +194,43 @@ export function ChatView({
   }, [messages, chat.id]); 
 
 
-  const getChatDisplayDetails = useMemo(() => {
+  const displayDetails = useMemo(() => {
+    const MAX_NAME_LENGTH = 10;
+    let nameToDisplay: string;
+    let avatarUrlToDisplay: string | undefined;
+    let IconComponent: React.ElementType = UserIcon;
+    let descriptionText: string;
+    let statusText: string | null = null;
+    let otherParticipantObject: User | undefined = undefined;
+
     if (chat.type === "direct") {
-      const otherParticipant = chat.participants?.find(p => p.id !== currentUser.id);
-      const otherParticipantName = otherParticipant?.name || "Direct Chat";
-      const otherParticipantAvatar = otherParticipant?.avatarUrl || chat.avatarUrl;
-      const otherParticipantStatus = otherParticipant?.status || "Offline";
-      return {
-        name: otherParticipantName,
-        avatarUrl: otherParticipantAvatar,
-        Icon: UserIcon,
-        description: `Status: ${otherParticipantStatus}`,
-        status: otherParticipantStatus,
-        otherParticipantObject: otherParticipant
-      };
+      otherParticipantObject = chat.participants?.find(p => p.id !== currentUser.id);
+      nameToDisplay = otherParticipantObject?.name || "Direct Chat";
+      avatarUrlToDisplay = otherParticipantObject?.avatarUrl || chat.avatarUrl;
+      statusText = otherParticipantObject?.status || "Offline";
+      descriptionText = `Status: ${statusText}`;
     } else {
-      const groupName = chat.name || "Unnamed Group";
-      return {
-        name: groupName,
-        avatarUrl: chat.avatarUrl,
-        Icon: Users,
-        description: `Grup • ${chat.participants?.length || 0} anggota`,
-        status: null,
-        otherParticipantObject: undefined
-      };
+      nameToDisplay = chat.name || "Unnamed Group";
+      avatarUrlToDisplay = chat.avatarUrl;
+      IconComponent = Users;
+      descriptionText = `Grup • ${chat.participants?.length || 0} anggota`;
     }
+
+    if (nameToDisplay.length > MAX_NAME_LENGTH) {
+      nameToDisplay = nameToDisplay.substring(0, MAX_NAME_LENGTH) + "...";
+    }
+
+    return {
+      name: nameToDisplay,
+      avatarUrl: avatarUrlToDisplay,
+      Icon: IconComponent,
+      description: descriptionText,
+      status: statusText,
+      otherParticipantObject
+    };
   }, [chat, currentUser.id]);
 
-  const displayDetails = getChatDisplayDetails;
+
   const isChatEffectivelyBlocked = chat.type === 'direct' &&
                                  (chat.blockedByUser === currentUser.id ||
                                   (chat.blockedByUser && chat.blockedByUser !== currentUser.id));
@@ -246,7 +248,7 @@ export function ChatView({
               <div className="flex flex-col items-center">
                 <p className="mb-3">{`Anda telah memblokir ${otherUserName}.`}</p>
                 <Button onClick={() => onUnblockUser(chat.id)} variant="outline" size="sm" className="text-green-600 border-green-500 hover:bg-green-500/10 hover:text-green-700 focus:border-green-600 focus:bg-green-500/10">
-                  <ShieldOff className="mr-2 h-4 w-4" /> Buka Blokir
+                  <ShieldOff className="mr-2 h-4 w-4" /> Buka Blokir Pengguna
                 </Button>
               </div>
             ),
@@ -289,16 +291,14 @@ export function ChatView({
     if (newMessage.trim()) {
       if (propsEditingMessageDetails) {
         onSaveEditedMessage(propsEditingMessageDetails.id, newMessage.trim());
-        // Parent (ChatPage) will set its editingMessageDetails to null,
-        // which will flow down as propsEditingMessageDetails, triggering useEffect to clear UI.
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
         if (replyingToMessage !== null) setReplyingToMessage(null);
       }
-      setNewMessage(""); // Clear the input after send or save attempt
+      setNewMessage(""); 
 
       if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto'; // Reset textarea height
+        messageInputRef.current.style.height = 'auto'; 
       }
     }
   };
@@ -377,7 +377,8 @@ export function ChatView({
                       ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline"))
                         : (chat.blockedByUser === currentUser.id ? "Anda memblokir pengguna ini" : "Tidak aktif")
                       )
-                      : `Grup • ${chat.participants?.length || 0} anggota`}
+                      : displayDetails.description 
+                    }
                   </p>
                 </div>
               </div>
@@ -394,16 +395,16 @@ export function ChatView({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        {onGoBack && !isMobile && ( // Only show "Close Chat" on desktop if onGoBack is provided
+                        {onGoBack && !isMobile && ( 
                             <DropdownMenuItem onClick={onGoBack} className="py-2">
-                                <span>Tutup pesan</span>
+                                <span>Tutup Chat</span>
                             </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
                             onClick={() => onTriggerDeleteAllMessages(chat.id)}
                             className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
                         >
-                            <span>Hapus semua pesan</span>
+                            <span>Hapus Semua Pesan</span>
                         </DropdownMenuItem>
 
                          {chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerDeleteGroup && (
@@ -411,7 +412,7 @@ export function ChatView({
                                onClick={() => onTriggerDeleteGroup(chat.id)}
                                className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
                              >
-                               <span>Hapus grup ini</span>
+                               <span>Hapus Grup Ini</span>
                              </DropdownMenuItem>
                          )}
 
@@ -464,7 +465,7 @@ export function ChatView({
                 </Avatar>
                 <DialogTitle className="text-2xl">{displayDetails.name}</DialogTitle>
                  <DialogDescription className="text-base">
-                    {`Grup • ${chat.participants?.length || 0} anggota`}
+                    {displayDetails.description}
                 </DialogDescription>
               </div>
             ) : null}
@@ -643,12 +644,14 @@ export function ChatView({
             <div className="truncate flex-1 min-w-0 pr-2">
               {propsEditingMessageDetails ? (
                 <>
+                  <PencilLine className="inline h-4 w-4 mr-1.5" />
                   <p className="truncate text-xs inline">
                     {propsEditingMessageDetails.content.length > 70 ? propsEditingMessageDetails.content.substring(0, 70) + "..." : propsEditingMessageDetails.content}
                   </p>
                 </>
               ) : replyingToMessage && (
                 <>
+                  <UserIcon className="inline h-4 w-4 mr-1.5" />
                   {replyingToMessage.senderName}
                   <br/>
                   <p className="truncate text-xs inline">
@@ -703,3 +706,5 @@ export function ChatView({
     </div>
   );
 }
+
+    
