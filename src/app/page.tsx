@@ -166,12 +166,11 @@ export default function ChatPage() {
                         ? updatedCurrentUser
                         : p
                 ),
-                // Update chat name/avatar if it's a direct chat *where the other person's details were based on the old current user's name*
-                // This is less common, usually direct chat name/avatar is of the *other* participant.
-                // For group chats, if the group avatar was derived from the creator's initial, it won't auto-update here.
-                // For simplicity, we focus on participant list updates.
-                ...(chat.type === 'direct' && chat.name === currentUser.name && chat.participants.length === 2 && chat.participants.some(p => p.id !== currentUser.id)
-                    ? { name: updatedCurrentUser.name, avatarUrl: updatedCurrentUser.avatarUrl }
+                ...(chat.type === 'direct' && chat.participants.length === 2 && chat.participants.some(p => p.id !== currentUser.id)
+                    ? { 
+                        name: chat.participants.find(p => p.id !== updatedCurrentUser.id)?.name || updatedCurrentUser.name, // Keep other person's name if it's their name
+                        avatarUrl: chat.participants.find(p => p.id !== updatedCurrentUser.id)?.avatarUrl || updatedCurrentUser.avatarUrl
+                      }
                     : {}),
             }))
         );
@@ -222,10 +221,6 @@ export default function ChatPage() {
         // Handled by ChatView overlay
       } else if (existingChat.pendingApprovalFromUserId === currentUser.id) {
         toast({ title: "Permintaan Tertunda", description: `Anda memiliki permintaan chat dari ${recipientUser.name}. Terima atau tolak dari daftar chat.` });
-      } else if (existingChat.pendingApprovalFromUserId) {
-        // toast({ title: "Permintaan Terkirim", description: `Anda sudah mengirim permintaan ke ${recipientUser.name}. Menunggu respon.` });
-      } else if (existingChat.isRejected) {
-         // toast({ title: "Chat Ditolak", description: `Permintaan chat dengan ${recipientUser.name} sebelumnya ditolak.` });
       }
       return;
     }
@@ -234,7 +229,7 @@ export default function ChatPage() {
       id: chatId,
       type: "direct",
       participants: participantsArray,
-      name: recipientUser.name,
+      name: recipientUser.name, // For display in ChatItem if current user is viewing
       avatarUrl: recipientUser.avatarUrl,
       pendingApprovalFromUserId: recipientUser.id,
       isRejected: false,
@@ -388,7 +383,7 @@ export default function ChatPage() {
         return;
     }
 
-    if (finalMemberUsers.length < 2) {
+    if (finalMemberUsers.length < 2) { // Should be at least 2 (creator + 1 member)
          toast({
             title: "Anggota Diperlukan",
             description: "Harap tambahkan minimal satu anggota lain yang valid.",
@@ -428,18 +423,6 @@ export default function ChatPage() {
   }, [currentUser, chats, setChats, setAllMessages, toast, registeredUsers]);
 
   const handleSelectChat = useCallback((chat: Chat) => {
-    if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser === currentUser?.id) {
-      // Allow selection to show the unblock overlay in ChatView
-    } else if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
-        // Handled by ChatView overlay
-    } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
-        // toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
-    } else if (chat.isRejected) {
-        // const rejecterName = chat.rejectedByUserId === currentUser?.id ? "Anda" : chat.participants.find(p => p.id === chat.rejectedByUserId)?.name || "Pengguna lain";
-        // const rejectedTargetName = chat.rejectedByUserId === currentUser?.id ? (chat.participants.find(p => p.id !== currentUser?.id)?.name || "Pengguna lain") : "Anda";
-        // toast({ title: "Chat Ditolak", description: `${rejecterName} telah menolak permintaan dengan ${rejectedTargetName}.`, variant: "destructive"});
-    }
-
     setSelectedChat(chat);
     if (currentUser && chat.id) {
       setChats(prevChats =>
@@ -500,13 +483,11 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
-      // Update last message info for other active chats to ensure correct sorting and unread calculation trigger
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser)) {
          return {
           ...chat,
-          lastMessage: "Aktivitas baru di " + chat.name, // Generic message or actual content if needed
+          lastMessage: "Aktivitas baru di " + chat.name,
           lastMessageTimestamp: newMessage.timestamp,
-          // Do not update lastReadBy for other chats here
          };
       }
       return chat;
@@ -843,19 +824,25 @@ export default function ChatPage() {
   const handleRemoveParticipantFromGroup = useCallback((chatId: string, participantIdToRemove: string) => {
     if (!currentUser) return;
 
+    let toastMessageContent: string | null = null;
+    let chatToSelectAfterUpdate: Chat | null = null;
+
     setChats(prevChats => {
       const chatToUpdate = prevChats.find(c => c.id === chatId);
       if (!chatToUpdate || chatToUpdate.type !== 'group' || chatToUpdate.createdByUserId !== currentUser.id) {
+        // This toast is an early exit, fine here as it's before the main state update path
         toast({ title: "Hapus gagal", description: "Anda tidak memiliki izin untuk mengeluarkan pengguna dari grup ini.", variant: "destructive" });
         return prevChats;
       }
       if (participantIdToRemove === currentUser.id) {
+        // This toast is an early exit, fine here
         toast({ title: "Hapus gagal", description: "Anda tidak dapat mengeluarkan diri sendiri dari grup.", variant: "destructive" });
         return prevChats;
       }
 
       const participantToRemove = chatToUpdate.participants.find(p => p.id === participantIdToRemove);
       if (!participantToRemove) {
+        // This toast is an early exit, fine here
         toast({ title: "Error", description: "Pengguna tidak ditemukan di grup.", variant: "destructive" });
         return prevChats;
       }
@@ -870,8 +857,8 @@ export default function ChatPage() {
 
       const now = Date.now();
       const removalMessage = `${participantToRemove.name} telah dikeluarkan dari grup.`;
-
-      toast({ title: "Pengguna Dikeluarkan", description: removalMessage });
+      
+      toastMessageContent = removalMessage; // Set for toast outside
 
       const updatedChat = {
         ...chatToUpdate,
@@ -883,12 +870,20 @@ export default function ChatPage() {
       };
 
       if (selectedChat?.id === chatId) {
-        setSelectedChat(updatedChat);
+        chatToSelectAfterUpdate = updatedChat; // Set for setSelectedChat outside
       }
 
       return prevChats.map(c => c.id === chatId ? updatedChat : c)
                       .sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
+
+    if (toastMessageContent) {
+      toast({ title: "Pengguna Dikeluarkan", description: toastMessageContent });
+    }
+    if (chatToSelectAfterUpdate) {
+      setSelectedChat(chatToSelectAfterUpdate);
+    }
+
   }, [currentUser, setChats, toast, selectedChat]);
 
   const handleLeaveGroup = useCallback((chatId: string) => {
@@ -896,13 +891,17 @@ export default function ChatPage() {
 
     let chatBeingLeft: Chat | undefined;
     let isGroupDeleted = false;
+    let groupNameForToast = "Grup";
+
 
     setChats(prevChats => {
         chatBeingLeft = prevChats.find(c => c.id === chatId);
         if (!chatBeingLeft || chatBeingLeft.type !== 'group') {
+            // This toast is an early exit, fine
             toast({ title: "Error", description: "Grup tidak ditemukan.", variant: "destructive" });
             return prevChats;
         }
+        groupNameForToast = chatBeingLeft.name || "Grup";
 
         const updatedParticipants = chatBeingLeft.participants.filter(p => p.id !== currentUser.id);
 
@@ -934,15 +933,15 @@ export default function ChatPage() {
         ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
 
-    if (isGroupDeleted && chatBeingLeft) {
+    if (isGroupDeleted) { // chatBeingLeft will be defined if isGroupDeleted is true
         setAllMessages(prevAllMessages => {
             const newAllMessages = { ...prevAllMessages };
             delete newAllMessages[chatId];
             return newAllMessages;
         });
-        toast({ title: "Grup ditinggalkan & dihapus", description: `Anda keluar dari grup "${chatBeingLeft.name}", dan grup tersebut telah dihapus karena kosong.` });
-    } else if (chatBeingLeft) {
-        toast({ title: "Keluar Grup Berhasil", description: `Anda telah keluar dari grup "${chatBeingLeft.name}".` });
+        toast({ title: "Grup ditinggalkan & dihapus", description: `Anda keluar dari grup "${groupNameForToast}", dan grup tersebut telah dihapus karena kosong.` });
+    } else if (chatBeingLeft) { // If not deleted, but successfully left
+        toast({ title: "Keluar Grup Berhasil", description: `Anda telah keluar dari grup "${groupNameForToast}".` });
     }
 
     if (selectedChat?.id === chatId) {
@@ -965,21 +964,29 @@ export default function ChatPage() {
     }
     const otherParticipant = chatToBlock.participants.find(p => p.id !== currentUser.id);
     const otherParticipantName = otherParticipant?.name || "Pengguna";
+    let updatedChatForSelection: Chat | null = null;
 
-    setChats(prev => prev.map(c => {
-        if (c.id === chatId) {
-            return {
-                ...c,
-                blockedByUser: currentUser.id,
-                lastMessage: `Anda memblokir ${otherParticipantName}.`,
-                lastMessageTimestamp: Date.now()
-            };
-        }
-        return c;
-    }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
-
-    if (selectedChat?.id === chatId) {
-        setSelectedChat(prev => prev ? {...prev, blockedByUser: currentUser.id, lastMessage: `Anda memblokir ${otherParticipantName}.`, lastMessageTimestamp: Date.now()} : null);
+    setChats(prev => {
+        const newChats = prev.map(c => {
+            if (c.id === chatId) {
+                const updatedVersion = {
+                    ...c,
+                    blockedByUser: currentUser.id,
+                    lastMessage: `Anda memblokir ${otherParticipantName}.`,
+                    lastMessageTimestamp: Date.now()
+                };
+                if(selectedChat?.id === chatId) {
+                    updatedChatForSelection = updatedVersion;
+                }
+                return updatedVersion;
+            }
+            return c;
+        }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
+        return newChats;
+    });
+    
+    if (updatedChatForSelection) {
+        setSelectedChat(updatedChatForSelection);
     }
     toast({ title: "Pengguna Diblokir", description: `Anda telah memblokir ${otherParticipantName}.` });
   }, [currentUser, chats, selectedChat, setChats, toast]);
@@ -992,21 +999,29 @@ export default function ChatPage() {
     }
     const otherParticipant = chatToUnblock.participants.find(p => p.id !== currentUser.id);
     const otherParticipantName = otherParticipant?.name || "Pengguna";
+    let updatedChatForSelection: Chat | null = null;
 
-    setChats(prev => prev.map(c => {
-        if (c.id === chatId) {
-            return {
-                ...c,
-                blockedByUser: undefined,
-                lastMessage: `Anda membuka blokir ${otherParticipantName}.`,
-                lastMessageTimestamp: Date.now()
-            };
-        }
-        return c;
-    }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
+    setChats(prev => {
+        const newChats = prev.map(c => {
+            if (c.id === chatId) {
+                 const updatedVersion = {
+                    ...c,
+                    blockedByUser: undefined,
+                    lastMessage: `Anda membuka blokir ${otherParticipantName}.`,
+                    lastMessageTimestamp: Date.now()
+                };
+                if(selectedChat?.id === chatId) {
+                    updatedChatForSelection = updatedVersion;
+                }
+                return updatedVersion;
+            }
+            return c;
+        }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
+        return newChats;
+    });
 
-    if (selectedChat?.id === chatId) {
-        setSelectedChat(prev => prev ? {...prev, blockedByUser: undefined, lastMessage: `Anda membuka blokir ${otherParticipantName}.`, lastMessageTimestamp: Date.now()} : null);
+    if (updatedChatForSelection) {
+        setSelectedChat(updatedChatForSelection);
     }
     toast({ title: "Blokir Dibuka", description: `Anda telah membuka blokir ${otherParticipantName}.` });
   }, [currentUser, chats, selectedChat, setChats, toast]);
@@ -1037,7 +1052,7 @@ export default function ChatPage() {
              <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
                 <div className="flex items-center gap-2 shrink-0 mr-2">
                     <AppLogo className="h-7 w-7" />
-                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">Ngecet</h1>
+                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">SimplicChat</h1>
                 </div>
                 <div className="flex items-center gap-2">
                     <UserProfileForm
@@ -1045,7 +1060,7 @@ export default function ChatPage() {
                         onSaveProfile={handleSaveProfile}
                         displayMode="compact"
                     />
-                    <div className="md:hidden">
+                    <div className="md:hidden"> {/* Theme toggle for mobile */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
@@ -1095,7 +1110,7 @@ export default function ChatPage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground">
                   <Settings className="h-4 w-4" />
-                  Pengaturan &amp; Akun
+                  Pengaturan & Akun
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" sideOffset={isMobileView ? 8 : 4} side={isMobileView ? "top" : "right"}>
@@ -1104,7 +1119,7 @@ export default function ChatPage() {
                     <span>Tentang aplikasi</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <div className="hidden md:block">
+                <div className="hidden md:block"> {/* Theme toggle for desktop */}
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
                       <Palette className="mr-2 h-4 w-4" />
@@ -1135,7 +1150,7 @@ export default function ChatPage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
                   <Trash2 className="mr-2 h-4 w-4" />
-                  <span>Keluar &amp; Hapus Data</span>
+                  <span>Keluar & Hapus Data</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1223,9 +1238,9 @@ export default function ChatPage() {
       <AlertDialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
+            <AlertDialogTitle>Tentang SimplicChat</AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
-              Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
+              SimplicChat adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
               Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
             </AlertDialogDescription>
              <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
@@ -1267,4 +1282,5 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
- 
+
+
