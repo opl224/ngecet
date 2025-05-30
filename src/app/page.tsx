@@ -56,7 +56,7 @@ const LS_REGISTERED_USERS_KEY = "ngecet_registered_users";
 
 export default function ChatPage() {
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
+  // const { theme, setTheme } = useTheme(); // Theme switching temporarily disabled
 
   const [currentUser, setCurrentUser] = useLocalStorage<User | null>(LS_USER_KEY, null);
 
@@ -1212,7 +1212,7 @@ export default function ChatPage() {
                         displayMode="compact"
                         userEmail={currentUserEmailForProfile}
                     />
-                    <div className="md:hidden">
+                    {/* <div className="md:hidden">
                         <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
@@ -1235,7 +1235,7 @@ export default function ChatPage() {
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                         </DropdownMenu>
-                    </div>
+                    </div> */}
                 </div>
               </div>
             </SidebarHeader>
@@ -1272,7 +1272,7 @@ export default function ChatPage() {
                     <span>Tentang aplikasi</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <div className="hidden md:block">
+                  {/* <div className="hidden md:block">
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>
                         <Palette className="mr-2 h-4 w-4" />
@@ -1296,7 +1296,7 @@ export default function ChatPage() {
                       </DropdownMenuPortal>
                     </DropdownMenuSub>
                     <DropdownMenuSeparator />
-                  </div>
+                  </div> */}
                   <DropdownMenuItem onClick={() => handleLogout(false)}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Keluar (Simpan Data)</span>
@@ -1374,7 +1374,8 @@ export default function ChatPage() {
                         displayMode="compact"
                         userEmail={currentUserEmailForProfile}
                     />
-                    <div className="hidden md:block">
+                    {/* Theme button for desktop view - REMOVED */}
+                    {/* <div className="hidden md:block">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
@@ -1397,8 +1398,9 @@ export default function ChatPage() {
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                    </div>
-                     <div className="md:hidden">
+                    </div> */}
+                     {/* Theme button for desktop view but small screens - REMOVED */}
+                     {/* <div className="md:hidden">
                         <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
@@ -1421,7 +1423,7 @@ export default function ChatPage() {
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                         </DropdownMenu>
-                    </div>
+                    </div> */}
                 </div>
              </div>
           </SidebarHeader>
@@ -1458,7 +1460,7 @@ export default function ChatPage() {
                     <span>Tentang aplikasi</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                 <div className="hidden md:block">
+                 {/* <div className="hidden md:block">
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
                         <Palette className="mr-2 h-4 w-4" />
@@ -1482,7 +1484,7 @@ export default function ChatPage() {
                         </DropdownMenuPortal>
                     </DropdownMenuSub>
                     <DropdownMenuSeparator />
-                  </div>
+                  </div> */}
                 <DropdownMenuItem onClick={() => handleLogout(false)}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Keluar (Simpan Data)</span>
