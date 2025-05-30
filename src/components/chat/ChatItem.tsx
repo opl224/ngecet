@@ -37,7 +37,7 @@ export function ChatItem({
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
       const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
-      const nameForDisplay = otherParticipant?.name || ""; 
+      const nameForDisplay = otherParticipant?.name || "";
       const avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
       const initials = (nameForDisplay ? nameForDisplay.substring(0, 2) : "??").toUpperCase();
       return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials, Icon: UserIcon, otherParticipantStatus: otherParticipant?.status };
@@ -57,7 +57,7 @@ export function ChatItem({
 
   let statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
   let showAcceptRejectActions = false;
-  let showDeleteActionForRejected = false;
+  let showDeleteAction = false;
   let specialStatusText: string | null = null;
   const calculatedUnreadCount = chat.calculatedUnreadCount || 0;
   let showPendingClockIcon = false;
@@ -73,7 +73,7 @@ export function ChatItem({
       statusTimestamp = chat.requestTimestamp;
       showAcceptRejectActions = true;
       specialStatusText = "Permintaan chat baru";
-    } else if (chat.pendingApprovalFromUserId) { 
+    } else if (chat.pendingApprovalFromUserId) {
       showPendingClockIcon = true;
       statusTimestamp = chat.requestTimestamp;
     } else if (chat.isRejected) {
@@ -83,7 +83,7 @@ export function ChatItem({
         specialStatusText = null; 
       }
       statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
-      showDeleteActionForRejected = true;
+      showDeleteAction = true; 
     }
   }
 
@@ -93,8 +93,8 @@ export function ChatItem({
 
   const handleItemClick = () => {
     if (isClickDisabled) return;
-    // For pending requests TO the current user, clicking item still opens chat.
-    // Actions (accept/reject) are separate.
+    // Allow clicking on pending requests to open the chat view, 
+    // actual accept/reject is handled by dedicated buttons.
     onSelectChat(chat);
     if (isMobile) {
       setOpenMobile(false);
@@ -118,20 +118,19 @@ export function ChatItem({
      statusMessageToDisplay = "Mulai percakapan";
   }
 
+
   return (
     <div
       onClick={handleItemClick}
       className={cn(
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        isClickDisabled && "opacity-70 cursor-not-allowed"
+        isClickDisabled && "opacity-70 cursor-not-allowed",
+        !isClickDisabled && "cursor-pointer"
       )}
     >
       <div
-        className={cn(
-            "w-full flex items-center space-x-3",
-            !isClickDisabled && "cursor-pointer" 
-        )}
+        className={cn( "w-full flex items-center space-x-3" )}
       >
         <Avatar className="h-10 w-10">
           <AvatarImage src={avatarUrl} alt={name || 'Chat Avatar'} data-ai-hint={chat.type === 'group' ? 'group people' : 'person abstract'}/>
@@ -142,16 +141,16 @@ export function ChatItem({
         <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex justify-between items-center">
             {/* Container for name and optional icons (clock, shield) - this will take available space and allow truncation */}
-            <div className="flex items-center flex-1 min-w-0 mr-2"> {/* Added flex-1 and mr-2 */}
+            <div className="flex items-center flex-1 min-w-0 mr-2 overflow-hidden"> {/* Added overflow-hidden here */}
               {showPendingClockIcon && !chat.isRejected && (
                 <Clock className="h-4 w-4 mr-1.5 text-sidebar-foreground/70 shrink-0" />
               )}
-              {(chat.type === 'direct' && chat.blockedByUser === currentUser.id) && <ShieldAlert className="h-4 w-4 mr-1.5 shrink-0" />}
+              {(chat.type === 'direct' && chat.blockedByUser === currentUser.id) && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
               <h4 className={cn(
                   "font-semibold text-sm truncate", 
                   chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
                   (chat.type === 'direct' && chat.isRejected) && "text-destructive",
-                  (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive flex items-center"
+                  (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
                 )}
               >
                 {name}
@@ -185,7 +184,7 @@ export function ChatItem({
                     </div>
                   );
                 }
-                if (showDeleteActionForRejected) {
+                if (showDeleteAction) { 
                   return (
                     <Button
                       size="icon"
@@ -205,26 +204,31 @@ export function ChatItem({
                     </Badge>
                   );
                 }
-                if (statusTimestamp && !specialStatusText) {
-                  if (chat.type === 'direct' && !chat.blockedByUser && !showAcceptRejectActions && !showPendingClockIcon && !chat.isRejected && calculatedUnreadCount === 0) {
-                      const status = otherParticipantStatus || "Offline";
-                      const isOnline = status === "Online";
-                      return (
-                        <div className="flex items-center space-x-1.5 shrink-0">
-                          <span className={cn(
-                            "h-2 w-2 rounded-full block",
-                            isOnline ? "bg-green-500" : "bg-sidebar-foreground/30"
-                          )}></span>
-                          <span className="text-xs text-sidebar-foreground/70">{status}</span>
-                        </div>
-                      );
-                  }
-                  if (chat.type === 'group' || (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) || (chat.type === 'direct' && !chat.isRejected && !chat.pendingApprovalFromUserId && !chat.blockedByUser && calculatedUnreadCount === 0)) {
-                      return (
-                          <span className="text-xs text-sidebar-foreground/60 shrink-0">
-                            {formatDistanceToNowStrict(new Date(statusTimestamp), { locale: idLocale, addSuffix: true })}
-                          </span>
-                        );
+                
+                if (chat.type === 'direct' && calculatedUnreadCount === 0 && !specialStatusText && !chat.blockedByUser && !showAcceptRejectActions && !showPendingClockIcon && !chat.isRejected) {
+                  const status = otherParticipantStatus || "Offline";
+                  const isOnline = status === "Online";
+                  return (
+                    <div className="flex items-center space-x-1.5 shrink-0">
+                      <span className={cn(
+                        "h-2 w-2 rounded-full block",
+                        isOnline ? "bg-green-500" : "bg-sidebar-foreground/30"
+                      )}></span>
+                      <span className="text-xs text-sidebar-foreground/70">{status}</span>
+                    </div>
+                  );
+                }
+                
+                if (statusTimestamp && !specialStatusText && (chat.type === 'group' || (chat.type === 'direct' && !showAcceptRejectActions && !chat.blockedByUser ))) {
+                  // Avoid double rendering timestamp if online/offline is shown for direct chats
+                  const shouldShowTimestampForDirect = !(chat.type === 'direct' && calculatedUnreadCount === 0 && !specialStatusText && !chat.blockedByUser && !showAcceptRejectActions && !showPendingClockIcon && !chat.isRejected);
+                  
+                  if (chat.type === 'group' || (chat.type === 'direct' && shouldShowTimestampForDirect)) {
+                     return (
+                        <span className="text-xs text-sidebar-foreground/60 shrink-0">
+                           {formatDistanceToNowStrict(new Date(statusTimestamp), { locale: idLocale, addSuffix: true })}
+                        </span>
+                     );
                   }
                 }
                 return null;
@@ -242,3 +246,4 @@ export function ChatItem({
   );
 }
 
+    
