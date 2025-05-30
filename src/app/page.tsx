@@ -146,7 +146,7 @@ export default function ChatPage() {
         updatedProfile.avatarUrl = `https://placehold.co/100x100.png?text=${nameInitial}`;
         setCurrentUser(updatedProfile);
         setRegisteredUsers(prev => prev.map(ru => ru.profile.id === currentUser.id ? {...ru, profile: updatedProfile} : ru));
-        toast({ title: "Profil Diperbarui", description: "Nama tampilan Anda telah diubah." });
+        // toast({ title: "Profil Diperbarui", description: "Nama tampilan Anda telah diubah." });
     }
   }, [currentUser, setCurrentUser, setRegisteredUsers, toast]);
 
@@ -403,7 +403,7 @@ export default function ChatPage() {
     } else if (chat.isRejected) {
         const rejecterName = chat.rejectedByUserId === currentUser?.id ? "Anda" : chat.participants.find(p => p.id === chat.rejectedByUserId)?.name || "Pengguna lain";
         const rejectedTargetName = chat.rejectedByUserId === currentUser?.id ? (chat.participants.find(p => p.id !== currentUser?.id)?.name || "Pengguna lain") : "Anda";
-        toast({ title: "Chat Ditolak", description: `${rejecterName} telah menolak permintaan dengan ${rejectedTargetName}.`, variant: "destructive"});
+        // toast({ title: "Chat Ditolak", description: `${rejecterName} telah menolak permintaan dengan ${rejectedTargetName}.`, variant: "destructive"});
     }
     // No longer block selection for pendingApprovalFromUserId === currentUser.id due to UX change
 
@@ -693,7 +693,7 @@ export default function ChatPage() {
         toast({ title: "Error", description: "Grup tidak ditemukan atau chat bukan grup.", variant: "destructive" });
         return;
     }
-    if (chatToUpdate.participants.find(p => p.id === newUserId)) {
+    if (chatToUpdate.participants.find(p => p.id === newUserId || p.name.toLowerCase() === userName.toLowerCase())) {
         toast({ title: "Info", description: `${userName} sudah menjadi anggota grup.`, variant: "default" });
         return;
     }
@@ -712,9 +712,9 @@ export default function ChatPage() {
     if (existingDirectChat && userObjectToAdd) {
         if (existingDirectChat.blockedByUser === currentUser.id) {
             reasonForInvalid = `Anda telah memblokir ${userName}.`;
-        } else if (existingDirectChat.blockedByUser === newUserId) {
+        } else if (existingDirectChat.blockedByUser === userObjectToAdd.id) { 
             reasonForInvalid = `${userName} telah memblokir Anda.`;
-        } else if (existingDirectChat.pendingApprovalFromUserId === newUserId) {
+        } else if (existingDirectChat.pendingApprovalFromUserId === userObjectToAdd.id) { 
             reasonForInvalid = `permintaan chat Anda kepada ${userName} masih tertunda.`;
         } else if (existingDirectChat.pendingApprovalFromUserId === currentUser.id) {
             reasonForInvalid = `Anda belum menerima permintaan chat dari ${userName}.`;
@@ -930,7 +930,7 @@ export default function ChatPage() {
     if (!currentUser) return;
     const chatToBlock = chats.find(c => c.id === chatId);
     if (!chatToBlock || chatToBlock.type !== 'direct') {
-        toast({ title: "Error", description: "Chat tidak ditemukan atau bukan direct chat.", variant: "destructive"});
+        // toast({ title: "Error", description: "Chat tidak ditemukan atau bukan direct chat.", variant: "destructive"});
         return;
     }
     const otherParticipant = chatToBlock.participants.find(p => p.id !== currentUser.id);
@@ -957,7 +957,7 @@ export default function ChatPage() {
     if (!currentUser) return;
      const chatToUnblock = chats.find(c => c.id === chatId);
     if (!chatToUnblock || chatToUnblock.type !== 'direct') {
-        toast({ title: "Error", description: "Chat tidak ditemukan atau bukan direct chat.", variant: "destructive"});
+        // toast({ title: "Error", description: "Chat tidak ditemukan atau bukan direct chat.", variant: "destructive"});
         return;
     }
     const otherParticipant = chatToUnblock.participants.find(p => p.id !== currentUser.id);
@@ -1016,7 +1016,7 @@ export default function ChatPage() {
                             displayMode="compact"
                         />
                     )}
-                    <div className="md:hidden">
+                    <div className="hidden md:flex">
                       <SidebarTrigger />
                     </div>
                 </div>
@@ -1091,7 +1091,7 @@ export default function ChatPage() {
 
         <SidebarInset className="flex-1 flex flex-col">
            <div className="md:hidden p-2 border-b flex items-center">
-            {!selectedChat && <SidebarTrigger />}
+            {/* SidebarTrigger is removed here to hide hamburger when a chat is not selected on mobile */}
            </div>
           {selectedChat ? (
             <ChatView
@@ -1137,8 +1137,8 @@ export default function ChatPage() {
         onCreateChat={handleCreateGroupChat}
         currentUserObj={currentUser}
         initialMemberName={groupDialogInitialMemberName}
-        chats={chats} 
-        registeredUsers={registeredUsers}
+        // chats={chats} 
+        // registeredUsers={registeredUsers}
       />
       <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}
@@ -1147,7 +1147,7 @@ export default function ChatPage() {
         currentUserObj={currentUser}
         chats={chats}
         chatIdToAddTo={chatIdToAddTo}
-        registeredUsers={registeredUsers}
+        // registeredUsers={registeredUsers}
       />
        <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
         <AlertDialogContent>
@@ -1217,3 +1217,5 @@ export default function ChatPage() {
   );
 }
  
+
+    
