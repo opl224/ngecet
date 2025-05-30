@@ -38,6 +38,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Trash2, Settings, ArrowLeft, ShieldOff, ShieldAlert, InfoIcon, UserPlus, UserMinus, MessageSquarePlus, Sun, Moon, Laptop, Palette, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -86,7 +90,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     setIsClient(true);
-    const MOBILE_BREAKPOINT = 768;
+    const MOBILE_BREAKPOINT = 768; // md breakpoint
     const checkMobile = () => {
       setIsMobileView(window.innerWidth < MOBILE_BREAKPOINT);
     };
@@ -106,15 +110,15 @@ export default function ChatPage() {
     const nameInitial = username.substring(0,1).toUpperCase() || 'U';
     const newUserProfile: User = {
       id: userId,
-      name: username,
+      name: username, // Nama tampilan awal diisi dengan username
       avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
-      status: "Online"
+      status: "Online" // Default status
     };
     const newRegisteredUser: RegisteredUser = {
       username,
       password: password_mock,
       profile: newUserProfile,
-      email: email
+      email: email,
     };
     setRegisteredUsers(prev => [...prev, newRegisteredUser]);
     setCurrentUser(newUserProfile);
@@ -187,8 +191,8 @@ export default function ChatPage() {
       id: chatId,
       type: "direct",
       participants: participantsArray,
-      name: recipientUser.name,
-      avatarUrl: recipientUser.avatarUrl,
+      name: recipientUser.name, // Nama chat diisi dengan nama penerima
+      avatarUrl: recipientUser.avatarUrl, // Avatar chat diisi dengan avatar penerima
       pendingApprovalFromUserId: recipientUser.id,
       isRejected: false,
       requestTimestamp: now,
@@ -322,7 +326,7 @@ export default function ChatPage() {
                  reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}.`;
             }
         } else {
-            reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}. Harap mulai chat dan tunggu penerimaan.`;
+             reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}. Harap mulai chat dan tunggu penerimaan.`;
         }
 
         if(canAdd) {
@@ -506,6 +510,7 @@ export default function ChatPage() {
         return c;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
+    // toast({ title: "Pesan Dihapus" }); // Dihilangkan sesuai permintaan
   }, [setAllMessages, setChats, currentUser]);
 
   const handleRequestEditMessageInInput = useCallback((messageToEdit: Message) => {
@@ -611,10 +616,15 @@ export default function ChatPage() {
     if (clearData) {
       setChats([]);
       setAllMessages({});
+      setRegisteredUsers([]); // Also clear registered users for complete data wipe
       // Clear individual message entries if they exist (though `${LS_MESSAGES_PREFIX}all` should cover it)
       if (typeof window !== "undefined") {
         Object.keys(window.localStorage).forEach(key => {
           if (key.startsWith(LS_MESSAGES_PREFIX) && key !== `${LS_MESSAGES_PREFIX}all`) {
+            window.localStorage.removeItem(key);
+          }
+          // Remove other app-specific keys
+          if (key === LS_CHATS_KEY || key === LS_USER_KEY || key === LS_REGISTERED_USERS_KEY) {
             window.localStorage.removeItem(key);
           }
         });
@@ -999,7 +1009,8 @@ export default function ChatPage() {
                         onSaveProfile={handleSaveProfile}
                         displayMode="compact"
                     />
-                    <div > {/* Show always */}
+                     {/* Theme switcher for mobile view */}
+                    <div className="md:hidden">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
@@ -1049,10 +1060,36 @@ export default function ChatPage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground">
                   <Settings className="h-4 w-4" />
-                  Pengaturan & Akun
+                  Pengaturan &amp; Akun
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" sideOffset={isMobileView ? 8 : 4} side={isMobileView ? "top" : "right"}>
+                 {/* Theme switcher for desktop view */}
+                <div className="hidden md:block">
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Palette className="mr-2 h-4 w-4" />
+                      <span>Tema</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent sideOffset={isMobileView ? -5 : 8} align={isMobileView ? "center" : "start"}>
+                        <DropdownMenuItem onClick={() => setTheme("light")}>
+                          <Sun className="mr-2 h-4 w-4" />
+                          <span>Terang</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTheme("dark")}>
+                          <Moon className="mr-2 h-4 w-4" />
+                          <span>Gelap</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTheme("system")}>
+                          <Laptop className="mr-2 h-4 w-4" />
+                          <span>Sistem</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                  <DropdownMenuSeparator />
+                </div>
                 <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
                     <InfoIcon className="mr-2 h-4 w-4" />
                     <span>Tentang aplikasi</span>
@@ -1064,7 +1101,7 @@ export default function ChatPage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
                   <Trash2 className="mr-2 h-4 w-4" />
-                  <span>Keluar & Hapus Data</span>
+                  <span>Keluar &amp; Hapus Data</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1120,8 +1157,8 @@ export default function ChatPage() {
         onCreateChat={handleCreateGroupChat}
         currentUserObj={currentUser}
         initialMemberName={groupDialogInitialMemberName}
-        // chats={chats}
-        // registeredUsers={registeredUsers}
+        chats={chats}
+        registeredUsers={registeredUsers}
       />
       <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}
@@ -1199,3 +1236,6 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+
+
+    

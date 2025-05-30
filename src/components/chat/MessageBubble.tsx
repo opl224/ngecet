@@ -139,9 +139,9 @@ export function MessageBubble({
       )}>
         {message.isEdited && (
            <span className={cn(
-              "text-[10px] italic mr-1.5",
+              "text-[10px] mr-1.5",
               isCurrentUserMessage ? "text-primary-foreground/70" : "text-muted-foreground/70"
-          )}>(edited)</span>
+          )}>(edit)</span>
         )}
         <p className={cn(
             "text-[10px]",
