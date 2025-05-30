@@ -69,10 +69,10 @@ const SidebarProvider = React.forwardRef<
     ref
   ) => {
     const isMobile = useIsMobile()
-    const [initialMobileDetermined, setInitialMobileDetermined] = React.useState(false);
-    const [openMobile, setOpenMobile] = React.useState(false) // Start false, will be set by useEffect
+    // Initialize openMobile based on isMobile and defaultOpen, once isMobile is determined.
+    // Default to false, effect will set it if needed.
+    const [openMobile, setOpenMobile] = React.useState(false);
 
-    // Desktop sidebar state
     const [_open, _setOpen] = React.useState(defaultOpen)
     const open = openProp ?? _open
     const setOpen = React.useCallback(
@@ -83,20 +83,23 @@ const SidebarProvider = React.forwardRef<
         } else {
           _setOpen(openState)
         }
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        if (typeof document !== 'undefined') {
+          document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        }
       },
       [setOpenProp, open]
     )
-
+    
+    // Effect to set initial mobile state once isMobile is determined
+    const initialMobileEffectRun = React.useRef(false);
     React.useEffect(() => {
-      // This effect runs when isMobile is first determined (changes from undefined)
-      if (isMobile !== undefined && !initialMobileDetermined) {
+      if (isMobile !== undefined && !initialMobileEffectRun.current) {
         if (isMobile && defaultOpen) {
           setOpenMobile(true);
         }
-        setInitialMobileDetermined(true);
+        initialMobileEffectRun.current = true;
       }
-    }, [isMobile, defaultOpen, initialMobileDetermined, setOpenMobile]);
+    }, [isMobile, defaultOpen]);
 
 
     const toggleSidebar = React.useCallback(() => {
@@ -115,8 +118,10 @@ const SidebarProvider = React.forwardRef<
           toggleSidebar()
         }
       }
-      window.addEventListener("keydown", handleKeyDown)
-      return () => window.removeEventListener("keydown", handleKeyDown)
+      if (typeof window !== 'undefined') {
+        window.addEventListener("keydown", handleKeyDown)
+        return () => window.removeEventListener("keydown", handleKeyDown)
+      }
     }, [toggleSidebar])
 
     const state = open ? "expanded" : "collapsed"
@@ -126,7 +131,7 @@ const SidebarProvider = React.forwardRef<
         state,
         open,
         setOpen,
-        isMobile,
+        isMobile: !!isMobile, // Ensure isMobile is boolean in context
         openMobile,
         setOpenMobile,
         toggleSidebar,
@@ -203,7 +208,7 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            className="w-[--sidebar-width] bg-sidebar text-sidebar-foreground p-0 [&>button]:hidden" 
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
