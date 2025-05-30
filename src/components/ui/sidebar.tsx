@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent } from "@/components/ui/sheet" // SheetTitle removed from import
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -68,15 +68,32 @@ const SidebarProvider = React.forwardRef<
     },
     ref
   ) => {
-    const isMobileHookResult = useIsMobile()
+    const isMobileScreen = useIsMobile(); // Now defaults to false, then updates
     
-    // Initialize openMobile based on isMobileHookResult and defaultOpen
-    // This handles the case where useIsMobile might return undefined initially
-    const [openMobile, setOpenMobile] = React.useState(false);
+    const [_open, _setOpen] = React.useState(defaultOpen);
+    const open = openProp ?? _open;
+    
+    // Start mobile sidebar closed, effect will open it if needed.
+    const [openMobile, setOpenMobile] = React.useState(false); 
+    const initialMobileStateSet = React.useRef(false);
 
-    const [_open, _setOpen] = React.useState(defaultOpen)
-    const open = openProp ?? _open
-    
+    React.useEffect(() => {
+      // This effect handles the initial opening of the mobile sidebar.
+      // It also handles closing the mobile sidebar if the screen resizes to desktop.
+      if (isMobileScreen) {
+        if (defaultOpen && !initialMobileStateSet.current) {
+          setOpenMobile(true);
+          initialMobileStateSet.current = true;
+        }
+      } else {
+        // If not mobile (i.e., desktop), ensure mobile sheet is closed.
+        if (openMobile) { // Only set if it's currently open to avoid unnecessary re-render
+          setOpenMobile(false);
+        }
+      }
+    }, [isMobileScreen, defaultOpen, openMobile]);
+
+
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
         const openState = typeof value === "function" ? value(open) : value
@@ -92,30 +109,13 @@ const SidebarProvider = React.forwardRef<
       [setOpenProp, open]
     )
     
-    const initialMobileSetupDone = React.useRef(false);
-
-    React.useEffect(() => {
-      if (isMobileHookResult === undefined) {
-        // Still waiting for mobile detection
-        return;
-      }
-
-      if (!initialMobileSetupDone.current) {
-        if (isMobileHookResult && defaultOpen) {
-          setOpenMobile(true);
-        }
-        initialMobileSetupDone.current = true;
-      }
-    }, [isMobileHookResult, defaultOpen]);
-
-
     const toggleSidebar = React.useCallback(() => {
-      if (isMobileHookResult) { 
+      if (isMobileScreen) { 
         setOpenMobile((currentOpen) => !currentOpen);
       } else {
         setOpen((currentOpen) => !currentOpen);
       }
-    }, [isMobileHookResult, setOpen, setOpenMobile])
+    }, [isMobileScreen, setOpen, setOpenMobile]);
 
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
@@ -134,20 +134,18 @@ const SidebarProvider = React.forwardRef<
     }, [toggleSidebar])
 
     const state = open ? "expanded" : "collapsed"
-    const currentIsMobile = isMobileHookResult === undefined ? false : isMobileHookResult;
-
-
+    
     const contextValue = React.useMemo<SidebarContext>(
       () => ({
         state,
         open,
         setOpen,
-        isMobile: currentIsMobile, 
+        isMobile: isMobileScreen, 
         openMobile,
         setOpenMobile,
         toggleSidebar,
       }),
-      [state, open, setOpen, currentIsMobile, openMobile, setOpenMobile, toggleSidebar]
+      [state, open, setOpen, isMobileScreen, openMobile, setOpenMobile, toggleSidebar]
     )
 
     return (
@@ -227,7 +225,7 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            {/* SheetTitle removed from here */}
+             <SheetTitle className="sr-only">Daftar Chat</SheetTitle>
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
@@ -778,7 +776,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    
-
-    
