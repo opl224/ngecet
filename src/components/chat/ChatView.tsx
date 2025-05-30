@@ -375,7 +375,7 @@ export function ChatView({
                   <p className="text-xs text-muted-foreground truncate">
                     {chat.type === 'direct'
                       ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline"))
-                        : (chat.blockedByUser === currentUser.id ? "Anda memblokir pengguna ini" : "Tidak Aktif")
+                        : (chat.blockedByUser === currentUser.id ? "Anda memblokir pengguna ini" : "Tidak aktif")
                       )
                       : `Grup • ${chat.participants?.length || 0} anggota`}
                   </p>
@@ -450,7 +450,7 @@ export function ChatView({
                 <DialogDescription className="text-base">
                   <span className={cn("font-medium", isChatActive && displayDetails.status === "Online" ? "text-green-500" : "text-muted-foreground")}>
                     {isChatActive ? (displayDetails.status || "Offline")
-                      : (chat.blockedByUser === currentUser.id ? "Diblokir oleh Anda" : "Tidak Aktif")}
+                      : (chat.blockedByUser === currentUser.id ? "Diblokir oleh Anda" : "Tidak aktif")}
                   </span>
                 </DialogDescription>
               </div>

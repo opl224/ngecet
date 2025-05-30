@@ -146,18 +146,6 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <FormItem>
-              <FormLabel>Username</FormLabel>
-              <Input
-                type="text"
-                value={currentUser.id} 
-                readOnly
-                className="bg-muted/50 cursor-not-allowed border-input" 
-              />
-               <FormDescription className="text-xs">
-                Username tidak dapat diubah.
-              </FormDescription>
-            </FormItem>
-            <FormItem>
               <FormLabel>Email</FormLabel>
               <Input
                 type="email"
@@ -165,9 +153,15 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
                 readOnly
                 className="bg-muted/50 cursor-not-allowed border-input"
               />
-               <FormDescription className="text-xs">
-                Email tidak dapat diubah.
-              </FormDescription>
+            </FormItem>
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <Input
+                type="text"
+                value={currentUser.id} 
+                readOnly
+                className="bg-muted/50 cursor-not-allowed border-input" 
+              />
             </FormItem>
             <FormField
               control={form.control}
@@ -176,7 +170,7 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
                 <FormItem>
                   <FormLabel>Nama Tampilan</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nama tampilan Anda" {...field} autoFocus/>
+                    <Input placeholder="Masukkan nama" {...field} autoFocus/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
