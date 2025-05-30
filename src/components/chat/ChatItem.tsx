@@ -173,8 +173,7 @@ export function ChatItem({
               )}
               {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
               <h4 className={cn(      
-                  "font-semibold text-sm truncate", // Keep truncate for responsive/narrow containers
-                  chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
+                  "font-semibold text-sm truncate", // Keep truncate for responsive/narrow ui error                  chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
                   (chat.type === 'direct' && chat.isRejected) && "text-destructive",
                   (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
                 )}
