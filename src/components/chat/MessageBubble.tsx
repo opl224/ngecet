@@ -242,7 +242,7 @@ export function MessageBubble({
       ) : (
         <>
           {/* Avatar (only for group chats) */}
-          {chatType === 'group' && <UserAvatarComponent className="mr-2 self-center" />}
+          {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
           {/* Bubble Content */}
           <BubbleContentLayout className={cn(chatType === 'direct' ? "ml-0" : "", "mr-1")} />
           {/* Action Button (Reply) */}

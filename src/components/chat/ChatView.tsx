@@ -415,7 +415,7 @@ export function ChatView({
                                onClick={() => onTriggerDeleteGroup(chat.id)}
                                className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
                              >
-                               <span>Hapus Grup Ini</span>
+                               <span>Hapus grup ini</span>
                              </DropdownMenuItem>
                          )}
 
@@ -566,7 +566,7 @@ export function ChatView({
                             onClick={() => onTriggerDeleteGroup(chat.id)}
                             size="sm"
                         >
-                            Hapus Grup Ini
+                            Hapus grup ini
                         </Button>
                     </div>
                 )}

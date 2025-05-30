@@ -1229,7 +1229,7 @@ export default function ChatPage() {
               onClick={handleConfirmDeleteGroup}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Hapus Grup
+              Hapus grup
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
