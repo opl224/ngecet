@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -110,9 +109,9 @@ export default function ChatPage() {
     const nameInitial = username.substring(0,1).toUpperCase() || 'U';
     const newUserProfile: User = {
       id: userId,
-      name: username, // Nama tampilan awal diisi dengan username
+      name: username, 
       avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
-      status: "Online" // Default status
+      status: "Online" 
     };
     const newRegisteredUser: RegisteredUser = {
       username,
@@ -191,8 +190,8 @@ export default function ChatPage() {
       id: chatId,
       type: "direct",
       participants: participantsArray,
-      name: recipientUser.name, // Nama chat diisi dengan nama penerima
-      avatarUrl: recipientUser.avatarUrl, // Avatar chat diisi dengan avatar penerima
+      name: recipientUser.name, 
+      avatarUrl: recipientUser.avatarUrl, 
       pendingApprovalFromUserId: recipientUser.id,
       isRejected: false,
       requestTimestamp: now,
@@ -209,7 +208,6 @@ export default function ChatPage() {
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
-    // setAllMessages(prev => ({ ...prev, [chatId]: [] })); // Pesan tidak dibuat sampai chat diterima
     toast({ title: "Permintaan Terkirim", description: `Permintaan chat telah dikirim ke ${recipientUser.name}.` });
   }, [currentUser, chats, setChats, toast, registeredUsers]);
 
@@ -241,7 +239,6 @@ export default function ChatPage() {
       const acceptedChat = updatedChats.find(c => c.id === chatId);
       if (acceptedChat) {
           setSelectedChat(acceptedChat);
-          // Initialize messages for the accepted chat if not already present
           setAllMessages(prev => ({ ...prev, [chatId]: prev[chatId] || [] }));
       }
       return updatedChats;
@@ -290,7 +287,6 @@ export default function ChatPage() {
     const finalMemberUsers: User[] = [currentUser];
 
     for (const name of memberDisplayNames) {
-
         const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === name.toLowerCase() || ru.username.toLowerCase() === name.toLowerCase());
         const userObjectToAdd = registeredMember?.profile;
 
@@ -348,7 +344,7 @@ export default function ChatPage() {
         return;
     }
 
-    if (finalMemberUsers.length < 2) { // Should be at least currentUser + 1 other
+    if (finalMemberUsers.length < 2) { 
          toast({
             title: "Anggota Diperlukan",
             description: "Harap tambahkan minimal satu anggota lain yang valid.",
@@ -460,7 +456,6 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
-      // Update last message for other active chats to indicate new activity and help sorting
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser)) {
          return {
           ...chat,
@@ -510,7 +505,6 @@ export default function ChatPage() {
         return c;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
-    // toast({ title: "Pesan Dihapus" }); // Dihilangkan sesuai permintaan
   }, [setAllMessages, setChats, currentUser]);
 
   const handleRequestEditMessageInInput = useCallback((messageToEdit: Message) => {
@@ -616,14 +610,12 @@ export default function ChatPage() {
     if (clearData) {
       setChats([]);
       setAllMessages({});
-      setRegisteredUsers([]); // Also clear registered users for complete data wipe
-      // Clear individual message entries if they exist (though `${LS_MESSAGES_PREFIX}all` should cover it)
+      setRegisteredUsers([]); 
       if (typeof window !== "undefined") {
         Object.keys(window.localStorage).forEach(key => {
           if (key.startsWith(LS_MESSAGES_PREFIX) && key !== `${LS_MESSAGES_PREFIX}all`) {
             window.localStorage.removeItem(key);
           }
-          // Remove other app-specific keys
           if (key === LS_CHATS_KEY || key === LS_USER_KEY || key === LS_REGISTERED_USERS_KEY) {
             window.localStorage.removeItem(key);
           }
@@ -740,10 +732,10 @@ export default function ChatPage() {
     const systemMessage = `${userObjectToAdd.name} telah ditambahkan ke grup.`;
     setChats(prevChats => {
       const currentChatToUpdate = prevChats.find(c => c.id === chatIdToAddTo);
-      if (!currentChatToUpdate) return prevChats; // Should not happen
+      if (!currentChatToUpdate) return prevChats; 
 
       const updatedParticipants = [...currentChatToUpdate.participants, userObjectToAdd];
-      const updatedLastReadBy = { ...(currentChatToUpdate.lastReadBy || {}), [userObjectToAdd.id]: 0 }; // New user hasn't read
+      const updatedLastReadBy = { ...(currentChatToUpdate.lastReadBy || {}), [userObjectToAdd.id]: 0 }; 
       const updatedClearedTimestamp = { ...(currentChatToUpdate.clearedTimestamp || {}), [userObjectToAdd.id]: 0 };
 
 
@@ -761,7 +753,7 @@ export default function ChatPage() {
       ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
     toast({ title: "Pengguna Ditambahkan", description: `${userObjectToAdd.name} telah ditambahkan ke grup.` });
-    setChatIdToAddTo(null); // Reset for next use
+    setChatIdToAddTo(null); 
   }, [currentUser, chatIdToAddTo, setChats, toast, chats, registeredUsers]);
 
 
@@ -923,7 +915,6 @@ export default function ChatPage() {
     if (!currentUser) return;
     const chatToBlock = chats.find(c => c.id === chatId);
     if (!chatToBlock || chatToBlock.type !== 'direct') {
-        // toast({ title: "Error", description: "Chat tidak ditemukan atau bukan direct chat.", variant: "destructive"});
         return;
     }
     const otherParticipant = chatToBlock.participants.find(p => p.id !== currentUser.id);
@@ -951,7 +942,6 @@ export default function ChatPage() {
     if (!currentUser) return;
      const chatToUnblock = chats.find(c => c.id === chatId);
     if (!chatToUnblock || chatToUnblock.type !== 'direct') {
-        // toast({ title: "Error", description: "Chat tidak ditemukan atau bukan direct chat.", variant: "destructive"});
         return;
     }
     const otherParticipant = chatToUnblock.participants.find(p => p.id !== currentUser.id);
@@ -1009,7 +999,6 @@ export default function ChatPage() {
                         onSaveProfile={handleSaveProfile}
                         displayMode="compact"
                     />
-                     {/* Theme switcher for mobile view */}
                     <div className="md:hidden">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1064,7 +1053,11 @@ export default function ChatPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" sideOffset={isMobileView ? 8 : 4} side={isMobileView ? "top" : "right"}>
-                 {/* Theme switcher for desktop view */}
+                <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
+                    <InfoIcon className="mr-2 h-4 w-4" />
+                    <span>Tentang aplikasi</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <div className="hidden md:block">
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
@@ -1090,11 +1083,6 @@ export default function ChatPage() {
                   </DropdownMenuSub>
                   <DropdownMenuSeparator />
                 </div>
-                <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
-                    <InfoIcon className="mr-2 h-4 w-4" />
-                    <span>Tentang aplikasi</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleLogout(false)}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Keluar (Simpan Data)</span>
@@ -1110,7 +1098,7 @@ export default function ChatPage() {
 
         <SidebarInset className="flex-1 flex flex-col">
            <div className="md:hidden p-2 border-b flex items-center">
-             {/* Mobile Header Content: empty for now */}
+             
            </div>
           {selectedChat ? (
             <ChatView
@@ -1236,6 +1224,3 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
-
-
-    
