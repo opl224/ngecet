@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet" // Added SheetTitle
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -69,7 +69,7 @@ const SidebarProvider = React.forwardRef<
     ref
   ) => {
     const isMobileHookResult = useIsMobile()
-    const [openMobile, setOpenMobile] = React.useState(false);
+    const [openMobile, setOpenMobile] = React.useState(false); // Default to false
 
     const [_open, _setOpen] = React.useState(defaultOpen)
     const open = openProp ?? _open
@@ -89,22 +89,29 @@ const SidebarProvider = React.forwardRef<
     )
     
     const initialMobileSetupDone = React.useRef(false);
+
     React.useEffect(() => {
-      // isMobileHookResult can be true, false, or undefined initially
-      if (isMobileHookResult === true && defaultOpen && !initialMobileSetupDone.current) {
-        setOpenMobile(true);
+      if (isMobileHookResult === undefined) {
+        // Still waiting for mobile detection
+        return;
+      }
+
+      if (!initialMobileSetupDone.current) {
+        if (isMobileHookResult && defaultOpen) {
+          setOpenMobile(true);
+        }
         initialMobileSetupDone.current = true;
       }
     }, [isMobileHookResult, defaultOpen]);
 
 
     const toggleSidebar = React.useCallback(() => {
-      if (isMobileHookResult) {
+      if (isMobileHookResult) { // Use the hook result directly
         setOpenMobile((currentOpen) => !currentOpen);
       } else {
         setOpen((currentOpen) => !currentOpen);
       }
-    }, [isMobileHookResult, setOpen, setOpenMobile]) // Added setOpenMobile to deps
+    }, [isMobileHookResult, setOpen, setOpenMobile])
 
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
@@ -123,18 +130,20 @@ const SidebarProvider = React.forwardRef<
     }, [toggleSidebar])
 
     const state = open ? "expanded" : "collapsed"
+    const currentIsMobile = isMobileHookResult === undefined ? false : isMobileHookResult;
+
 
     const contextValue = React.useMemo<SidebarContext>(
       () => ({
         state,
         open,
         setOpen,
-        isMobile: !!isMobileHookResult, 
+        isMobile: currentIsMobile, 
         openMobile,
         setOpenMobile,
         toggleSidebar,
       }),
-      [state, open, setOpen, isMobileHookResult, openMobile, setOpenMobile, toggleSidebar]
+      [state, open, setOpen, currentIsMobile, openMobile, setOpenMobile, toggleSidebar]
     )
 
     return (
@@ -214,6 +223,7 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
+            <SheetTitle className="sr-only">Navigation</SheetTitle>
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
@@ -765,3 +775,4 @@ export {
   useSidebar,
 }
 
+    
