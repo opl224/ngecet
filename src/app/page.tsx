@@ -3,7 +3,8 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { User, Chat, Message, RegisteredUser } from "@/types";
-import { useIsMobile as useLocalStorage } from "@/hooks/use-local-storage"; // Corrected import
+import { useIsMobile } from "@/hooks/use-mobile"; // Import useIsMobile
+import useLocalStorage from "@/hooks/use-local-storage"; // Import the actual useLocalStorage
 import { AppLogo } from "@/components/core/AppLogo";
 import { UserProfileForm } from "@/components/core/UserProfileForm";
 import { ChatList } from "@/components/chat/ChatList";
@@ -45,7 +46,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Trash2, Settings, InfoIcon, Palette, Sun, Moon, Laptop } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme } from '@/components/core/Providers'; // Updated import
+import { useTheme } from '@/components/core/Providers';
 
 
 const LS_USER_KEY = "ngecet_user";
@@ -56,9 +57,7 @@ const LS_REGISTERED_USERS_KEY = "ngecet_registered_users";
 export default function ChatPage() {
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
-  // useLocalStorage now correctly refers to useIsMobile, which might not be what was intended for these variables.
-  // This fixes the import error, but the logic for these variables might need to be revisited
-  // if a different hook for local storage was intended.
+
   const [currentUser, setCurrentUser] = useLocalStorage<User | null>(LS_USER_KEY, null);
 
   const initialRegisteredUsersValue = useMemo(() => [], []);
@@ -89,18 +88,11 @@ export default function ChatPage() {
 
 
   const [isClient, setIsClient] = useState(false);
-  const [isMobileView, setIsMobileView] = useState(false);
+  const isMobileView = useIsMobile(); // Use the dedicated hook for mobile view detection
 
   useEffect(() => {
     setIsClient(true);
-    const MOBILE_BREAKPOINT = 768; // md breakpoint
-    const checkMobile = () => {
-      setIsMobileView(window.innerWidth < MOBILE_BREAKPOINT);
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    // The useIsMobile hook already handles resize events, so the manual listener can be removed.
   }, []);
 
   const handleRegister = useCallback((email: string, username: string, password_mock: string): boolean => {
@@ -113,13 +105,13 @@ export default function ChatPage() {
     const nameInitial = username.substring(0,1).toUpperCase() || 'U';
     const newUserProfile: User = {
       id: userId,
-      name: username, 
+      name: username,
       avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
       status: "Online"
     };
     const newRegisteredUser: RegisteredUser = {
       username,
-      password: password_mock, 
+      password: password_mock,
       profile: newUserProfile,
       email: email,
     };
@@ -166,7 +158,7 @@ export default function ChatPage() {
                 const updatedParticipants = chat.participants.map(p =>
                     p.id === currentUser.id ? updatedCurrentUser : p
                 );
-                
+
                 let updatedChatName = chat.name;
                 let updatedChatAvatar = chat.avatarUrl;
 
@@ -191,7 +183,7 @@ export default function ChatPage() {
                         if (chat.avatarUrl === currentUser.avatarUrl) updatedChatAvatar = updatedCurrentUser.avatarUrl;
                     }
                 }
-                
+
                 return {
                     ...chat,
                     participants: updatedParticipants,
@@ -212,7 +204,7 @@ export default function ChatPage() {
             }
             return newAllMessages;
         });
-        
+
         toast({ title: "Profil Diperbarui" });
     }
   }, [currentUser, setCurrentUser, setRegisteredUsers, setChats, setAllMessages, toast]);
@@ -240,52 +232,52 @@ export default function ChatPage() {
 
     const existingChat = chats.find(c => c.id === chatId);
     if (existingChat) {
-      setSelectedChat(existingChat); 
+      setSelectedChat(existingChat);
       if (existingChat.blockedByUser && existingChat.blockedByUser === currentUser.id) {
       } else if (existingChat.blockedByUser && existingChat.blockedByUser !== currentUser.id) {
       } else if (existingChat.pendingApprovalFromUserId === currentUser.id) {
         toast({ title: "Permintaan Tertunda", description: `Anda memiliki permintaan chat dari ${recipientUser.name}. Terima atau tolak dari daftar chat.` });
       }
-      return; 
+      return;
     }
 
     const now = Date.now();
     const newChat: Chat = {
       id: chatId,
       type: "direct",
-      participants: participantsArray, 
-      name: recipientUser.name, 
-      avatarUrl: recipientUser.avatarUrl, 
-      pendingApprovalFromUserId: recipientUser.id, 
+      participants: participantsArray,
+      name: recipientUser.name,
+      avatarUrl: recipientUser.avatarUrl,
+      pendingApprovalFromUserId: recipientUser.id,
       isRejected: false,
       requestTimestamp: now,
       lastMessage: "Permintaan chat dikirim...",
       lastMessageTimestamp: now,
       lastReadBy: {
-        [currentUser.id]: now, 
-        [recipientUser.id]: 0,   
+        [currentUser.id]: now,
+        [recipientUser.id]: 0,
       },
-      clearedTimestamp: { 
+      clearedTimestamp: {
         [currentUser.id]: 0,
         [recipientUser.id]: 0,
       },
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
-    setSelectedChat(newChat); 
+    setSelectedChat(newChat);
     toast({ title: "Permintaan Terkirim", description: `Permintaan chat telah dikirim ke ${recipientUser.name}.` });
   }, [currentUser, chats, setChats, toast, registeredUsers]);
 
 
   const handleAcceptChatRequest = useCallback((chatId: string) => {
     if (!currentUser) return;
-    let acceptedChatName = "Pengguna"; 
+    let acceptedChatName = "Pengguna";
 
     setChats(prevChats => {
       const now = Date.now();
       const updatedChats = prevChats.map(chat => {
         if (chat.id === chatId && chat.pendingApprovalFromUserId === currentUser?.id) {
            const otherParticipant = chat.participants.find(p => p.id !== currentUser?.id);
-           acceptedChatName = otherParticipant?.name || "Pengguna"; 
+           acceptedChatName = otherParticipant?.name || "Pengguna";
           return {
             ...chat,
             pendingApprovalFromUserId: undefined,
@@ -293,9 +285,9 @@ export default function ChatPage() {
             rejectedByUserId: undefined,
             lastMessage: "Permintaan chat diterima.",
             lastMessageTimestamp: now,
-            lastReadBy: { 
+            lastReadBy: {
               ...(chat.lastReadBy || {}),
-              [currentUser!.id]: now, 
+              [currentUser!.id]: now,
             },
           };
         }
@@ -329,7 +321,7 @@ export default function ChatPage() {
             rejectedByUserId: currentUser?.id,
             lastMessage: "Permintaan chat ditolak.",
             lastMessageTimestamp: now,
-            lastReadBy: { 
+            lastReadBy: {
               ...(chat.lastReadBy || {}),
               [currentUser!.id]: now,
             },
@@ -350,7 +342,7 @@ export default function ChatPage() {
     if (!currentUser) return;
 
     const invalidMemberMessages: string[] = [];
-    const finalMemberUsers: User[] = [currentUser]; 
+    const finalMemberUsers: User[] = [currentUser];
 
     for (const name of memberDisplayNames) {
         const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === name.toLowerCase() || ru.username.toLowerCase() === name.toLowerCase());
@@ -361,8 +353,8 @@ export default function ChatPage() {
             continue;
         }
 
-        if (userObjectToAdd.id === currentUser.id) continue; 
-        if (finalMemberUsers.find(u => u.id === userObjectToAdd.id)) continue; 
+        if (userObjectToAdd.id === currentUser.id) continue;
+        if (finalMemberUsers.find(u => u.id === userObjectToAdd.id)) continue;
 
         const potentialDirectChatIdParts = [currentUser.id, userObjectToAdd.id].sort();
         const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
@@ -405,12 +397,12 @@ export default function ChatPage() {
             title: "Gagal Membuat Grup",
             description: `Pengguna berikut tidak dapat ditambahkan: ${invalidMemberMessages.join("; ")}.`,
             variant: "destructive",
-            duration: 7000, 
+            duration: 7000,
         });
         return;
     }
 
-    if (finalMemberUsers.length < 2) { 
+    if (finalMemberUsers.length < 2) {
          toast({
             title: "Anggota Diperlukan",
             description: "Harap tambahkan minimal satu anggota lain yang valid.",
@@ -427,7 +419,7 @@ export default function ChatPage() {
     const initialClearedTimestamp: Record<string, number> = {};
 
     finalMemberUsers.forEach(p => {
-        initialLastReadBy[p.id] = p.id === currentUser.id ? Date.now() : 0; 
+        initialLastReadBy[p.id] = p.id === currentUser.id ? Date.now() : 0;
         initialClearedTimestamp[p.id] = 0;
     });
 
@@ -435,7 +427,7 @@ export default function ChatPage() {
       id: chatId,
       type: "group",
       name: groupName,
-      participants: finalMemberUsers, 
+      participants: finalMemberUsers,
       lastMessage: "Grup telah dibuat.",
       lastMessageTimestamp: Date.now(),
       avatarUrl: `https://placehold.co/100x100.png?text=${groupInitial}`,
@@ -445,7 +437,7 @@ export default function ChatPage() {
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
-    setAllMessages(prev => ({ ...prev, [chatId]: [] })); 
+    setAllMessages(prev => ({ ...prev, [chatId]: [] }));
     toast({ title: "Grup Dibuat", description: `Grup "${groupName}" telah siap.` });
   }, [currentUser, chats, setChats, setAllMessages, toast, registeredUsers]);
 
@@ -461,8 +453,8 @@ export default function ChatPage() {
         setSelectedChat(chat); // Select the chat regardless of the conditions above for overlay display
 
         // Only update lastReadBy if the chat is active and not blocked
-        if (chat.id && chat.lastReadBy && 
-            !chat.pendingApprovalFromUserId && 
+        if (chat.id && chat.lastReadBy &&
+            !chat.pendingApprovalFromUserId &&
             !chat.isRejected &&
             !(chat.type === 'direct' && chat.blockedByUser)) {
             setChats(prevChats =>
@@ -505,7 +497,7 @@ export default function ChatPage() {
       id: `msg_${Date.now()}`,
       chatId: selectedChat.id,
       senderId: currentUser.id,
-      senderName: currentUser.name, 
+      senderName: currentUser.name,
       content,
       timestamp: Date.now(),
       isEdited: false,
@@ -527,14 +519,14 @@ export default function ChatPage() {
           ...chat,
           lastMessage: content,
           lastMessageTimestamp: newMessage.timestamp,
-          lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp }, 
+          lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser)) {
          return {
           ...chat,
-          lastMessage: "Aktivitas baru di " + chat.name, 
-          lastMessageTimestamp: newMessage.timestamp, 
+          lastMessage: "Aktivitas baru di " + chat.name,
+          lastMessageTimestamp: newMessage.timestamp,
          };
       }
       return chat;
@@ -569,7 +561,7 @@ export default function ChatPage() {
             fallbackLastMessage = c.lastMessage || "Grup telah dibuat.";
           }
 
-          const fallbackTimestamp = (c.requestTimestamp || c.lastMessageTimestamp || Date.now()); 
+          const fallbackTimestamp = (c.requestTimestamp || c.lastMessageTimestamp || Date.now());
           return {
             ...c,
             lastMessage: newLastMessageContent !== undefined ? newLastMessageContent : fallbackLastMessage,
@@ -602,7 +594,7 @@ export default function ChatPage() {
       return;
     }
      if (newContent === editingMessageDetails.content) {
-       setEditingMessageDetails(null); 
+       setEditingMessageDetails(null);
        toast({ title: "Info Pesan", description: "Konten pesan tidak berubah." });
        return;
     }
@@ -623,7 +615,7 @@ export default function ChatPage() {
       }
       return { ...prevAllMessages, [editingMessageDetails.chatId]: sortedChatMessages };
     });
-    
+
     setEditingMessageDetails(null);
     toast({ title: "Pesan Diperbarui" });
 
@@ -768,7 +760,7 @@ export default function ChatPage() {
         toast({ title: "Info", description: `${userObjectToAdd.name} sudah menjadi anggota grup.`, variant: "default" });
         return;
     }
-    
+
     const potentialDirectChatIdParts = [currentUser.id, userObjectToAdd.id].sort();
     const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
     const existingDirectChat = chats.find(c => c.id === potentialDirectChatId);
@@ -896,7 +888,7 @@ export default function ChatPage() {
       delete updatedClearedTimestamp[participantIdToRemove];
       const now = Date.now();
       const removalMessage = `${participantToRemove.name} telah dikeluarkan dari grup.`;
-      
+
       toastMessageContent = removalMessage;
 
       const updatedChat = {
@@ -1020,7 +1012,7 @@ export default function ChatPage() {
         }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
         return newChats;
     });
-    
+
     if (updatedChatForSelection) {
         setSelectedChat(updatedChatForSelection);
     }
@@ -1121,7 +1113,7 @@ export default function ChatPage() {
               isOpen={isNewGroupChatDialogOpen}
               onOpenChange={(isOpen) => {
                   setIsNewGroupChatDialogOpen(isOpen);
-                  if (!isOpen) { 
+                  if (!isOpen) {
                       setGroupDialogInitialMemberName(null);
                   }
               }}
@@ -1134,10 +1126,10 @@ export default function ChatPage() {
               isOpen={isAddUserToGroupDialogOpen}
               onOpenChange={setIsAddUserToGroupDialogOpen}
               onAddUser={handleAddNewUserToGroup}
-              currentUserObj={currentUser} 
-              chats={chats} 
-              chatIdToAddTo={chatIdToAddTo} 
-              registeredUsers={registeredUsers} 
+              currentUserObj={currentUser}
+              chats={chats}
+              chatIdToAddTo={chatIdToAddTo}
+              registeredUsers={registeredUsers}
             />
             <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
               <AlertDialogContent>
@@ -1205,7 +1197,7 @@ export default function ChatPage() {
       );
     } else {
       return (
-        <SidebarProvider defaultOpen> 
+        <SidebarProvider defaultOpen>
           <div className="h-screen w-full flex flex-col bg-sidebar text-sidebar-foreground">
             <SidebarHeader className="p-0">
               <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
@@ -1382,7 +1374,7 @@ export default function ChatPage() {
                         displayMode="compact"
                         userEmail={currentUserEmailForProfile}
                     />
-                    <div className="hidden md:block"> 
+                    <div className="hidden md:block">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
@@ -1466,7 +1458,7 @@ export default function ChatPage() {
                     <span>Tentang aplikasi</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                 <div className="hidden md:block"> 
+                 <div className="hidden md:block">
                     <DropdownMenuSub>
                         <DropdownMenuSubTrigger>
                         <Palette className="mr-2 h-4 w-4" />
@@ -1629,4 +1621,3 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
-
