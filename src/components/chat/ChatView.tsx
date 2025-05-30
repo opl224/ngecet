@@ -643,14 +643,14 @@ export function ChatView({
             <div className="truncate flex-1 min-w-0 pr-2">
               {propsEditingMessageDetails ? (
                 <>
-                  <span className="font-medium">Mengedit pesan: </span>
                   <p className="truncate text-xs inline">
                     {propsEditingMessageDetails.content.length > 70 ? propsEditingMessageDetails.content.substring(0, 70) + "..." : propsEditingMessageDetails.content}
                   </p>
                 </>
               ) : replyingToMessage && (
                 <>
-                  <span className="font-medium">Membalas ke {replyingToMessage.senderName}: </span>
+                  {replyingToMessage.senderName}
+                  <br/>
                   <p className="truncate text-xs inline">
                     {replyingToMessage.content.length > 70 ? replyingToMessage.content.substring(0, 70) + "..." : replyingToMessage.content}
                   </p>
@@ -679,7 +679,7 @@ export function ChatView({
               !isChatActive
                 ? (chat.type === 'direct' && chat.blockedByUser === currentUser.id ? "Anda memblokir pengguna ini" : "Chat tidak aktif")
                 : propsEditingMessageDetails
-                ? "Edit pesan Anda..."
+                ? "Edit pesan anda..."
                 : replyingToMessage
                 ? `Balas ke ${replyingToMessage.senderName}...`
                 : "Ketik pesan..."

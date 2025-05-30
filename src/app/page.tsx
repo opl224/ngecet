@@ -110,7 +110,7 @@ export default function ChatPage() {
     const nameInitial = username.substring(0,1).toUpperCase() || 'U';
     const newUserProfile: User = {
       id: userId,
-      name: username, // Use username as initial display name
+      name: username, 
       avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
       status: "Online"
     };
@@ -159,20 +159,35 @@ export default function ChatPage() {
         );
 
         setChats(prevChats =>
-            prevChats.map(chat => ({
-                ...chat,
-                participants: chat.participants.map(p =>
-                    p.id === currentUser.id
-                        ? updatedCurrentUser
-                        : p
-                ),
-                ...(chat.type === 'direct' && chat.participants.length === 2 && chat.participants.some(p => p.id !== currentUser.id)
-                    ? { 
-                        name: chat.participants.find(p => p.id !== updatedCurrentUser.id)?.name || updatedCurrentUser.name, // Keep other person's name if it's their name
-                        avatarUrl: chat.participants.find(p => p.id !== updatedCurrentUser.id)?.avatarUrl || updatedCurrentUser.avatarUrl
-                      }
-                    : {}),
-            }))
+            prevChats.map(chat => {
+                 // Update current user in participants list of all chats
+                const updatedParticipants = chat.participants.map(p =>
+                    p.id === currentUser.id ? updatedCurrentUser : p
+                );
+
+                let updatedChatName = chat.name;
+                let updatedChatAvatar = chat.avatarUrl;
+
+                // If it's a direct chat and the chat's name/avatar was based on the other user,
+                // it should NOT change. If it was based on current user (e.g. chat with self, or old logic), it might.
+                // For safety, we only update if the direct chat's current name/avatar matches the OLD current user's name/avatar.
+                // This is a bit tricky as direct chat names are usually the *other* person's name.
+                // The main thing is that participant objects *within* chats are updated.
+                if (chat.type === 'direct') {
+                    const otherParticipant = updatedParticipants.find(p => p.id !== currentUser.id);
+                    if (otherParticipant) {
+                        updatedChatName = otherParticipant.name; // Direct chat name is the other person's name
+                        updatedChatAvatar = otherParticipant.avatarUrl;
+                    }
+                }
+                
+                return {
+                    ...chat,
+                    participants: updatedParticipants,
+                    name: updatedChatName,
+                    avatarUrl: updatedChatAvatar,
+                };
+            })
         );
 
         setAllMessages(prevAllMessages => {
@@ -180,13 +195,13 @@ export default function ChatPage() {
             for (const chatId in newAllMessages) {
                 newAllMessages[chatId] = newAllMessages[chatId].map(msg =>
                     msg.senderId === currentUser.id
-                        ? { ...msg, senderName: name } // Update senderName only
+                        ? { ...msg, senderName: updatedCurrentUser.name } // Update senderName for current user's messages
                         : msg
                 );
             }
             return newAllMessages;
         });
-
+        
         toast({ title: "Profil Diperbarui", description: "Nama tampilan Anda telah diubah." });
     }
   }, [currentUser, setCurrentUser, setRegisteredUsers, setChats, setAllMessages, toast]);
@@ -229,7 +244,7 @@ export default function ChatPage() {
       id: chatId,
       type: "direct",
       participants: participantsArray,
-      name: recipientUser.name, // For display in ChatItem if current user is viewing
+      name: recipientUser.name, 
       avatarUrl: recipientUser.avatarUrl,
       pendingApprovalFromUserId: recipientUser.id,
       isRejected: false,
@@ -383,7 +398,7 @@ export default function ChatPage() {
         return;
     }
 
-    if (finalMemberUsers.length < 2) { // Should be at least 2 (creator + 1 member)
+    if (finalMemberUsers.length < 2) { 
          toast({
             title: "Anggota Diperlukan",
             description: "Harap tambahkan minimal satu anggota lain yang valid.",
@@ -486,7 +501,7 @@ export default function ChatPage() {
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser)) {
          return {
           ...chat,
-          lastMessage: "Aktivitas baru di " + chat.name,
+          lastMessage: "Aktivitas baru di " + chat.name, // Generic message for other chats
           lastMessageTimestamp: newMessage.timestamp,
          };
       }
@@ -555,8 +570,8 @@ export default function ChatPage() {
       return;
     }
      if (newContent === editingMessageDetails.content) {
-       toast({ title: "Info Pesan", description: "Konten pesan tidak berubah." });
        setEditingMessageDetails(null);
+       toast({ title: "Info Pesan", description: "Konten pesan tidak berubah." });
        return;
     }
 
@@ -564,7 +579,9 @@ export default function ChatPage() {
     let latestMessageDetailsForChat: { content: string; timestamp: number } | null = null;
 
     setAllMessages(prevAllMessages => {
-      const chatMessages = (prevAllMessages[editingMessageDetails!.chatId] || []).map(msg =>
+      if (!editingMessageDetails) return prevAllMessages; 
+
+      const chatMessages = (prevAllMessages[editingMessageDetails.chatId] || []).map(msg =>
         msg.id === messageId ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg
       );
 
@@ -574,12 +591,13 @@ export default function ChatPage() {
         const lastMsg = sortedChatMessages[sortedChatMessages.length - 1];
         latestMessageDetailsForChat = { content: lastMsg.content, timestamp: lastMsg.timestamp };
       }
-      return { ...prevAllMessages, [editingMessageDetails!.chatId]: sortedChatMessages };
+      return { ...prevAllMessages, [editingMessageDetails.chatId]: sortedChatMessages };
     });
 
     setChats(prevChats => {
+      if (!editingMessageDetails) return prevChats;
       const updatedChats = prevChats.map(chat => {
-        if (chat.id === editingMessageDetails!.chatId) {
+        if (chat.id === editingMessageDetails.chatId) {
           if (latestMessageDetailsForChat) {
             return {
               ...chat,
@@ -607,7 +625,10 @@ export default function ChatPage() {
       });
       return updatedChats.sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
-  }, [currentUser, setAllMessages, setChats, toast, editingMessageDetails]);
+    
+    setEditingMessageDetails(null);
+    toast({ title: "Pesan Diperbarui", description: "Pesan Anda telah berhasil diubah." });
+  }, [currentUser, editingMessageDetails, setAllMessages, setChats, toast]);
 
   const handleCancelEditInInput = useCallback(() => {
     setEditingMessageDetails(null);
@@ -827,19 +848,16 @@ export default function ChatPage() {
     setChats(prevChats => {
       const chatToUpdate = prevChats.find(c => c.id === chatId);
       if (!chatToUpdate || chatToUpdate.type !== 'group' || chatToUpdate.createdByUserId !== currentUser.id) {
-        // This toast is an early exit, fine here as it's before the main state update path
         toast({ title: "Hapus gagal", description: "Anda tidak memiliki izin untuk mengeluarkan pengguna dari grup ini.", variant: "destructive" });
         return prevChats;
       }
       if (participantIdToRemove === currentUser.id) {
-        // This toast is an early exit, fine here
         toast({ title: "Hapus gagal", description: "Anda tidak dapat mengeluarkan diri sendiri dari grup.", variant: "destructive" });
         return prevChats;
       }
 
       const participantToRemove = chatToUpdate.participants.find(p => p.id === participantIdToRemove);
       if (!participantToRemove) {
-        // This toast is an early exit, fine here
         toast({ title: "Error", description: "Pengguna tidak ditemukan di grup.", variant: "destructive" });
         return prevChats;
       }
@@ -855,7 +873,7 @@ export default function ChatPage() {
       const now = Date.now();
       const removalMessage = `${participantToRemove.name} telah dikeluarkan dari grup.`;
       
-      toastMessageContent = removalMessage; // Set for toast outside
+      toastMessageContent = removalMessage; 
 
       const updatedChat = {
         ...chatToUpdate,
@@ -867,7 +885,7 @@ export default function ChatPage() {
       };
 
       if (selectedChat?.id === chatId) {
-        chatToSelectAfterUpdate = updatedChat; // Set for setSelectedChat outside
+        chatToSelectAfterUpdate = updatedChat; 
       }
 
       return prevChats.map(c => c.id === chatId ? updatedChat : c)
@@ -894,7 +912,6 @@ export default function ChatPage() {
     setChats(prevChats => {
         chatBeingLeft = prevChats.find(c => c.id === chatId);
         if (!chatBeingLeft || chatBeingLeft.type !== 'group') {
-            // This toast is an early exit, fine
             toast({ title: "Error", description: "Grup tidak ditemukan.", variant: "destructive" });
             return prevChats;
         }
@@ -930,14 +947,14 @@ export default function ChatPage() {
         ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
 
-    if (isGroupDeleted) { // chatBeingLeft will be defined if isGroupDeleted is true
+    if (isGroupDeleted) { 
         setAllMessages(prevAllMessages => {
             const newAllMessages = { ...prevAllMessages };
             delete newAllMessages[chatId];
             return newAllMessages;
         });
         toast({ title: "Grup ditinggalkan & dihapus", description: `Anda keluar dari grup "${groupNameForToast}", dan grup tersebut telah dihapus karena kosong.` });
-    } else if (chatBeingLeft) { // If not deleted, but successfully left
+    } else if (chatBeingLeft) { 
         toast({ title: "Keluar Grup Berhasil", description: `Anda telah keluar dari grup "${groupNameForToast}".` });
     }
 
@@ -1057,7 +1074,7 @@ export default function ChatPage() {
                         onSaveProfile={handleSaveProfile}
                         displayMode="compact"
                     />
-                    <div className="md:hidden"> {/* Theme toggle for mobile */}
+                    <div className="md:hidden">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
@@ -1116,7 +1133,7 @@ export default function ChatPage() {
                     <span>Tentang aplikasi</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <div className="hidden md:block"> {/* Theme toggle for desktop */}
+                <div className="hidden md:block"> 
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
                       <Palette className="mr-2 h-4 w-4" />
@@ -1200,7 +1217,7 @@ export default function ChatPage() {
         onCreateChat={handleCreateGroupChat}
         currentUserObj={currentUser}
         initialMemberName={groupDialogInitialMemberName}
-        chats={chats}
+        chats={chats} 
         registeredUsers={registeredUsers}
       />
       <AddUserToGroupDialog
@@ -1280,4 +1297,4 @@ export default function ChatPage() {
   );
 }
 
-
+    
