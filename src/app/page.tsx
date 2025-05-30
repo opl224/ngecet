@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -101,7 +102,7 @@ export default function ChatPage() {
 
   const handleRegister = useCallback((email: string, username: string, password_mock: string): boolean => {
     if (registeredUsers.find(u => u.username.toLowerCase() === username.toLowerCase())) {
-      toast({ title: "Registrasi Gagal", description: "Username ini sudah ada." });
+      toast({ title: "Registrasi Gagal", description: "Username sudah ada." });
       return false;
     }
 
@@ -109,9 +110,9 @@ export default function ChatPage() {
     const nameInitial = username.substring(0,1).toUpperCase() || 'U';
     const newUserProfile: User = {
       id: userId,
-      name: username, 
+      name: username, // Use username as initial display name
       avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
-      status: "Online" 
+      status: "Online"
     };
     const newRegisteredUser: RegisteredUser = {
       username,
@@ -139,14 +140,57 @@ export default function ChatPage() {
 
   const handleSaveProfile = useCallback((name: string) => {
     if (currentUser) {
-        const updatedProfile = { ...currentUser, name };
-        const nameInitial = name.substring(0,1).toUpperCase() || 'U';
-        updatedProfile.avatarUrl = `https://placehold.co/100x100.png?text=${nameInitial}`;
-        setCurrentUser(updatedProfile);
-        setRegisteredUsers(prev => prev.map(ru => ru.profile.id === currentUser.id ? {...ru, profile: updatedProfile} : ru));
-        // toast({ title: "Profil Diperbarui", description: "Nama tampilan Anda telah diubah." });
+        const newNameInitial = name.substring(0,1).toUpperCase() || 'U';
+        const newAvatarUrl = `https://placehold.co/100x100.png?text=${newNameInitial}`;
+
+        const updatedCurrentUser = {
+            ...currentUser,
+            name,
+            avatarUrl: newAvatarUrl,
+        };
+        setCurrentUser(updatedCurrentUser);
+
+        setRegisteredUsers(prevRegisteredUsers =>
+            prevRegisteredUsers.map(ru =>
+                ru.profile.id === currentUser.id
+                    ? { ...ru, profile: updatedCurrentUser }
+                    : ru
+            )
+        );
+
+        setChats(prevChats =>
+            prevChats.map(chat => ({
+                ...chat,
+                participants: chat.participants.map(p =>
+                    p.id === currentUser.id
+                        ? updatedCurrentUser
+                        : p
+                ),
+                // Update chat name/avatar if it's a direct chat *where the other person's details were based on the old current user's name*
+                // This is less common, usually direct chat name/avatar is of the *other* participant.
+                // For group chats, if the group avatar was derived from the creator's initial, it won't auto-update here.
+                // For simplicity, we focus on participant list updates.
+                ...(chat.type === 'direct' && chat.name === currentUser.name && chat.participants.length === 2 && chat.participants.some(p => p.id !== currentUser.id)
+                    ? { name: updatedCurrentUser.name, avatarUrl: updatedCurrentUser.avatarUrl }
+                    : {}),
+            }))
+        );
+
+        setAllMessages(prevAllMessages => {
+            const newAllMessages = { ...prevAllMessages };
+            for (const chatId in newAllMessages) {
+                newAllMessages[chatId] = newAllMessages[chatId].map(msg =>
+                    msg.senderId === currentUser.id
+                        ? { ...msg, senderName: name } // Update senderName only
+                        : msg
+                );
+            }
+            return newAllMessages;
+        });
+
+        toast({ title: "Profil Diperbarui", description: "Nama tampilan Anda telah diubah." });
     }
-  }, [currentUser, setCurrentUser, setRegisteredUsers]);
+  }, [currentUser, setCurrentUser, setRegisteredUsers, setChats, setAllMessages, toast]);
 
   const handleCreateDirectChat = useCallback((recipientName: string) => {
     if (!currentUser) return;
@@ -190,8 +234,8 @@ export default function ChatPage() {
       id: chatId,
       type: "direct",
       participants: participantsArray,
-      name: recipientUser.name, 
-      avatarUrl: recipientUser.avatarUrl, 
+      name: recipientUser.name,
+      avatarUrl: recipientUser.avatarUrl,
       pendingApprovalFromUserId: recipientUser.id,
       isRejected: false,
       requestTimestamp: now,
@@ -344,7 +388,7 @@ export default function ChatPage() {
         return;
     }
 
-    if (finalMemberUsers.length < 2) { 
+    if (finalMemberUsers.length < 2) {
          toast({
             title: "Anggota Diperlukan",
             description: "Harap tambahkan minimal satu anggota lain yang valid.",
@@ -456,11 +500,13 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
+      // Update last message info for other active chats to ensure correct sorting and unread calculation trigger
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser)) {
          return {
           ...chat,
-          lastMessage: "Aktivitas baru di " + chat.name,
+          lastMessage: "Aktivitas baru di " + chat.name, // Generic message or actual content if needed
           lastMessageTimestamp: newMessage.timestamp,
+          // Do not update lastReadBy for other chats here
          };
       }
       return chat;
@@ -610,7 +656,7 @@ export default function ChatPage() {
     if (clearData) {
       setChats([]);
       setAllMessages({});
-      setRegisteredUsers([]); 
+      setRegisteredUsers([]);
       if (typeof window !== "undefined") {
         Object.keys(window.localStorage).forEach(key => {
           if (key.startsWith(LS_MESSAGES_PREFIX) && key !== `${LS_MESSAGES_PREFIX}all`) {
@@ -732,10 +778,10 @@ export default function ChatPage() {
     const systemMessage = `${userObjectToAdd.name} telah ditambahkan ke grup.`;
     setChats(prevChats => {
       const currentChatToUpdate = prevChats.find(c => c.id === chatIdToAddTo);
-      if (!currentChatToUpdate) return prevChats; 
+      if (!currentChatToUpdate) return prevChats;
 
       const updatedParticipants = [...currentChatToUpdate.participants, userObjectToAdd];
-      const updatedLastReadBy = { ...(currentChatToUpdate.lastReadBy || {}), [userObjectToAdd.id]: 0 }; 
+      const updatedLastReadBy = { ...(currentChatToUpdate.lastReadBy || {}), [userObjectToAdd.id]: 0 };
       const updatedClearedTimestamp = { ...(currentChatToUpdate.clearedTimestamp || {}), [userObjectToAdd.id]: 0 };
 
 
@@ -753,7 +799,7 @@ export default function ChatPage() {
       ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
     toast({ title: "Pengguna Ditambahkan", description: `${userObjectToAdd.name} telah ditambahkan ke grup.` });
-    setChatIdToAddTo(null); 
+    setChatIdToAddTo(null);
   }, [currentUser, chatIdToAddTo, setChats, toast, chats, registeredUsers]);
 
 
@@ -1097,9 +1143,6 @@ export default function ChatPage() {
         </Sidebar>
 
         <SidebarInset className="flex-1 flex flex-col">
-           <div className="md:hidden p-2 border-b flex items-center">
-             
-           </div>
           {selectedChat ? (
             <ChatView
               chat={selectedChat}
@@ -1224,3 +1267,4 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+ 

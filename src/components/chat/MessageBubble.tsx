@@ -237,7 +237,7 @@ export function MessageBubble({
           {/* Order 2: Bubble Content */}
           <BubbleContentLayout className="order-2 mr-2" />
           {/* Order 3: Avatar (only for group chats) */}
-          {chatType === 'group' && <UserAvatarComponent className="order-3 ml-0 self-center" />}
+          {chatType === 'group' && <UserAvatarComponent className="order-3 ml-0 self-start" />}
         </>
       ) : (
         <>
