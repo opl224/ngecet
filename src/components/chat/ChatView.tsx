@@ -261,7 +261,7 @@ export function ChatView({
       chatOverlayMessage = {
         icon: <Clock className="w-16 h-16 text-muted-foreground mb-4" />,
         title: "Menunggu Persetujuan",
-        text: `Permintaan chat Anda kepada ${otherUserName} sedang menunggu persetujuan.`,
+        text: `Permintaan pesan anda kepada ${otherUserName} sedang menunggu persetujuan.`,
       };
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId === currentUser.id) {
        chatOverlayMessage = {

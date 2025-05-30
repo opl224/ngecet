@@ -35,22 +35,48 @@ export function ChatItem({
   const { isMobile, setOpenMobile } = useSidebar();
 
   const getChatDisplayDetails = () => {
+    let nameForDisplay: string;
+    let avatarForDisplay: string | undefined;
+    let initials: string;
+    let IconComponent: React.ElementType = UserIcon; // Default to UserIcon
+    let otherParticipantStatus: string | undefined = undefined;
+    const MAX_NAME_LENGTH = 10;
+
     if (chat.type === "direct") {
       const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
-      const nameForDisplay = otherParticipant?.name || "";
-      const avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
-      const initials = (nameForDisplay ? nameForDisplay.substring(0, 2) : "??").toUpperCase();
-      return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials, Icon: UserIcon, otherParticipantStatus: otherParticipant?.status };
+      nameForDisplay = otherParticipant?.name || "";
+      avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
+      otherParticipantStatus = otherParticipant?.status;
     } else {
-      const groupName = chat.name || "Unnamed Group";
-      return {
-        name: groupName,
-        avatarUrl: chat.avatarUrl,
-        initials: (groupName.substring(0, 2) || "GR").toUpperCase(),
-        Icon: Users,
-        otherParticipantStatus: null,
-      };
+      nameForDisplay = chat.name || "Unnamed Group";
+      avatarForDisplay = chat.avatarUrl;
+      IconComponent = Users;
     }
+
+    if (nameForDisplay.length > MAX_NAME_LENGTH) {
+      nameForDisplay = nameForDisplay.substring(0, MAX_NAME_LENGTH) + "...";
+    }
+    
+    initials = (nameForDisplay ? nameForDisplay.substring(0, 2) : "??").toUpperCase();
+    if (nameForDisplay.startsWith("...") && nameForDisplay.length > 2) { // if truncated name starts with ..., take next two
+        initials = nameForDisplay.substring(3,5).toUpperCase() || "??";
+    } else if (nameForDisplay.includes("...")) { // if ... is in middle or start for short names
+        const firstMeaningfulChar = nameForDisplay.replace("...", "")[0];
+        initials = (firstMeaningfulChar || "?").toUpperCase();
+         if (nameForDisplay.length > 1 && nameForDisplay.replace("...", "").length > 1) {
+            const secondMeaningfulChar = nameForDisplay.replace("...", "")[1];
+            initials += (secondMeaningfulChar || "?").toUpperCase();
+        } else if (initials.length === 1) {
+            initials += (nameForDisplay.substring(0,1) || "?").toUpperCase(); // fallback to first char of original if only one meaningful
+        }
+    } else if (nameForDisplay) {
+        initials = nameForDisplay.substring(0,2).toUpperCase();
+    } else {
+        initials = "??";
+    }
+
+
+    return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials, Icon: IconComponent, otherParticipantStatus };
   };
 
   const { name, avatarUrl, initials, Icon, otherParticipantStatus } = getChatDisplayDetails();
@@ -66,10 +92,10 @@ export function ChatItem({
   if (chat.type === "direct") {
     if (chat.blockedByUser === currentUser.id) {
         showBlockedByCurrentUserIcon = true;
-        specialStatusText = null; // No special text if current user blocked, icon and name color will show it
+        specialStatusText = null; 
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
-        specialStatusText = `${name} mungkin memblokir Anda.`;
+        specialStatusText = `${name} mungkin memblokir Anda.`; // Name here will be truncated if long
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.pendingApprovalFromUserId === currentUser.id) {
       statusTimestamp = chat.requestTimestamp;
@@ -80,9 +106,10 @@ export function ChatItem({
       statusTimestamp = chat.requestTimestamp;
     } else if (chat.isRejected) {
       if (chat.rejectedByUserId !== currentUser.id) {
-        specialStatusText = `${name} menolak permintaan Anda.`;
+        const rejecter = chat.participants.find(p => p.id === chat.rejectedByUserId);
+        specialStatusText = `${rejecter?.name || 'Seseorang'} menolak permintaan Anda.`;
       } else {
-         specialStatusText = null; // No text if current user rejected, red name color and delete icon will show it
+         specialStatusText = null; 
       }
       statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
       showDeleteAction = true;
@@ -145,8 +172,8 @@ export function ChatItem({
                 <Clock className="h-4 w-4 mr-1.5 text-sidebar-foreground/70 shrink-0" />
               )}
               {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
-              <h4 className={cn(
-                  "font-semibold text-sm truncate",
+              <h4 className={cn(      
+                  "font-semibold text-sm truncate", // Keep truncate for responsive/narrow containers
                   chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
                   (chat.type === 'direct' && chat.isRejected) && "text-destructive",
                   (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
