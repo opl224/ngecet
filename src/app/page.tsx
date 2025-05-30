@@ -30,7 +30,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarInset,
-  // SidebarTrigger, // No longer needed from here if only used in one place and that place is removed
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,12 +90,12 @@ export default function ChatPage() {
 
   useEffect(() => {
     setIsClient(true);
-    const MOBILE_BREAKPOINT = 768; // Standard Tailwind md breakpoint
+    const MOBILE_BREAKPOINT = 768; 
     const checkMobile = () => {
       setIsMobileView(window.innerWidth < MOBILE_BREAKPOINT);
     };
 
-    checkMobile(); // Initial check
+    checkMobile(); 
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
@@ -111,7 +110,7 @@ export default function ChatPage() {
     const nameInitial = username.substring(0,1).toUpperCase() || 'U';
     const newUserProfile: User = {
       id: userId,
-      name: username,
+      name: username, 
       avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
       status: "Online"
     };
@@ -119,7 +118,7 @@ export default function ChatPage() {
       username,
       password: password_mock,
       profile: newUserProfile,
-      email: email
+      email: email 
     };
     setRegisteredUsers(prev => [...prev, newRegisteredUser]);
     setCurrentUser(newUserProfile);
@@ -152,28 +151,21 @@ export default function ChatPage() {
 
   const handleCreateDirectChat = useCallback((recipientName: string) => {
     if (!currentUser) return;
-    const recipientId = recipientName.toLowerCase().replace(/\s+/g, "_") || `user_recipient_${Date.now()}`;
+    
+    const recipientRegisteredUser = registeredUsers.find(ru => ru.profile.name.toLowerCase() === recipientName.toLowerCase() || ru.username.toLowerCase() === recipientName.toLowerCase());
 
-    if (recipientId === currentUser.id) {
+    if (!recipientRegisteredUser) {
+        toast({ title: "Error", description: `Pengguna "${recipientName}" tidak ditemukan.`, variant: "destructive" });
+        return;
+    }
+    
+    const recipientUser = recipientRegisteredUser.profile;
+
+    if (recipientUser.id === currentUser.id) {
       toast({ title: "Error", description: "Anda tidak bisa chat dengan diri sendiri.", variant: "destructive" });
       return;
     }
-
-    const existingUser = registeredUsers.find(ru => ru.profile.id === recipientId || ru.profile.name.toLowerCase() === recipientName.toLowerCase());
-    let recipientUser: User;
-
-    if (existingUser) {
-        recipientUser = existingUser.profile;
-    } else {
-        const recipientInitial = recipientName.substring(0,1).toUpperCase() || 'R';
-        recipientUser = {
-            id: recipientId,
-            name: recipientName,
-            avatarUrl: `https://placehold.co/100x100.png?text=${recipientInitial}`,
-            status: "Offline"
-        };
-    }
-
+    
     const participantsArray: User[] = [currentUser, recipientUser].sort((a, b) => a.id.localeCompare(b.id));
     const chatId = `direct_${participantsArray.map(p=>p.id).join("_")}`;
 
@@ -199,7 +191,7 @@ export default function ChatPage() {
       id: chatId,
       type: "direct",
       participants: participantsArray,
-      name: recipientUser.name,
+      name: recipientUser.name, 
       avatarUrl: recipientUser.avatarUrl,
       pendingApprovalFromUserId: recipientUser.id,
       isRejected: false,
@@ -296,28 +288,31 @@ export default function ChatPage() {
     const finalMemberUsers: User[] = [currentUser];
 
     for (const name of memberDisplayNames) {
-        const memberId = name.toLowerCase().replace(/\s+/g, "_") || `user_member_${Date.now()}_${Math.random().toString(36).substring(2,7)}`;
+        
+        const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === name.toLowerCase() || ru.username.toLowerCase() === name.toLowerCase());
+        const userObjectToAdd = registeredMember?.profile;
 
-        if (memberId === currentUser.id) continue;
-        if (finalMemberUsers.find(u => u.id === memberId)) continue;
+        if (!userObjectToAdd) {
+            invalidMemberMessages.push(`Pengguna ${name} tidak ditemukan.`);
+            continue;
+        }
 
-        const potentialDirectChatIdParts = [currentUser.id, memberId].sort();
+        if (userObjectToAdd.id === currentUser.id) continue;
+        if (finalMemberUsers.find(u => u.id === userObjectToAdd.id)) continue;
+
+        const potentialDirectChatIdParts = [currentUser.id, userObjectToAdd.id].sort();
         const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
         const existingDirectChat = chats.find(c => c.id === potentialDirectChatId);
 
         let reasonForInvalid = "";
         let canAdd = false;
-        let userObjectToAdd: User | undefined = undefined;
-
-        const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === name.toLowerCase() || ru.username.toLowerCase() === name.toLowerCase());
-        userObjectToAdd = registeredMember?.profile;
-
-        if (existingDirectChat && userObjectToAdd) {
+        
+        if (existingDirectChat) {
             if (existingDirectChat.blockedByUser === currentUser.id) {
                 reasonForInvalid = `Anda telah memblokir ${name}.`;
-            } else if (existingDirectChat.blockedByUser === memberId) {
+            } else if (existingDirectChat.blockedByUser === userObjectToAdd.id) {
                 reasonForInvalid = `${name} telah memblokir Anda.`;
-            } else if (existingDirectChat.pendingApprovalFromUserId === memberId) {
+            } else if (existingDirectChat.pendingApprovalFromUserId === userObjectToAdd.id) {
                 reasonForInvalid = `Permintaan chat Anda kepada ${name} masih tertunda.`;
             } else if (existingDirectChat.pendingApprovalFromUserId === currentUser.id) {
                 reasonForInvalid = `Anda belum menerima permintaan chat dari ${name}.`;
@@ -328,18 +323,15 @@ export default function ChatPage() {
             } else {
                  reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}.`;
             }
-        } else if (userObjectToAdd) {
-            reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}. Harap mulai chat dan tunggu penerimaan.`;
         } else {
-            reasonForInvalid = `Pengguna ${name} tidak ditemukan.`;
+            reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}. Harap mulai chat dan tunggu penerimaan.`;
         }
 
-        if(canAdd && userObjectToAdd) {
+        if(canAdd) {
             finalMemberUsers.push(userObjectToAdd);
         } else if (reasonForInvalid) {
             invalidMemberMessages.push(reasonForInvalid);
         } else {
-
             invalidMemberMessages.push(`Tidak dapat memvalidasi pengguna ${name}.`);
         }
     }
@@ -354,7 +346,7 @@ export default function ChatPage() {
         return;
     }
 
-    if (finalMemberUsers.length < 2) {
+    if (finalMemberUsers.length < 2) { // Should be at least currentUser + 1 other
          toast({
             title: "Anggota Diperlukan",
             description: "Harap tambahkan minimal satu anggota lain yang valid.",
@@ -401,12 +393,11 @@ export default function ChatPage() {
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
         toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
     } else if (chat.isRejected) {
-        const rejecterName = chat.rejectedByUserId === currentUser?.id ? "Anda" : chat.participants.find(p => p.id === chat.rejectedByUserId)?.name || "Pengguna lain";
-        const rejectedTargetName = chat.rejectedByUserId === currentUser?.id ? (chat.participants.find(p => p.id !== currentUser?.id)?.name || "Pengguna lain") : "Anda";
+        // const rejecterName = chat.rejectedByUserId === currentUser?.id ? "Anda" : chat.participants.find(p => p.id === chat.rejectedByUserId)?.name || "Pengguna lain";
+        // const rejectedTargetName = chat.rejectedByUserId === currentUser?.id ? (chat.participants.find(p => p.id !== currentUser?.id)?.name || "Pengguna lain") : "Anda";
         // toast({ title: "Chat Ditolak", description: `${rejecterName} telah menolak permintaan dengan ${rejectedTargetName}.`, variant: "destructive"});
     }
-    // No longer block selection for pendingApprovalFromUserId === currentUser.id due to UX change
-
+    
     setSelectedChat(chat);
     if (currentUser && chat.id) {
       setChats(prevChats =>
@@ -467,11 +458,11 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
-
+      // Update last message for other active chats to indicate new activity and help sorting
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser)) {
          return {
           ...chat,
-          lastMessage: "Aktivitas baru di " + chat.name,
+          lastMessage: "Aktivitas baru di " + chat.name, 
           lastMessageTimestamp: newMessage.timestamp,
          };
       }
@@ -552,7 +543,7 @@ export default function ChatPage() {
       const chatMessages = (prevAllMessages[editingMessageDetails!.chatId] || []).map(msg =>
         msg.id === messageId ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg
       );
-
+      
       const sortedChatMessages = [...chatMessages].sort((a, b) => a.timestamp - b.timestamp);
 
       if (sortedChatMessages.length > 0) {
@@ -622,6 +613,7 @@ export default function ChatPage() {
     if (clearData) {
       setChats([]);
       setAllMessages({});
+      // Clear individual message entries if they exist (though `${LS_MESSAGES_PREFIX}all` should cover it)
       if (typeof window !== "undefined") {
         Object.keys(window.localStorage).forEach(key => {
           if (key.startsWith(LS_MESSAGES_PREFIX) && key !== `${LS_MESSAGES_PREFIX}all`) {
@@ -637,7 +629,7 @@ export default function ChatPage() {
 
   const handleGoBack = useCallback(() => {
     setSelectedChat(null);
-    setEditingMessageDetails(null);
+    setEditingMessageDetails(null); 
   }, []);
 
   const handleTriggerDeleteAllMessages = useCallback((chatId: string) => {
@@ -656,8 +648,8 @@ export default function ChatPage() {
             lastMessage: "Semua pesan telah dihapus.",
             lastMessageTimestamp: now,
             lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: now },
-            clearedTimestamp: {
-              ...(chat.clearedTimestamp || {}),
+            clearedTimestamp: { 
+              ...(chat.clearedTimestamp || {}), 
               [currentUser.id]: now,
             }
           };
@@ -669,7 +661,7 @@ export default function ChatPage() {
     setChatIdToDeleteAllMessagesFrom(null);
     toast({ title: "Pesan Dihapus", description: "Semua pesan dalam chat ini telah dihapus dari tampilan Anda."});
   }, [currentUser, setChats, toast, chatIdToDeleteAllMessagesFrom]);
-
+  
   const handleCancelDeleteAllMessages = useCallback(() => {
     setIsDeleteAllMessagesConfirmOpen(false);
     setChatIdToDeleteAllMessagesFrom(null);
@@ -686,30 +678,32 @@ export default function ChatPage() {
         return;
     }
 
-    const newUserId = userName.toLowerCase().replace(/\s+/g, "_") || `user_new_${Date.now()}`;
-
     const chatToUpdate = chats.find(c => c.id === chatIdToAddTo);
     if (!chatToUpdate || chatToUpdate.type !== 'group') {
         toast({ title: "Error", description: "Grup tidak ditemukan atau chat bukan grup.", variant: "destructive" });
         return;
     }
-    if (chatToUpdate.participants.find(p => p.id === newUserId || p.name.toLowerCase() === userName.toLowerCase())) {
+    
+    const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === userName.toLowerCase() || ru.username.toLowerCase() === userName.toLowerCase());
+    const userObjectToAdd = registeredMember?.profile;
+
+    if (!userObjectToAdd) {
+        toast({ title: "Penambahan Gagal", description: `Pengguna ${userName} tidak ditemukan.`, variant: "destructive" });
+        return;
+    }
+
+    if (chatToUpdate.participants.find(p => p.id === userObjectToAdd.id)) {
         toast({ title: "Info", description: `${userName} sudah menjadi anggota grup.`, variant: "default" });
         return;
     }
 
-    const potentialDirectChatIdParts = [currentUser.id, newUserId].sort();
+    const potentialDirectChatIdParts = [currentUser.id, userObjectToAdd.id].sort();
     const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
     const existingDirectChat = chats.find(c => c.id === potentialDirectChatId);
 
-    let userObjectToAdd: User | undefined = undefined;
     let reasonForInvalid = "";
-
-    const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === userName.toLowerCase() || ru.username.toLowerCase() === userName.toLowerCase());
-    userObjectToAdd = registeredMember?.profile;
-
-
-    if (existingDirectChat && userObjectToAdd) {
+    
+    if (existingDirectChat) {
         if (existingDirectChat.blockedByUser === currentUser.id) {
             reasonForInvalid = `Anda telah memblokir ${userName}.`;
         } else if (existingDirectChat.blockedByUser === userObjectToAdd.id) {
@@ -725,50 +719,41 @@ export default function ChatPage() {
         } else {
             reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${userName}.`;
         }
-    } else if (userObjectToAdd) {
+    } else {
          reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${userName}. Harap mulai chat langsung dan tunggu penerimaan.`;
     }
-     else {
-        reasonForInvalid = `Pengguna ${userName} tidak ditemukan.`;
-    }
-
+    
     if (reasonForInvalid) {
         toast({ title: "Penambahan Gagal", description: `Tidak dapat menambahkan ${userName}. ${reasonForInvalid}`, variant: "destructive", duration: 7000 });
         return;
     }
 
-    if (!userObjectToAdd) {
-       toast({ title: "Error Internal", description: `Gagal memproses detail pengguna untuk ${userName}.`, variant: "destructive" });
-       return;
-    }
-
-
     const now = Date.now();
     const systemMessage = `${userObjectToAdd.name} telah ditambahkan ke grup.`;
     setChats(prevChats => {
       const currentChatToUpdate = prevChats.find(c => c.id === chatIdToAddTo);
-      if (!currentChatToUpdate) return prevChats;
+      if (!currentChatToUpdate) return prevChats; // Should not happen
 
-      const updatedParticipants = [...currentChatToUpdate.participants, userObjectToAdd!];
-      const updatedLastReadBy = { ...(currentChatToUpdate.lastReadBy || {}), [userObjectToAdd!.id]: 0 };
-      const updatedClearedTimestamp = { ...(currentChatToUpdate.clearedTimestamp || {}), [userObjectToAdd!.id]: 0 };
+      const updatedParticipants = [...currentChatToUpdate.participants, userObjectToAdd];
+      const updatedLastReadBy = { ...(currentChatToUpdate.lastReadBy || {}), [userObjectToAdd.id]: 0 }; // New user hasn't read
+      const updatedClearedTimestamp = { ...(currentChatToUpdate.clearedTimestamp || {}), [userObjectToAdd.id]: 0 };
 
 
       return prevChats.map(c =>
         c.id === chatIdToAddTo
-          ? {
-              ...c,
+          ? { 
+              ...c, 
               participants: updatedParticipants,
               lastReadBy: updatedLastReadBy,
               clearedTimestamp: updatedClearedTimestamp,
-              lastMessage: systemMessage,
+              lastMessage: systemMessage, 
               lastMessageTimestamp: now,
             }
           : c
       ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
     toast({ title: "Pengguna Ditambahkan", description: `${userObjectToAdd.name} telah ditambahkan ke grup.` });
-    setChatIdToAddTo(null);
+    setChatIdToAddTo(null); // Reset for next use
   }, [currentUser, chatIdToAddTo, setChats, toast, chats, registeredUsers]);
 
 
@@ -830,7 +815,7 @@ export default function ChatPage() {
       }
 
       const updatedParticipants = chatToUpdate.participants.filter(p => p.id !== participantIdToRemove);
-
+      
       const updatedLastReadBy = { ...chatToUpdate.lastReadBy };
       delete updatedLastReadBy[participantIdToRemove];
 
@@ -839,9 +824,9 @@ export default function ChatPage() {
 
       const now = Date.now();
       const removalMessage = `${participantToRemove.name} telah dikeluarkan dari grup.`;
-
+      
       toast({ title: "Pengguna Dikeluarkan", description: removalMessage });
-
+      
       const updatedChat = {
         ...chatToUpdate,
         participants: updatedParticipants,
@@ -850,9 +835,9 @@ export default function ChatPage() {
         lastMessage: removalMessage,
         lastMessageTimestamp: now,
       };
-
+      
       if (selectedChat?.id === chatId) {
-        setSelectedChat(updatedChat);
+        setSelectedChat(updatedChat); 
       }
 
       return prevChats.map(c => c.id === chatId ? updatedChat : c)
@@ -882,18 +867,18 @@ export default function ChatPage() {
 
         const updatedLastReadBy = { ...chatBeingLeft.lastReadBy };
         delete updatedLastReadBy[currentUser.id];
-
+        
         const updatedClearedTimestamp = { ...chatBeingLeft.clearedTimestamp };
         delete updatedClearedTimestamp[currentUser.id];
 
         const now = Date.now();
         const leaveMessage = `${currentUser.name} telah keluar dari grup.`;
-
+        
         return prevChats.map(c =>
             c.id === chatId
-                ? {
-                    ...c,
-                    participants: updatedParticipants,
+                ? { 
+                    ...c, 
+                    participants: updatedParticipants, 
                     lastReadBy: updatedLastReadBy,
                     clearedTimestamp: updatedClearedTimestamp,
                     lastMessage: leaveMessage,
@@ -938,8 +923,8 @@ export default function ChatPage() {
 
     setChats(prev => prev.map(c => {
         if (c.id === chatId) {
-            return {
-                ...c,
+            return { 
+                ...c, 
                 blockedByUser: currentUser.id,
                 lastMessage: `Anda memblokir ${otherParticipantName}.`,
                 lastMessageTimestamp: Date.now()
@@ -947,7 +932,7 @@ export default function ChatPage() {
         }
         return c;
     }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
-
+    
     if (selectedChat?.id === chatId) {
         setSelectedChat(prev => prev ? {...prev, blockedByUser: currentUser.id, lastMessage: `Anda memblokir ${otherParticipantName}.`, lastMessageTimestamp: Date.now()} : null);
     }
@@ -965,8 +950,8 @@ export default function ChatPage() {
 
     setChats(prev => prev.map(c => {
         if (c.id === chatId) {
-            return {
-                ...c,
+            return { 
+                ...c, 
                 blockedByUser: undefined,
                 lastMessage: `Anda membuka blokir ${otherParticipantName}.`,
                 lastMessageTimestamp: Date.now()
@@ -974,7 +959,7 @@ export default function ChatPage() {
         }
         return c;
     }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
-
+    
     if (selectedChat?.id === chatId) {
         setSelectedChat(prev => prev ? {...prev, blockedByUser: undefined, lastMessage: `Anda membuka blokir ${otherParticipantName}.`, lastMessageTimestamp: Date.now()} : null);
     }
@@ -1008,7 +993,7 @@ export default function ChatPage() {
                     <AppLogo className="h-7 w-7" />
                     <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">Ngecet</h1>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="hidden md:flex items-center gap-2">
                     {currentUser && (
                         <UserProfileForm
                             currentUser={currentUser}
@@ -1016,7 +1001,6 @@ export default function ChatPage() {
                             displayMode="compact"
                         />
                     )}
-                    {/* SidebarTrigger for desktop removed here */}
                 </div>
              </div>
           </SidebarHeader>
@@ -1046,14 +1030,14 @@ export default function ChatPage() {
                   Pengaturan & Akun
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuContent className="w-56" align="end" sideOffset={isMobileView ? 8 : 4} side={isMobileView ? "top" : "right"}>
                  <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <Palette className="mr-2 h-4 w-4" />
                     <span>Tema</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
+                    <DropdownMenuSubContent sideOffset={isMobileView ? -5 : 8} side={isMobileView ? "top" : "right"} align={isMobileView ? "center" : "start"}>
                       <DropdownMenuItem onClick={() => setTheme("light")}>
                         <Sun className="mr-2 h-4 w-4" />
                         <span>Terang</span>
@@ -1089,7 +1073,7 @@ export default function ChatPage() {
 
         <SidebarInset className="flex-1 flex flex-col">
            <div className="md:hidden p-2 border-b flex items-center">
-             {/* Mobile Header Content (empty as per previous request) */}
+             {/* Mobile Header Content: empty for now */}
            </div>
           {selectedChat ? (
             <ChatView
@@ -1123,6 +1107,7 @@ export default function ChatPage() {
         onOpenChange={setIsNewDirectChatDialogOpen}
         onCreateChat={handleCreateDirectChat}
         currentUserId={currentUser?.id}
+        registeredUsers={registeredUsers}
       />
       <NewGroupChatDialog
         isOpen={isNewGroupChatDialogOpen}
@@ -1135,6 +1120,8 @@ export default function ChatPage() {
         onCreateChat={handleCreateGroupChat}
         currentUserObj={currentUser}
         initialMemberName={groupDialogInitialMemberName}
+        chats={chats}
+        registeredUsers={registeredUsers}
       />
       <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}
@@ -1143,6 +1130,7 @@ export default function ChatPage() {
         currentUserObj={currentUser}
         chats={chats}
         chatIdToAddTo={chatIdToAddTo}
+        registeredUsers={registeredUsers}
       />
        <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
         <AlertDialogContent>
@@ -1211,5 +1199,3 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
-
-    
