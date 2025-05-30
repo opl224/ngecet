@@ -209,9 +209,9 @@ export default function ChatPage() {
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
-    setAllMessages(prev => ({ ...prev, [chatId]: [] }));
+    // setAllMessages(prev => ({ ...prev, [chatId]: [] })); // Pesan tidak dibuat sampai chat diterima
     toast({ title: "Permintaan Terkirim", description: `Permintaan chat telah dikirim ke ${recipientUser.name}.` });
-  }, [currentUser, chats, setChats, setAllMessages, toast, registeredUsers]);
+  }, [currentUser, chats, setChats, toast, registeredUsers]);
 
   const handleAcceptChatRequest = useCallback((chatId: string) => {
     if (!currentUser) return;
@@ -241,12 +241,14 @@ export default function ChatPage() {
       const acceptedChat = updatedChats.find(c => c.id === chatId);
       if (acceptedChat) {
           setSelectedChat(acceptedChat);
+          // Initialize messages for the accepted chat if not already present
+          setAllMessages(prev => ({ ...prev, [chatId]: prev[chatId] || [] }));
       }
       return updatedChats;
     });
     toast({ title: "Permintaan Diterima", description: `Anda sekarang dapat mengirim pesan dengan ${acceptedChatName}.` });
 
-  }, [currentUser, setChats, toast]);
+  }, [currentUser, setChats, toast, setAllMessages]);
 
   const handleRejectChatRequest = useCallback((chatId: string) => {
     if (!currentUser) return;
@@ -936,7 +938,8 @@ export default function ChatPage() {
     if (selectedChat?.id === chatId) {
         setSelectedChat(prev => prev ? {...prev, blockedByUser: currentUser.id, lastMessage: `Anda memblokir ${otherParticipantName}.`, lastMessageTimestamp: Date.now()} : null);
     }
-  }, [currentUser, chats, selectedChat, setChats]);
+    toast({ title: "Pengguna Diblokir", description: `Anda telah memblokir ${otherParticipantName}.` });
+  }, [currentUser, chats, selectedChat, setChats, toast]);
 
   const handleUnblockUser = useCallback((chatId: string) => {
     if (!currentUser) return;
@@ -963,7 +966,8 @@ export default function ChatPage() {
     if (selectedChat?.id === chatId) {
         setSelectedChat(prev => prev ? {...prev, blockedByUser: undefined, lastMessage: `Anda membuka blokir ${otherParticipantName}.`, lastMessageTimestamp: Date.now()} : null);
     }
-  }, [currentUser, chats, selectedChat, setChats]);
+    toast({ title: "Blokir Dibuka", description: `Anda telah membuka blokir ${otherParticipantName}.` });
+  }, [currentUser, chats, selectedChat, setChats, toast]);
 
 
   if (!isClient) {
@@ -993,7 +997,7 @@ export default function ChatPage() {
                     <AppLogo className="h-7 w-7" />
                     <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">Ngecet</h1>
                 </div>
-                <div className="hidden md:flex items-center gap-2">
+                <div className="flex items-center gap-2">
                     {currentUser && (
                         <UserProfileForm
                             currentUser={currentUser}
@@ -1199,3 +1203,6 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+
+
+    
