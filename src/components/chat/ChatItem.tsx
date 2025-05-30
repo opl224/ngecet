@@ -61,10 +61,12 @@ export function ChatItem({
   let specialStatusText: string | null = null;
   const calculatedUnreadCount = chat.calculatedUnreadCount || 0;
   let showPendingClockIcon = false;
+  let showBlockedByCurrentUserIcon = false;
 
   if (chat.type === "direct") {
     if (chat.blockedByUser === currentUser.id) {
-        specialStatusText = null; 
+        showBlockedByCurrentUserIcon = true;
+        specialStatusText = null; // No special text if current user blocked, icon and name color will show it
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
         specialStatusText = `${name} mungkin memblokir Anda.`;
@@ -80,10 +82,10 @@ export function ChatItem({
       if (chat.rejectedByUserId !== currentUser.id) {
         specialStatusText = `${name} menolak permintaan Anda.`;
       } else {
-        specialStatusText = null; 
+         specialStatusText = null; // No text if current user rejected, red name color and delete icon will show it
       }
       statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
-      showDeleteAction = true; 
+      showDeleteAction = true;
     }
   }
 
@@ -93,8 +95,6 @@ export function ChatItem({
 
   const handleItemClick = () => {
     if (isClickDisabled) return;
-    // Allow clicking on pending requests to open the chat view, 
-    // actual accept/reject is handled by dedicated buttons.
     onSelectChat(chat);
     if (isMobile) {
       setOpenMobile(false);
@@ -140,14 +140,13 @@ export function ChatItem({
         </Avatar>
         <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex justify-between items-center">
-            {/* Container for name and optional icons (clock, shield) - this will take available space and allow truncation */}
-            <div className="flex items-center flex-1 min-w-0 mr-2 overflow-hidden"> {/* Added overflow-hidden here */}
+            <div className="flex items-center flex-1 min-w-0 mr-2 overflow-hidden">
               {showPendingClockIcon && !chat.isRejected && (
                 <Clock className="h-4 w-4 mr-1.5 text-sidebar-foreground/70 shrink-0" />
               )}
-              {(chat.type === 'direct' && chat.blockedByUser === currentUser.id) && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
+              {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
               <h4 className={cn(
-                  "font-semibold text-sm truncate", 
+                  "font-semibold text-sm truncate",
                   chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
                   (chat.type === 'direct' && chat.isRejected) && "text-destructive",
                   (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
@@ -157,7 +156,6 @@ export function ChatItem({
               </h4>
             </div>
 
-            {/* Container for status/actions on the right - this will shrink */}
             <div className="shrink-0">
               {(() => {
                 if (showAcceptRejectActions) {
@@ -184,7 +182,7 @@ export function ChatItem({
                     </div>
                   );
                 }
-                if (showDeleteAction) { 
+                if (showDeleteAction) {
                   return (
                     <Button
                       size="icon"
@@ -204,7 +202,7 @@ export function ChatItem({
                     </Badge>
                   );
                 }
-                
+
                 if (chat.type === 'direct' && calculatedUnreadCount === 0 && !specialStatusText && !chat.blockedByUser && !showAcceptRejectActions && !showPendingClockIcon && !chat.isRejected) {
                   const status = otherParticipantStatus || "Offline";
                   const isOnline = status === "Online";
@@ -218,15 +216,14 @@ export function ChatItem({
                     </div>
                   );
                 }
-                
+
                 if (statusTimestamp && !specialStatusText && (chat.type === 'group' || (chat.type === 'direct' && !showAcceptRejectActions && !chat.blockedByUser ))) {
-                  // Avoid double rendering timestamp if online/offline is shown for direct chats
                   const shouldShowTimestampForDirect = !(chat.type === 'direct' && calculatedUnreadCount === 0 && !specialStatusText && !chat.blockedByUser && !showAcceptRejectActions && !showPendingClockIcon && !chat.isRejected);
-                  
+
                   if (chat.type === 'group' || (chat.type === 'direct' && shouldShowTimestampForDirect)) {
                      return (
                         <span className="text-xs text-sidebar-foreground/60 shrink-0">
-                           {formatDistanceToNowStrict(new Date(statusTimestamp), { locale: idLocale, addSuffix: true })}
+                           {formatDistanceToNowStrict(new Date(statusTimestamp), { locale: idLocale, addSuffix: false })}
                         </span>
                      );
                   }
@@ -245,5 +242,3 @@ export function ChatItem({
     </div>
   );
 }
-
-    
