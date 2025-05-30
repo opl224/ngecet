@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
 import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert, Clock, ShieldOff } from "lucide-react";
-import { useSidebar } from "@/components/ui/sidebar"; // Import useSidebar
+import { useSidebar } from "@/components/ui/sidebar";
 
 interface ChatItemProps {
   chat: Chat & { calculatedUnreadCount?: number };
@@ -32,12 +32,12 @@ export function ChatItem({
   onDeleteChatPermanently,
   onUnblockUser,
 }: ChatItemProps) {
-  const { isMobile, setOpenMobile } = useSidebar(); // Get mobile state and setter
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const getChatDisplayDetails = () => {
     if (chat.type === "direct") {
       const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
-      const nameForDisplay = otherParticipant?.name || "";
+      const nameForDisplay = otherParticipant?.name || ""; // Fallback to empty string if name is not found
       const avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
       const initials = (nameForDisplay ? nameForDisplay.substring(0, 2) : "??").toUpperCase();
       return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials, Icon: UserIcon, otherParticipantStatus: otherParticipant?.status };
@@ -64,7 +64,8 @@ export function ChatItem({
 
   if (chat.type === "direct") {
     if (chat.blockedByUser === currentUser.id) {
-        specialStatusText = null; 
+        const otherUserName = chat.participants.find(p => p.id !== currentUser.id)?.name || "pengguna ini";
+        specialStatusText = null; // No subtext, icon will indicate block
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
         specialStatusText = `${name} mungkin memblokir Anda.`;
@@ -73,14 +74,15 @@ export function ChatItem({
       statusTimestamp = chat.requestTimestamp;
       showAcceptRejectActions = true;
       specialStatusText = "Permintaan chat baru";
-    } else if (chat.pendingApprovalFromUserId) {
+    } else if (chat.pendingApprovalFromUserId) { // Request sent by current user, pending for other
       showPendingClockIcon = true;
       statusTimestamp = chat.requestTimestamp;
+      // specialStatusText = "Permintaan dikirim. Menunggu..."; // Removed as per request
     } else if (chat.isRejected) {
-      if (chat.rejectedByUserId === currentUser.id) {
-        specialStatusText = null; 
-      } else {
+      if (chat.rejectedByUserId !== currentUser.id) {
         specialStatusText = `${name} menolak permintaan Anda.`;
+      } else {
+        specialStatusText = null; // "Anda menolak permintaan ini." removed. Icon will be shown.
       }
       statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
       showDeleteActionForRejected = true;
@@ -88,13 +90,15 @@ export function ChatItem({
   }
 
   const isClickDisabled =
-    (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive) ||
+    (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id && !isActive && !showAcceptRejectActions) ||
     (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive);
 
+
   const handleItemClick = () => {
+    if (isClickDisabled && !showAcceptRejectActions) return;
     onSelectChat(chat);
     if (isMobile) {
-      setOpenMobile(false); // Close mobile sidebar on chat selection
+      setOpenMobile(false);
     }
   };
 
@@ -102,6 +106,7 @@ export function ChatItem({
     !chat.pendingApprovalFromUserId &&
     !chat.isRejected &&
     !(chat.type === 'direct' && chat.blockedByUser);
+
 
   let statusMessageToDisplay: React.ReactNode = null;
   if (specialStatusText) {
@@ -113,11 +118,13 @@ export function ChatItem({
   } else if (chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
      statusMessageToDisplay = "Mulai percakapan";
   }
-
+  // else if (chat.lastMessage && !specialStatusText && !showPendingClockIcon) { // Removed: "Aktivitas terakhir"
+  //    statusMessageToDisplay = chat.type === 'direct' ? "Aktivitas terakhir" : "Aktivitas grup terakhir";
+  // }
 
   return (
     <div
-      onClick={!isClickDisabled ? handleItemClick : undefined}
+      onClick={handleItemClick}
       className={cn(
         "w-full text-left p-3 flex flex-col rounded-lg hover:bg-sidebar-accent transition-colors",
         isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
@@ -127,7 +134,7 @@ export function ChatItem({
       <div
         className={cn(
             "w-full flex items-center space-x-3",
-            !isClickDisabled && "cursor-pointer"
+            (!isClickDisabled || showAcceptRejectActions) && "cursor-pointer" // Make clickable if actions are present
         )}
       >
         <Avatar className="h-10 w-10">
@@ -136,16 +143,16 @@ export function ChatItem({
             {initials || <Icon className="h-5 w-5 text-sidebar-foreground/70" />}
           </AvatarFallback>
         </Avatar>
-        <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-hidden"> {/* Added overflow-hidden here */}
           <div className="flex justify-between items-center">
-            <div className="flex items-center">
+            <div className="flex items-center min-w-0"> {/* Added min-w-0 here for truncate */}
               {showPendingClockIcon && !chat.isRejected && (
                 <Clock className="h-4 w-4 mr-1.5 text-sidebar-foreground/70 shrink-0" />
               )}
               <h4 className={cn(
-                  "font-semibold text-sm truncate",
+                  "font-semibold text-sm truncate", // Added truncate class
                   chat.pendingApprovalFromUserId === currentUser.id && "text-primary",
-                  chat.isRejected && "text-destructive",
+                  (chat.type === 'direct' && chat.isRejected) && "text-destructive",
                   (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive flex items-center"
                 )}
               >
@@ -154,7 +161,7 @@ export function ChatItem({
               </h4>
             </div>
             {(() => {
-              if (showAcceptRejectActions) { // For incoming pending requests
+              if (showAcceptRejectActions) {
                 return (
                   <div className="flex items-center space-x-1 shrink-0 ml-2">
                     <Button
@@ -178,7 +185,7 @@ export function ChatItem({
                   </div>
                 );
               }
-              if (showDeleteActionForRejected) { // For rejected chats (by anyone)
+              if (showDeleteActionForRejected) {
                  return (
                   <Button
                     size="icon"
@@ -190,6 +197,10 @@ export function ChatItem({
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 );
+              }
+              if (chat.type === 'direct' && chat.blockedByUser === currentUser.id && onUnblockUser) {
+                // This button is now handled in ChatView, keeping this path minimal
+                 return null; // No specific button here, status handled by icon in name
               }
               if (!specialStatusText && calculatedUnreadCount > 0) {
                 return (
@@ -215,7 +226,7 @@ export function ChatItem({
                  if (chat.type === 'group' || (showPendingClockIcon && chat.type === 'direct' && !chat.isRejected) || (chat.type === 'direct' && !chat.isRejected && !chat.pendingApprovalFromUserId && !chat.blockedByUser && calculatedUnreadCount === 0)) {
                      return (
                         <span className="text-xs text-sidebar-foreground/60 shrink-0 ml-2">
-                          {formatDistanceToNowStrict(new Date(statusTimestamp), { locale: idLocale, addSuffix: false })}
+                          {formatDistanceToNowStrict(new Date(statusTimestamp), { locale: idLocale, addSuffix: true })}
                         </span>
                       );
                  }
