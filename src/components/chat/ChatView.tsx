@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, X, AlertTriangle, Lock, PencilLine, Check, ArrowLeft, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, ShieldAlert, ShieldOff, Palette, Sun, Moon, Laptop, InfoIcon, Clock } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, X, AlertTriangle, Lock, PencilLine, Check, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, ShieldAlert, ShieldOff, Palette, Sun, Moon, Laptop, InfoIcon, Clock, ArrowLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -39,7 +39,7 @@ interface ChatViewProps {
   onCancelEditMessage: () => void;
   onDeleteMessage: (messageId: string, chatId: string) => void;
   onGoBack?: () => void;
-  onTriggerDeleteAllMessages: (chatId: string) => void; // Changed from onDeleteAllMessagesInChat
+  onTriggerDeleteAllMessages: (chatId: string) => void;
   onTriggerAddUserToGroup?: () => void;
   onTriggerDeleteGroup?: (chatId: string) => void;
   onRemoveParticipant?: (chatId: string, participantIdToRemove: string) => void;
@@ -60,7 +60,7 @@ export function ChatView({
   onCancelEditMessage,
   onDeleteMessage,
   onGoBack,
-  onTriggerDeleteAllMessages, // Changed from onDeleteAllMessagesInChat
+  onTriggerDeleteAllMessages,
   onTriggerAddUserToGroup,
   onTriggerDeleteGroup,
   onRemoveParticipant,
@@ -153,20 +153,21 @@ export function ChatView({
       setNewMessage("");
       setReplyingToMessage(null);
       if (messageInputRef.current) {
-        messageInputRef.current.style.setProperty('height', 'auto', 'important');
+        // Forcing height reset with !important can be risky, but let's try a standard reset first
+        messageInputRef.current.style.height = 'auto';
       }
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
-        onCancelEditMessage();
+        onCancelEditMessage(); // Cancel edit if switching to a different chat
       }
     }
-
+    
+    // Focus logic
     const isChatEffectivelyActive = chat.type === 'group' || (!chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser));
-
     if (isChatEffectivelyActive && messageInputRef.current &&
         (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
       setTimeout(() => {
         messageInputRef.current?.focus();
-      }, 50);
+      }, 50); 
     }
     prevChatIdRef.current = chat.id;
   }, [chat.id, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage]);
@@ -246,7 +247,7 @@ export function ChatView({
       chatOverlayMessage = {
         icon: <Clock className="w-16 h-16 text-muted-foreground mb-4" />,
         title: "Menunggu Persetujuan",
-        text: `Permintaan pesan anda kepada ${otherUserName} sedang menunggu persetujuan.`,
+        text: `Permintaan chat Anda kepada ${otherUserName} sedang menunggu persetujuan.`,
       };
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId === currentUser.id) {
        chatOverlayMessage = {
@@ -318,8 +319,8 @@ export function ChatView({
       if (isACreator && !isBCreator) return -1; 
       if (!isACreator && isBCreator) return 1;  
 
-      if (isACurrentUser && !isBCurrentUser) return -1; 
-      if (!isACurrentUser && isBCurrentUser) return 1;  
+      if (isACurrentUser && !isBCurrentUser && !isACreator) return -1; 
+      if (!isACurrentUser && isBCurrentUser && !isBCreator) return 1;  
       
       return (a.name || '').localeCompare(b.name || '');
     });
@@ -371,15 +372,15 @@ export function ChatView({
                     <DropdownMenuContent align="end">
                         {onGoBack && (
                             <DropdownMenuItem onClick={onGoBack} className="py-2">
-                                <span>Tutup pesan</span>
+                                <span>Tutup Chat</span>
                             </DropdownMenuItem>
                         )}
-                        <DropdownMenuSeparator/>
+                        
                         <DropdownMenuItem
                             onClick={() => onTriggerDeleteAllMessages(chat.id)}
                             className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
                         >
-                            <span>Hapus semua pesan</span>
+                            <span>Hapus Semua Pesan</span>
                         </DropdownMenuItem>
 
                          {chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerDeleteGroup && (
@@ -400,6 +401,7 @@ export function ChatView({
                                     </DropdownMenuItem>
                                 ) : (
                                     <DropdownMenuItem onClick={() => onBlockUser && onBlockUser(chat.id)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2">
+                                        <ShieldAlert className="mr-2 h-4 w-4"/>
                                         <span>Blokir pengguna</span>
                                     </DropdownMenuItem>
                                 )}
@@ -681,3 +683,4 @@ export function ChatView({
     </div>
   );
 }
+
