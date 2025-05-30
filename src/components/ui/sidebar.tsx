@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet" // Added SheetTitle
+import { Sheet, SheetContent } from "@/components/ui/sheet" // SheetTitle removed from import
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -69,10 +69,14 @@ const SidebarProvider = React.forwardRef<
     ref
   ) => {
     const isMobileHookResult = useIsMobile()
-    const [openMobile, setOpenMobile] = React.useState(false); // Default to false
+    
+    // Initialize openMobile based on isMobileHookResult and defaultOpen
+    // This handles the case where useIsMobile might return undefined initially
+    const [openMobile, setOpenMobile] = React.useState(false);
 
     const [_open, _setOpen] = React.useState(defaultOpen)
     const open = openProp ?? _open
+    
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
         const openState = typeof value === "function" ? value(open) : value
@@ -106,7 +110,7 @@ const SidebarProvider = React.forwardRef<
 
 
     const toggleSidebar = React.useCallback(() => {
-      if (isMobileHookResult) { // Use the hook result directly
+      if (isMobileHookResult) { 
         setOpenMobile((currentOpen) => !currentOpen);
       } else {
         setOpen((currentOpen) => !currentOpen);
@@ -223,7 +227,7 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <SheetTitle className="sr-only">Navigation</SheetTitle>
+            {/* SheetTitle removed from here */}
             <div className="flex h-full w-full flex-col">{children}</div>
           </SheetContent>
         </Sheet>
@@ -774,5 +778,7 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
 
     
