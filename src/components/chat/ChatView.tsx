@@ -89,7 +89,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); 
+    setNewMessage("");
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -125,7 +125,7 @@ export function ChatView({
       }
       setTimeout(() => {
         if (messageInputRef.current) {
-          if (messageInputRef.current.value !== propsEditingMessageDetails.content) { 
+          if (messageInputRef.current.value !== propsEditingMessageDetails.content) {
             messageInputRef.current.value = propsEditingMessageDetails.content;
           }
           messageInputRef.current.style.height = 'auto';
@@ -136,14 +136,14 @@ export function ChatView({
           messageInputRef.current.selectionStart = len;
           messageInputRef.current.selectionEnd = len;
         }
-      }, 50); 
+      }, 50);
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
       if (messageInputRef.current && !replyingToMessage ) {
           messageInputRef.current.style.height = 'auto';
       }
     }
     prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
-  }, [propsEditingMessageDetails, chat.id, replyingToMessage, newMessage]); 
+  }, [propsEditingMessageDetails, chat.id, replyingToMessage, newMessage]);
 
 
   useEffect(() => {
@@ -153,21 +153,19 @@ export function ChatView({
       setNewMessage("");
       setReplyingToMessage(null);
       if (messageInputRef.current) {
-        // Forcing height reset with !important can be risky, but let's try a standard reset first
         messageInputRef.current.style.height = 'auto';
       }
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
-        onCancelEditMessage(); // Cancel edit if switching to a different chat
+        onCancelEditMessage();
       }
     }
-    
-    // Focus logic
+
     const isChatEffectivelyActive = chat.type === 'group' || (!chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser));
     if (isChatEffectivelyActive && messageInputRef.current &&
         (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
       setTimeout(() => {
         messageInputRef.current?.focus();
-      }, 50); 
+      }, 50);
     }
     prevChatIdRef.current = chat.id;
   }, [chat.id, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage]);
@@ -197,7 +195,7 @@ export function ChatView({
         name: otherParticipantName,
         avatarUrl: otherParticipantAvatar,
         Icon: UserIcon,
-        description: `Status: ${otherParticipantStatus}`, 
+        description: `Status: ${otherParticipantStatus}`,
         status: otherParticipantStatus,
         otherParticipantObject: otherParticipant
       };
@@ -291,7 +289,7 @@ export function ChatView({
     if(!isChatActive) return;
     if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); 
+    setNewMessage("");
     setTimeout(() => messageInputRef.current?.focus(), 50);
   }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
@@ -300,7 +298,7 @@ export function ChatView({
     setNewMessage(event.target.value);
     if (messageInputRef.current) {
       messageInputRef.current.style.height = 'auto';
-      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); 
+      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120);
       messageInputRef.current.style.height = `${newHeight}px`;
     }
   };
@@ -316,12 +314,12 @@ export function ChatView({
       const isACurrentUser = a.id === currentUser.id;
       const isBCurrentUser = b.id === currentUser.id;
 
-      if (isACreator && !isBCreator) return -1; 
-      if (!isACreator && isBCreator) return 1;  
+      if (isACreator && !isBCreator) return -1;
+      if (!isACreator && isBCreator) return 1;
 
-      if (isACurrentUser && !isBCurrentUser && !isACreator) return -1; 
-      if (!isACurrentUser && isBCurrentUser && !isBCreator) return 1;  
-      
+      if (isACurrentUser && !isBCurrentUser && !isACreator) return -1;
+      if (!isACurrentUser && isBCurrentUser && !isBCreator) return 1;
+
       return (a.name || '').localeCompare(b.name || '');
     });
   }, [chat.participants, chat.createdByUserId, currentUser.id]);
@@ -329,7 +327,7 @@ export function ChatView({
 
   return (
     <div className="flex flex-col flex-1 bg-background overflow-hidden">
-      <Dialog> 
+      <Dialog>
         <header className="p-4 border-b flex items-center justify-between shadow-sm">
           <div className="flex items-center space-x-1 flex-1 min-w-0">
             {onGoBack && (
@@ -375,7 +373,6 @@ export function ChatView({
                                 <span>Tutup Chat</span>
                             </DropdownMenuItem>
                         )}
-                        
                         <DropdownMenuItem
                             onClick={() => onTriggerDeleteAllMessages(chat.id)}
                             className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
@@ -446,7 +443,7 @@ export function ChatView({
               </div>
             ) : null}
           </DialogHeader>
-          
+
           {chat.type === 'direct' && onStartGroupWithUser && isChatActive && displayDetails.otherParticipantObject && (
               <>
                 <DropdownMenuSeparator />
@@ -683,4 +680,3 @@ export function ChatView({
     </div>
   );
 }
-
