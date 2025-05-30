@@ -12,7 +12,7 @@ import { WelcomeMessage } from "@/components/chat/WelcomeMessage";
 import { NewDirectChatDialog } from "@/components/chat/NewDirectChatDialog";
 import { NewGroupChatDialog } from "@/components/chat/NewGroupChatDialog";
 import { AddUserToGroupDialog } from "@/components/chat/AddUserToGroupDialog";
-import { AuthPage } from "@/components/auth/AuthPage"; // New Auth Page
+import { AuthPage } from "@/components/auth/AuthPage";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -87,8 +87,18 @@ export default function ChatPage() {
 
 
   const [isClient, setIsClient] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(false);
+
   useEffect(() => {
     setIsClient(true);
+    const MOBILE_BREAKPOINT = 768; // Standard Tailwind md breakpoint
+    const checkMobile = () => {
+      setIsMobileView(window.innerWidth < MOBILE_BREAKPOINT);
+    };
+
+    checkMobile(); // Initial check
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   const handleRegister = useCallback((email: string, username: string, password_mock: string): boolean => {
@@ -101,7 +111,7 @@ export default function ChatPage() {
     const nameInitial = username.substring(0,1).toUpperCase() || 'U';
     const newUserProfile: User = {
       id: userId,
-      name: username, // Use username as initial display name
+      name: username, 
       avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
       status: "Online"
     };
@@ -318,9 +328,9 @@ export default function ChatPage() {
             } else {
                  reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}.`;
             }
-        } else if (userObjectToAdd) { // User exists but no direct chat
+        } else if (userObjectToAdd) { 
             reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${name}. Harap mulai chat dan tunggu penerimaan.`;
-        } else { // User not found
+        } else { 
             reasonForInvalid = `Pengguna ${name} tidak ditemukan.`;
         }
 
@@ -329,7 +339,7 @@ export default function ChatPage() {
         } else if (reasonForInvalid) {
             invalidMemberMessages.push(reasonForInvalid);
         } else { 
-            // Fallback for unexpected cases, should ideally not be reached
+            
             invalidMemberMessages.push(`Tidak dapat memvalidasi pengguna ${name}.`);
         }
     }
@@ -355,7 +365,7 @@ export default function ChatPage() {
 
     const groupInitial = groupName.substring(0,1).toUpperCase() || 'G';
     const chatId = `group_${groupName.replace(/\s+/g, "_")}_${Date.now()}`;
-    const createdBy = currentUser.id; // Pembuat grup adalah currentUser
+    const createdBy = currentUser.id; 
 
     const initialLastReadBy: Record<string, number> = {};
     const initialClearedTimestamp: Record<string, number> = {};
@@ -394,10 +404,8 @@ export default function ChatPage() {
         const rejecterName = chat.rejectedByUserId === currentUser?.id ? "Anda" : chat.participants.find(p => p.id === chat.rejectedByUserId)?.name || "Pengguna lain";
         const rejectedTargetName = chat.rejectedByUserId === currentUser?.id ? (chat.participants.find(p => p.id !== currentUser?.id)?.name || "Pengguna lain") : "Anda";
         toast({ title: "Chat Ditolak", description: `${rejecterName} telah menolak permintaan dengan ${rejectedTargetName}.`, variant: "destructive"});
-    } else if (chat.pendingApprovalFromUserId === currentUser?.id) {
-        // toast({ title: "Tindakan Diperlukan", description: "Harap terima atau tolak permintaan chat ini dari daftar chat." });
-        // Allow selection
     }
+    // No longer block selection for pendingApprovalFromUserId === currentUser.id due to UX change
 
     setSelectedChat(chat);
     if (currentUser && chat.id) {
@@ -459,11 +467,11 @@ export default function ChatPage() {
           lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp },
         };
       }
-      // Update last message for other active chats to bring them to top (simulating activity)
-      if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
+      
+      if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser)) {
          return {
           ...chat,
-          lastMessage: "Aktivitas baru di " + chat.name, // Generic message
+          lastMessage: "Aktivitas baru di " + chat.name, 
           lastMessageTimestamp: newMessage.timestamp,
          };
       }
@@ -717,10 +725,10 @@ export default function ChatPage() {
         } else {
             reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${userName}.`;
         }
-    } else if (userObjectToAdd) { // User exists but no direct chat
+    } else if (userObjectToAdd) { 
          reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${userName}. Harap mulai chat langsung dan tunggu penerimaan.`;
     }
-     else { // User not found
+     else { 
         reasonForInvalid = `Pengguna ${userName} tidak ditemukan.`;
     }
 
@@ -1043,6 +1051,7 @@ export default function ChatPage() {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                  <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
+                    <Palette className="mr-2 h-4 w-4" />
                     <span>Tema</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
@@ -1063,13 +1072,16 @@ export default function ChatPage() {
                   </DropdownMenuPortal>
                 </DropdownMenuSub>
                 <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
+                    <InfoIcon className="mr-2 h-4 w-4" />
                     <span>Tentang aplikasi</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleLogout(false)}>
+                  <LogOut className="mr-2 h-4 w-4" />
                   <span>Keluar (Simpan Data)</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
+                  <Trash2 className="mr-2 h-4 w-4" />
                   <span>Keluar & Hapus Data</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -1079,8 +1091,7 @@ export default function ChatPage() {
 
         <SidebarInset className="flex-1 flex flex-col">
            <div className="md:hidden p-2 border-b flex items-center">
-             {!selectedChat && <SidebarTrigger />}
-             {/* ArrowLeft and Username removed for mobile when chat is selected */}
+            {!selectedChat && <SidebarTrigger />}
            </div>
           {selectedChat ? (
             <ChatView
@@ -1104,7 +1115,7 @@ export default function ChatPage() {
               onLeaveGroup={handleLeaveGroup}
             />
           ) : (
-            <WelcomeMessage />
+             (isClient && isMobileView) ? null : <WelcomeMessage />
           )}
         </SidebarInset>
       </div>
@@ -1127,6 +1138,7 @@ export default function ChatPage() {
         currentUserObj={currentUser}
         initialMemberName={groupDialogInitialMemberName}
         chats={chats} 
+        registeredUsers={registeredUsers}
       />
       <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}
@@ -1134,6 +1146,8 @@ export default function ChatPage() {
         onAddUser={handleAddNewUserToGroup}
         currentUserObj={currentUser}
         chats={chats}
+        chatIdToAddTo={chatIdToAddTo}
+        registeredUsers={registeredUsers}
       />
        <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
         <AlertDialogContent>
@@ -1202,8 +1216,4 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
-
-
-
-
-    
+ 
