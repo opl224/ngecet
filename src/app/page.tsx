@@ -110,7 +110,7 @@ export default function ChatPage() {
     const nameInitial = username.substring(0,1).toUpperCase() || 'U';
     const newUserProfile: User = {
       id: userId,
-      name: username, 
+      name: username, // Use username as initial display name
       avatarUrl: `https://placehold.co/100x100.png?text=${nameInitial}`,
       status: "Online"
     };
@@ -138,7 +138,7 @@ export default function ChatPage() {
   }, [registeredUsers, setCurrentUser, toast]);
 
 
-  const handleSaveProfile = useCallback((name: string) => {
+ const handleSaveProfile = useCallback((name: string) => {
     if (currentUser) {
         const newNameInitial = name.substring(0,1).toUpperCase() || 'U';
         const newAvatarUrl = `https://placehold.co/100x100.png?text=${newNameInitial}`;
@@ -153,14 +153,13 @@ export default function ChatPage() {
         setRegisteredUsers(prevRegisteredUsers =>
             prevRegisteredUsers.map(ru =>
                 ru.profile.id === currentUser.id
-                    ? { ...ru, profile: updatedCurrentUser }
+                    ? { ...ru, profile: updatedCurrentUser } // Update the profile within RegisteredUser
                     : ru
             )
         );
 
         setChats(prevChats =>
             prevChats.map(chat => {
-                 // Update current user in participants list of all chats
                 const updatedParticipants = chat.participants.map(p =>
                     p.id === currentUser.id ? updatedCurrentUser : p
                 );
@@ -168,18 +167,20 @@ export default function ChatPage() {
                 let updatedChatName = chat.name;
                 let updatedChatAvatar = chat.avatarUrl;
 
-                // If it's a direct chat and the chat's name/avatar was based on the other user,
-                // it should NOT change. If it was based on current user (e.g. chat with self, or old logic), it might.
-                // For safety, we only update if the direct chat's current name/avatar matches the OLD current user's name/avatar.
-                // This is a bit tricky as direct chat names are usually the *other* person's name.
-                // The main thing is that participant objects *within* chats are updated.
                 if (chat.type === 'direct') {
                     const otherParticipant = updatedParticipants.find(p => p.id !== currentUser.id);
                     if (otherParticipant) {
-                        updatedChatName = otherParticipant.name; // Direct chat name is the other person's name
+                        updatedChatName = otherParticipant.name;
                         updatedChatAvatar = otherParticipant.avatarUrl;
+                    } else {
+                        // Chat with self or old data, update if name matched old current user name
+                        if (chat.name === currentUser.name) updatedChatName = updatedCurrentUser.name;
+                        if (chat.avatarUrl === currentUser.avatarUrl) updatedChatAvatar = updatedCurrentUser.avatarUrl;
                     }
                 }
+                // For group chats, the name and avatar are usually independent of participant names.
+                // If group chat avatar was derived from current user (unlikely but for safety), this logic might need review.
+                // For now, assuming group chat names/avatars are static or derived from group name itself.
                 
                 return {
                     ...chat,
@@ -195,7 +196,7 @@ export default function ChatPage() {
             for (const chatId in newAllMessages) {
                 newAllMessages[chatId] = newAllMessages[chatId].map(msg =>
                     msg.senderId === currentUser.id
-                        ? { ...msg, senderName: updatedCurrentUser.name } // Update senderName for current user's messages
+                        ? { ...msg, senderName: updatedCurrentUser.name }
                         : msg
                 );
             }
@@ -627,7 +628,7 @@ export default function ChatPage() {
     });
     
     setEditingMessageDetails(null);
-    toast({ title: "Pesan Diperbarui", description: "Pesan Anda telah berhasil diubah." });
+    toast({ title: "Pesan Diperbarui" });
   }, [currentUser, editingMessageDetails, setAllMessages, setChats, toast]);
 
   const handleCancelEditInInput = useCallback(() => {
@@ -1057,6 +1058,9 @@ export default function ChatPage() {
     );
   }
 
+  const currentRegisteredUserForProfile = currentUser ? registeredUsers.find(ru => ru.profile.id === currentUser.id) : null;
+  const currentUserEmailForProfile = currentRegisteredUserForProfile?.email;
+
 
   return (
     <SidebarProvider defaultOpen>
@@ -1073,8 +1077,9 @@ export default function ChatPage() {
                         currentUser={currentUser}
                         onSaveProfile={handleSaveProfile}
                         displayMode="compact"
+                        userEmail={currentUserEmailForProfile}
                     />
-                    <div className="md:hidden">
+                    <div className="md:hidden"> {/* Theme toggle for mobile */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
@@ -1133,7 +1138,7 @@ export default function ChatPage() {
                     <span>Tentang aplikasi</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <div className="hidden md:block"> 
+                <div className="hidden md:block"> {/* Theme toggle for desktop */}
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
                       <Palette className="mr-2 h-4 w-4" />

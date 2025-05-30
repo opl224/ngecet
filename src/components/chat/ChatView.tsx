@@ -396,7 +396,7 @@ export function ChatView({
                     <DropdownMenuContent align="end">
                         {onGoBack && !isMobile && ( // Only show "Close Chat" on desktop if onGoBack is provided
                             <DropdownMenuItem onClick={onGoBack} className="py-2">
-                                <span>Tutup Pesan</span>
+                                <span>Tutup pesan</span>
                             </DropdownMenuItem>
                         )}
                         <DropdownMenuItem

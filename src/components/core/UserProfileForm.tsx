@@ -31,9 +31,10 @@ interface UserProfileFormProps {
   currentUser: User | null;
   onSaveProfile: (name: string) => void;
   displayMode?: "full" | "compact";
+  userEmail?: string; // New prop for email
 }
 
-export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "full" }: UserProfileFormProps) {
+export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "full", userEmail }: UserProfileFormProps) {
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -65,7 +66,9 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
   }
 
   if (!currentUser) {
-    // Initial setup form when no currentUser
+    // This part is for the initial setup when no currentUser is present (AuthPage handles this now)
+    // So, this block might not be reached if AuthPage is always shown first.
+    // However, keeping it for robustness or if AuthPage logic changes.
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <div className="p-8 bg-card shadow-xl rounded-lg w-full max-w-md space-y-6">
@@ -80,7 +83,7 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nama</FormLabel>
+                    <FormLabel>Nama Tampilan</FormLabel>
                     <FormControl>
                       <Input placeholder="Masukkan nama Anda" {...field} />
                     </FormControl>
@@ -110,6 +113,9 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
           </Button>
         </DialogTrigger>
       ) : ( 
+        // This "full" display mode within sidebar is not currently used,
+        // but keeping the structure if needed in future.
+        // The trigger is now primarily the compact avatar.
         <div className="p-4 space-y-4 border-b border-sidebar-border">
           <div className="flex items-center space-x-3">
             <Avatar className="h-12 w-12">
@@ -139,6 +145,30 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <FormItem>
+              <FormLabel>Username</FormLabel>
+              <Input
+                type="text"
+                value={currentUser.id} 
+                readOnly
+                className="bg-muted/50 cursor-not-allowed border-input" 
+              />
+               <FormDescription className="text-xs">
+                Username tidak dapat diubah.
+              </FormDescription>
+            </FormItem>
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <Input
+                type="email"
+                value={userEmail || "Email tidak tersedia"}
+                readOnly
+                className="bg-muted/50 cursor-not-allowed border-input"
+              />
+               <FormDescription className="text-xs">
+                Email tidak dapat diubah.
+              </FormDescription>
+            </FormItem>
             <FormField
               control={form.control}
               name="name"
@@ -152,18 +182,7 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
                 </FormItem>
               )}
             />
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <Input
-                type="text"
-                value={currentUser.id} 
-                readOnly
-                className="bg-muted/50 cursor-not-allowed border-input" 
-              />
-              <FormDescription>
-                Username ini digunakan untuk login dan tidak dapat diubah.
-              </FormDescription>
-            </FormItem>
+            
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsProfileDialogOpen(false)}>Batal</Button>
               <Button type="submit">Simpan</Button>
@@ -174,3 +193,4 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
     </Dialog>
   );
 }
+
