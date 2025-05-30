@@ -180,7 +180,7 @@ export function MessageBubble({
             </DropdownMenuItem>
             {isCurrentUserMessage && onEditMessage && (
               <DropdownMenuItem onClick={handleEdit}>
-                Edit Pesan
+                Edit pesan
               </DropdownMenuItem>
             )}
             {isCurrentUserMessage && onDeleteMessage && (

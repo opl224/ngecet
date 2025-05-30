@@ -32,7 +32,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val
     (value: T | ((val: T) => T)) => {
       if (!isClient) {
         // If not on client, perhaps just update the in-memory state without writing to localStorage
-        // or queue the update. For simplicity, we'll just update in-memory state.
+        // or queue the update. For Ngecety, we'll just update in-memory state.
         setStoredValue(value instanceof Function ? value(storedValue) : value);
         return;
       }

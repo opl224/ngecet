@@ -607,9 +607,6 @@ export default function ChatPage() {
       });
       return updatedChats.sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
-
-    toast({ title: "Pesan Diedit", description: "Pesan Anda telah berhasil diperbarui." });
-    setEditingMessageDetails(null);
   }, [currentUser, setAllMessages, setChats, toast, editingMessageDetails]);
 
   const handleCancelEditInInput = useCallback(() => {
@@ -1052,7 +1049,7 @@ export default function ChatPage() {
              <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
                 <div className="flex items-center gap-2 shrink-0 mr-2">
                     <AppLogo className="h-7 w-7" />
-                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">SimplicChat</h1>
+                    <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">Ngecet</h1>
                 </div>
                 <div className="flex items-center gap-2">
                     <UserProfileForm
@@ -1238,16 +1235,16 @@ export default function ChatPage() {
       <AlertDialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Tentang SimplicChat</AlertDialogTitle>
+            <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
-              SimplicChat adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
+              Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
               Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
             </AlertDialogDescription>
              <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
               Tech: Next.js, React, ShadCN UI, Tailwind CSS dan Genkit.
             </AlertDialogDescription>
             <AlertDialogDescription className="text-sm text-muted-foreground font-semibold pt-4 pb-6">
-              Jika ada bug atau ui error, mon map masih tahap pengembangan!
+              Jika ada bug atau ui error, mon map masih pemula! PIDX...,
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex items-center justify-center mt-4">

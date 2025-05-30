@@ -35,10 +35,10 @@ interface ChatViewProps {
   messages: Message[];
   currentUser: User;
   onSendMessage: (content: string, replyToMessage?: Message | null) => void;
-  editingMessageDetails: Message | null;
+  editingMessageDetails: Message | null; // Changed from propsEditingMessageDetails for clarity
   onSaveEditedMessage: (messageId: string, newContent: string) => void;
   onRequestEditMessage: (messageToEdit: Message) => void;
-  onCancelEditMessage: () => void;
+  onCancelEditMessage: () => void; // This will call handleCancelEditInInput from page.tsx
   onDeleteMessage: (messageId: string, chatId: string) => void;
   onGoBack?: () => void;
   onTriggerDeleteAllMessages: (chatId: string) => void;
@@ -56,7 +56,7 @@ export function ChatView({
   messages,
   currentUser,
   onSendMessage,
-  editingMessageDetails: propsEditingMessageDetails,
+  editingMessageDetails: propsEditingMessageDetails, // Keep using propsEditingMessageDetails internally for clarity of prop origin
   onSaveEditedMessage,
   onRequestEditMessage,
   onCancelEditMessage,
@@ -80,12 +80,13 @@ export function ChatView({
   
   const prevChatIdRef = useRef<string | undefined>(undefined);
   const prevEditingMessageDetailsRef = useRef<Message | null>(null);
+
   const { isMobile, setOpenMobile } = useSidebar();
 
 
   const handleCancelEditClick = useCallback(() => {
-    onCancelEditMessage();
-    setNewMessage("");
+    onCancelEditMessage(); // This calls ChatPage's handleCancelEditInInput, which sets editingMessageDetails to null
+    setNewMessage("");    // Clears the local input
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -99,6 +100,7 @@ export function ChatView({
     }
   }, []);
 
+  // Effect for Escape key to cancel edit/reply or go back
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -106,9 +108,8 @@ export function ChatView({
           handleCancelEditClick();
         } else if (replyingToMessage) {
           handleCancelReplyClick();
-        } else if (onGoBack && isMobile) { // Only trigger onGoBack if mobile
-          // onGoBack(); // This line was problematic if onGoBack also handled by ArrowLeft button
-                           // Let the ArrowLeft button handle sidebar toggle
+        } else if (onGoBack) { 
+          onGoBack(); 
         }
       }
     };
@@ -117,44 +118,43 @@ export function ChatView({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [propsEditingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick, isMobile]);
+  }, [propsEditingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
 
 
-  // Effect for handling message editing state (loading content to input)
+  // Effect for handling message editing state (loading content to input, focusing, and cleaning up)
   useEffect(() => {
     if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
       if (replyingToMessage) { 
-         setReplyingToMessage(null); // Cancel reply if editing starts
+         setReplyingToMessage(null); 
       }
       if (messageInputRef.current) {
-        // Only update if different to avoid cursor jump if user is typing and prop re-renders
         if (messageInputRef.current.value !== propsEditingMessageDetails.content) {
            messageInputRef.current.value = propsEditingMessageDetails.content;
         }
-        setNewMessage(propsEditingMessageDetails.content); // Sync state with input
+        setNewMessage(propsEditingMessageDetails.content); 
         
-        // Auto-adjust height
         messageInputRef.current.style.height = 'auto';
         const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); 
         messageInputRef.current.style.height = `${newHeight}px`;
         
-        // Focus and set cursor to end
         setTimeout(() => {
           if (messageInputRef.current) {
             messageInputRef.current.focus();
-            const len = propsEditingMessageDetails.content.length;
+            const len = propsEditingMessageDetails.content.length; 
             messageInputRef.current.selectionStart = len;
             messageInputRef.current.selectionEnd = len;
           }
         }, 50); 
       }
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
-      // Clean up input height if editing was cancelled for the current chat
-      if (messageInputRef.current && !replyingToMessage ) { 
-          messageInputRef.current.style.height = 'auto';
+      // Editing for THIS chat has just ended (either saved or cancelled by parent)
+      if (!replyingToMessage) { // Only clear if not also in reply mode
+        setNewMessage(""); // Ensure input is cleared
+      }
+      if (messageInputRef.current) { // Reset height only if not replying
+          if (!replyingToMessage) messageInputRef.current.style.height = 'auto';
       }
     }
-    // Update ref for next comparison
     prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
   }, [propsEditingMessageDetails, chat.id, replyingToMessage]);
 
@@ -164,12 +164,11 @@ export function ChatView({
     const chatJustSwitched = prevChatIdRef.current !== undefined && prevChatIdRef.current !== chat.id;
 
     if (chatJustSwitched) {
-      setNewMessage("");
+      setNewMessage(""); 
       setReplyingToMessage(null);
       if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
       }
-      // Cancel edit if it was for a different chat
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
         onCancelEditMessage(); 
       }
@@ -177,12 +176,11 @@ export function ChatView({
     
     const isChatEffectivelyActive = chat.type === 'group' || (!chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser));
 
-    // Focus input if chat switched, is active, and not starting in edit/reply mode for this new chat
     if (isChatEffectivelyActive && messageInputRef.current &&
-        (chatJustSwitched || (!propsEditingMessageDetails && !replyingToMessage))) {
+        (chatJustSwitched && !propsEditingMessageDetails && !replyingToMessage)) { // Focus only if chat switched AND not starting in edit/reply
       setTimeout(() => {
         messageInputRef.current?.focus();
-      }, 50); // Slightly increased delay
+      }, 50);
     }
     prevChatIdRef.current = chat.id;
   }, [chat.id, onCancelEditMessage, propsEditingMessageDetails, replyingToMessage, chat.type, chat.pendingApprovalFromUserId, chat.isRejected, chat.blockedByUser]);
@@ -198,9 +196,9 @@ export function ChatView({
             behavior: 'smooth'
           });
         }
-      }, 100); // Delay ensures DOM updates are likely complete
+      }, 100); 
     }
-  }, [messages, chat.id]); // Re-scroll when messages or chat ID change
+  }, [messages, chat.id]); 
 
 
   const getChatDisplayDetails = useMemo(() => {
@@ -291,21 +289,23 @@ export function ChatView({
     if (newMessage.trim()) {
       if (propsEditingMessageDetails) {
         onSaveEditedMessage(propsEditingMessageDetails.id, newMessage.trim());
+        // Parent (ChatPage) will set its editingMessageDetails to null,
+        // which will flow down as propsEditingMessageDetails, triggering useEffect to clear UI.
       } else {
         onSendMessage(newMessage.trim(), replyingToMessage);
         if (replyingToMessage !== null) setReplyingToMessage(null);
       }
-      setNewMessage("");
+      setNewMessage(""); // Clear the input after send or save attempt
 
       if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto';
+        messageInputRef.current.style.height = 'auto'; // Reset textarea height
       }
     }
   };
 
   const handleReplyToMessageInView = useCallback((messageToReply: Message) => {
     if(!isChatActive) return;
-    if (propsEditingMessageDetails) onCancelEditMessage(); // Cancel edit if replying
+    if (propsEditingMessageDetails) onCancelEditMessage(); 
     setReplyingToMessage(messageToReply);
     setNewMessage(""); 
     setTimeout(() => {
@@ -334,16 +334,12 @@ export function ChatView({
       const isACreator = a.id === chat.createdByUserId;
       const isBCreator = b.id === chat.createdByUserId;
 
-      // Current user always comes first
       if (isACurrentUser && !isBCurrentUser) return -1;
       if (!isACurrentUser && isBCurrentUser) return 1;
-
-      // If both are current user (should not happen if IDs are unique) 
-      // or neither is current user, then sort by creator status
-      if (isACreator && !isBCreator) return -1; // Admin comes next (if not current user)
+      
+      if (isACreator && !isBCreator) return -1; 
       if (!isACreator && isBCreator) return 1;
 
-      // Finally, sort by name for all others
       return (a.name || '').localeCompare(b.name || '');
     });
   }, [chat.participants, chat.createdByUserId, currentUser.id]);
@@ -398,16 +394,16 @@ export function ChatView({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        {onGoBack && !isMobile && (
+                        {onGoBack && !isMobile && ( // Only show "Close Chat" on desktop if onGoBack is provided
                             <DropdownMenuItem onClick={onGoBack} className="py-2">
-                                <span>Tutup Chat</span>
+                                <span>Tutup Pesan</span>
                             </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
                             onClick={() => onTriggerDeleteAllMessages(chat.id)}
                             className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
                         >
-                            <span>Hapus Semua Pesan</span>
+                            <span>Hapus semua pesan</span>
                         </DropdownMenuItem>
 
                          {chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerDeleteGroup && (
@@ -441,7 +437,7 @@ export function ChatView({
         </header>
 
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+          <DialogHeader className="mb-4 pb-2">
             {chat.type === 'direct' && displayDetails.otherParticipantObject ? (
               <div className="flex flex-col items-center text-center space-y-3 pt-4">
                 <Avatar className="h-24 w-24">
@@ -566,7 +562,7 @@ export function ChatView({
                             onClick={() => onTriggerDeleteGroup(chat.id)}
                             size="sm"
                         >
-                            Hapus grup ini
+                            Hapus Grup Ini
                         </Button>
                     </div>
                 )}
@@ -647,17 +643,16 @@ export function ChatView({
             <div className="truncate flex-1 min-w-0 pr-2">
               {propsEditingMessageDetails ? (
                 <>
-                  <PencilLine className="inline h-4 w-4 mr-1.5 text-amber-600" />
-                  <span className="font-medium text-amber-700">Mengedit pesan:</span>
-                  <p className="truncate text-xs">
-                    "{propsEditingMessageDetails.content.length > 70 ? propsEditingMessageDetails.content.substring(0, 70) + "..." : propsEditingMessageDetails.content}"
+                  <span className="font-medium">Mengedit pesan: </span>
+                  <p className="truncate text-xs inline">
+                    {propsEditingMessageDetails.content.length > 70 ? propsEditingMessageDetails.content.substring(0, 70) + "..." : propsEditingMessageDetails.content}
                   </p>
                 </>
               ) : replyingToMessage && (
                 <>
-                  <span className="font-medium">{replyingToMessage.senderName}</span>
-                  <p className="truncate text-xs">
-                    "{replyingToMessage.content.length > 70 ? replyingToMessage.content.substring(0, 70) + "..." : replyingToMessage.content}"
+                  <span className="font-medium">Membalas ke {replyingToMessage.senderName}: </span>
+                  <p className="truncate text-xs inline">
+                    {replyingToMessage.content.length > 70 ? replyingToMessage.content.substring(0, 70) + "..." : replyingToMessage.content}
                   </p>
                 </>
               )}
@@ -708,6 +703,3 @@ export function ChatView({
     </div>
   );
 }
-
-
-    

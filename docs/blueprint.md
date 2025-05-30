@@ -1,4 +1,4 @@
-# **App Name**: SimplicChat
+# **App Name**: Ngecet
 
 ## Core Features:
 

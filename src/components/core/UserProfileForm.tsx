@@ -70,7 +70,7 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <div className="p-8 bg-card shadow-xl rounded-lg w-full max-w-md space-y-6">
           <div className="flex flex-col items-center space-y-2">
-            <h1 className="text-2xl font-bold text-center text-foreground">Selamat Datang di SimplicChat</h1>
+            <h1 className="text-2xl font-bold text-center text-foreground">Selamat Datang di Ngecet</h1>
             <p className="text-sm text-muted-foreground text-center">Silakan atur profil Anda untuk memulai.</p>
           </div>
           <Form {...form}>
