@@ -68,9 +68,7 @@ const SidebarProvider = React.forwardRef<
     },
     ref
   ) => {
-    const isMobile = useIsMobile()
-    // Initialize openMobile based on isMobile and defaultOpen, once isMobile is determined.
-    // Default to false, effect will set it if needed.
+    const isMobileHookResult = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false);
 
     const [_open, _setOpen] = React.useState(defaultOpen)
@@ -90,23 +88,23 @@ const SidebarProvider = React.forwardRef<
       [setOpenProp, open]
     )
     
-    // Effect to set initial mobile state once isMobile is determined
-    const initialMobileEffectRun = React.useRef(false);
+    const initialMobileSetupDone = React.useRef(false);
     React.useEffect(() => {
-      if (isMobile !== undefined && !initialMobileEffectRun.current) {
-        if (isMobile && defaultOpen) {
-          setOpenMobile(true);
-        }
-        initialMobileEffectRun.current = true;
+      // isMobileHookResult can be true, false, or undefined initially
+      if (isMobileHookResult === true && defaultOpen && !initialMobileSetupDone.current) {
+        setOpenMobile(true);
+        initialMobileSetupDone.current = true;
       }
-    }, [isMobile, defaultOpen]);
+    }, [isMobileHookResult, defaultOpen]);
 
 
     const toggleSidebar = React.useCallback(() => {
-      return isMobile
-        ? setOpenMobile((currentOpen) => !currentOpen)
-        : setOpen((currentOpen) => !currentOpen)
-    }, [isMobile, setOpen, setOpenMobile])
+      if (isMobileHookResult) {
+        setOpenMobile((currentOpen) => !currentOpen);
+      } else {
+        setOpen((currentOpen) => !currentOpen);
+      }
+    }, [isMobileHookResult, setOpen, setOpenMobile]) // Added setOpenMobile to deps
 
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
@@ -131,12 +129,12 @@ const SidebarProvider = React.forwardRef<
         state,
         open,
         setOpen,
-        isMobile: !!isMobile, // Ensure isMobile is boolean in context
+        isMobile: !!isMobileHookResult, 
         openMobile,
         setOpenMobile,
         toggleSidebar,
       }),
-      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+      [state, open, setOpen, isMobileHookResult, openMobile, setOpenMobile, toggleSidebar]
     )
 
     return (
@@ -767,4 +765,3 @@ export {
   useSidebar,
 }
 
-    
