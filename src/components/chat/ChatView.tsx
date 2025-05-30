@@ -382,14 +382,14 @@ export function ChatView({
                     <DropdownMenuContent align="end">
                         {onGoBack && !isMobile && (
                             <DropdownMenuItem onClick={onGoBack} className="py-2">
-                                <span>Tutup Chat</span>
+                                <span>Tutup Pesan</span>
                             </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
                             onClick={() => onTriggerDeleteAllMessages(chat.id)}
                             className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
                         >
-                            <span>Hapus Semua Pesan</span>
+                            <span>Hapus semua pesan</span>
                         </DropdownMenuItem>
 
                          {chat.type === 'group' && chat.createdByUserId === currentUser.id && onTriggerDeleteGroup && (
@@ -397,7 +397,7 @@ export function ChatView({
                                onClick={() => onTriggerDeleteGroup(chat.id)}
                                className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2"
                              >
-                               <span>Hapus Grup Ini</span>
+                               <span>Hapus grup ini</span>
                              </DropdownMenuItem>
                          )}
 
@@ -410,7 +410,6 @@ export function ChatView({
                                     </DropdownMenuItem>
                                 ) : (
                                     <DropdownMenuItem onClick={() => onBlockUser && onBlockUser(chat.id)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2">
-                                        <ShieldAlert className="mr-2 h-4 w-4"/>
                                         <span>Blokir pengguna</span>
                                     </DropdownMenuItem>
                                 )}
