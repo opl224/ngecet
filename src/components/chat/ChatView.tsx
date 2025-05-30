@@ -77,7 +77,7 @@ export function ChatView({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
-  const prevChatIdRef = useRef<string | undefined>(undefined);
+  const prevChatIdRef = useRef<string | undefined>(chat.id);
   const prevEditingMessageDetailsRef = useRef<Message | null>(null);
   const { isMobile, setOpenMobile } = useSidebar();
 
@@ -92,7 +92,7 @@ export function ChatView({
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
-    setNewMessage(""); // Clear input when reply is cancelled
+    setNewMessage(""); 
     if (messageInputRef.current) {
         messageInputRef.current.style.height = 'auto';
     }
@@ -120,16 +120,16 @@ export function ChatView({
 
   useEffect(() => {
     if (propsEditingMessageDetails && propsEditingMessageDetails.chatId === chat.id) {
-      if (replyingToMessage) { // If switching to edit mode while replying, cancel reply
+      if (replyingToMessage) { 
          setReplyingToMessage(null);
       }
       if (messageInputRef.current) {
         if (messageInputRef.current.value !== propsEditingMessageDetails.content) {
           messageInputRef.current.value = propsEditingMessageDetails.content;
         }
-        setNewMessage(propsEditingMessageDetails.content); // Sync state with input
+        setNewMessage(propsEditingMessageDetails.content);
         messageInputRef.current.style.height = 'auto';
-        const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); // Max height 120px
+        const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); 
         messageInputRef.current.style.height = `${newHeight}px`;
         setTimeout(() => {
           if (messageInputRef.current) {
@@ -141,8 +141,7 @@ export function ChatView({
         }, 50);
       }
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
-      // Just exited edit mode for the current chat
-      if (messageInputRef.current && !replyingToMessage ) { // Only reset height if not replying
+      if (messageInputRef.current && !replyingToMessage ) { 
           messageInputRef.current.style.height = 'auto';
       }
     }
@@ -160,7 +159,7 @@ export function ChatView({
         messageInputRef.current.style.height = 'auto';
       }
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
-        onCancelEditMessage(); // Cancel edit if it was for a different chat
+        onCancelEditMessage(); 
       }
     }
 
@@ -294,16 +293,18 @@ export function ChatView({
     if(!isChatActive) return;
     if (propsEditingMessageDetails) onCancelEditMessage();
     setReplyingToMessage(messageToReply);
-    setNewMessage(""); // Clear input when starting a reply
-    setTimeout(() => messageInputRef.current?.focus(), 50);
+    setNewMessage(""); 
+    setTimeout(() => {
+        messageInputRef.current?.focus();
+    }, 50);
   }, [isChatActive, propsEditingMessageDetails, onCancelEditMessage]);
 
 
   const handleTextareaInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setNewMessage(event.target.value);
     if (messageInputRef.current) {
-      messageInputRef.current.style.height = 'auto'; // Reset height to recalculate
-      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); // Max height 120px
+      messageInputRef.current.style.height = 'auto'; 
+      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); 
       messageInputRef.current.style.height = `${newHeight}px`;
     }
   };
@@ -322,7 +323,7 @@ export function ChatView({
       if (isACreator && !isBCreator) return -1;
       if (!isACreator && isBCreator) return 1;
       
-      if (isACurrentUser && !isBCurrentUser && !isACreator) return -1;
+      if (isACurrentUser && !isBCurrentUser && !isACreator) return -1; 
       if (!isACurrentUser && isBCurrentUser && !isBCreator) return 1;
 
       return (a.name || '').localeCompare(b.name || '');
@@ -379,7 +380,7 @@ export function ChatView({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        {onGoBack && (
+                        {onGoBack && !isMobile && (
                             <DropdownMenuItem onClick={onGoBack} className="py-2">
                                 <span>Tutup Chat</span>
                             </DropdownMenuItem>
@@ -499,13 +500,12 @@ export function ChatView({
                            <div className="truncate">
                               <span className="font-medium truncate">{participantName}</span>
                               {isCurrentUserInList && !isChatAdmin && <span className="text-xs text-muted-foreground"> (Anda)</span>}
-                              {isCurrentUserInList && isChatAdmin && <span className="text-xs text-primary font-semibold"> (Admin - Anda)</span>}
                            </div>
                          </div>
                          <div className="flex items-center space-x-2 shrink-0">
-                           {isChatAdmin && !isCurrentUserInList && (
+                           {isChatAdmin && (
                               <span className="text-xs text-primary font-semibold">
-                                (Admin)
+                                {isCurrentUserInList ? "(Admin - Anda)" : "(Admin)"}
                               </span>
                            )}
                            {currentUser.id === chat.createdByUserId &&
@@ -690,3 +690,6 @@ export function ChatView({
     </div>
   );
 }
+
+
+    
