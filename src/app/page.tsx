@@ -393,7 +393,7 @@ export default function ChatPage() {
     } else if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser?.id) {
         // Handled by ChatView overlay
     } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser?.id) {
-        toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
+        // toast({ title: "Menunggu Respon", description: "Permintaan chat belum diterima oleh pengguna lain." });
     } else if (chat.isRejected) {
         // const rejecterName = chat.rejectedByUserId === currentUser?.id ? "Anda" : chat.participants.find(p => p.id === chat.rejectedByUserId)?.name || "Pengguna lain";
         // const rejectedTargetName = chat.rejectedByUserId === currentUser?.id ? (chat.participants.find(p => p.id !== currentUser?.id)?.name || "Pengguna lain") : "Anda";
@@ -1005,6 +1005,30 @@ export default function ChatPage() {
                             displayMode="compact"
                         />
                     )}
+                    <div className="md:hidden"> {/* Show only on mobile */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
+                                    <Palette className="h-5 w-5" />
+                                    <span className="sr-only">Pilih Tema</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" sideOffset={4}>
+                                <DropdownMenuItem onClick={() => setTheme("light")}>
+                                    <Sun className="mr-2 h-4 w-4" />
+                                    <span>Terang</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setTheme("dark")}>
+                                    <Moon className="mr-2 h-4 w-4" />
+                                    <span>Gelap</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setTheme("system")}>
+                                    <Laptop className="mr-2 h-4 w-4" />
+                                    <span>Sistem</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
              </div>
           </SidebarHeader>
@@ -1035,28 +1059,30 @@ export default function ChatPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" sideOffset={isMobileView ? 8 : 4} side={isMobileView ? "top" : "right"}>
-                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <Palette className="mr-2 h-4 w-4" />
-                    <span>Tema</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent sideOffset={isMobileView ? -5 : 8} side={isMobileView ? "top" : "right"} align={isMobileView ? "center" : "start"}>
-                      <DropdownMenuItem onClick={() => setTheme("light")}>
-                        <Sun className="mr-2 h-4 w-4" />
-                        <span>Terang</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setTheme("dark")}>
-                        <Moon className="mr-2 h-4 w-4" />
-                        <span>Gelap</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setTheme("system")}>
-                        <Laptop className="mr-2 h-4 w-4" />
-                        <span>Sistem</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
+                <div className="hidden md:block">
+                    <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                        <Palette className="mr-2 h-4 w-4" />
+                        <span>Tema</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                        <DropdownMenuSubContent sideOffset={isMobileView ? -5 : 8} side={isMobileView ? "top" : "right"} align={isMobileView ? "center" : "start"}>
+                        <DropdownMenuItem onClick={() => setTheme("light")}>
+                            <Sun className="mr-2 h-4 w-4" />
+                            <span>Terang</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTheme("dark")}>
+                            <Moon className="mr-2 h-4 w-4" />
+                            <span>Gelap</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTheme("system")}>
+                            <Laptop className="mr-2 h-4 w-4" />
+                            <span>Sistem</span>
+                        </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                 </div>
                 <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
                     <InfoIcon className="mr-2 h-4 w-4" />
                     <span>Tentang aplikasi</span>
