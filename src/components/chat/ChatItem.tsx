@@ -23,8 +23,6 @@ interface ChatItemProps {
   isMobileView: boolean;
 }
 
-// Removed MAX_DISPLAY_WORDS, relying on CSS truncate
-
 export function ChatItem({
   chat,
   currentUser,
@@ -48,20 +46,19 @@ export function ChatItem({
 
     if (chat.type === "direct") {
       const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
-      originalNameForInitials = (otherParticipant?.name || "Direct Chat").trim();
-      nameForDisplay = originalNameForInitials;
+      originalNameForInitials = otherParticipant?.name || "Direct Chat";
+      nameForDisplay = originalNameForInitials.trim();
       avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
       otherParticipantStatus = otherParticipant?.status;
     } else {
-      originalNameForInitials = (chat.name || "Unnamed Group").trim();
-      nameForDisplay = originalNameForInitials;
+      originalNameForInitials = chat.name || "Unnamed Group";
+      nameForDisplay = originalNameForInitials.trim();
       avatarForDisplay = chat.avatarUrl;
       IconComponent = Users;
     }
 
-    // Calculate initials from the *original* name
     if (originalNameForInitials) {
-        const nameParts = originalNameForInitials.split(' ').filter(Boolean); // filter(Boolean) to remove empty strings
+        const nameParts = originalNameForInitials.trim().split(' ').filter(Boolean);
         if (nameParts.length === 0) {
             initialsToUse = "??";
         } else if (nameParts.length === 1) {
@@ -70,17 +67,16 @@ export function ChatItem({
             initialsToUse = (nameParts[0][0] || '') + (nameParts[nameParts.length - 1][0] || '');
             initialsToUse = initialsToUse.toUpperCase();
         }
-        if (initialsToUse.length === 0 && originalNameForInitials.length > 0) { // Fallback if only symbols etc.
-             initialsToUse = originalNameForInitials.substring(0,2).toUpperCase();
+        if (initialsToUse.length === 0 && originalNameForInitials.trim().length > 0) {
+             initialsToUse = originalNameForInitials.trim().substring(0,2).toUpperCase();
         }
         if (initialsToUse.length === 0) {
             initialsToUse = "??";
         }
-
     } else {
         initialsToUse = "??";
     }
-
+    
     return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials: initialsToUse, Icon: IconComponent, otherParticipantStatus };
   };
 
@@ -100,23 +96,22 @@ export function ChatItem({
         specialStatusText = null;
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
-        // const blockerName = chat.participants.find(p => p.id === chat.blockedByUser)?.name || "Pengguna";
         specialStatusText = `${name} mungkin memblokir Anda.`;
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.pendingApprovalFromUserId === currentUser.id) {
       statusTimestamp = chat.requestTimestamp;
       showAcceptRejectActions = true;
       specialStatusText = "Permintaan chat baru";
-    } else if (chat.pendingApprovalFromUserId && !chat.isRejected) { // Only show clock if not rejected
+    } else if (chat.pendingApprovalFromUserId && !chat.isRejected) { 
       showPendingClockIcon = true;
       statusTimestamp = chat.requestTimestamp;
-      specialStatusText = null; // No special text, clock icon will indicate
+      specialStatusText = null; 
     } else if (chat.isRejected) {
       if (chat.rejectedByUserId !== currentUser.id) {
         const rejecter = chat.participants.find(p => p.id === chat.rejectedByUserId);
         specialStatusText = `${rejecter?.name || name} menolak permintaan Anda.`;
       } else {
-         specialStatusText = null; // No text if current user rejected, icon will show
+         specialStatusText = null; 
       }
       statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
       showDeleteAction = true;
@@ -130,7 +125,7 @@ export function ChatItem({
   const handleItemClick = () => {
     if (isClickDisabled) return;
     onSelectChat(chat);
-    if (isMobileContext) { // Use isMobile from context
+    if (isMobileContext) { 
       setOpenMobile(false);
     }
   };
@@ -145,7 +140,7 @@ export function ChatItem({
   if (specialStatusText) {
     statusMessageToDisplay = specialStatusText;
   } else if (showPendingClockIcon && !chat.isRejected) {
-    // No status message needed if clock icon is shown for pending sent requests
+    // No status message
   } else if (chat.type === "group" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
      statusMessageToDisplay = `${chat.participants.length} anggota`;
   } else if (chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
@@ -162,37 +157,42 @@ export function ChatItem({
         !isClickDisabled && "cursor-pointer"
       )}
     >
-      <div
-        className={cn( "w-full flex items-center space-x-3" )}
-      >
+      <div className="w-full flex items-center space-x-3"> {/* Outer flex container for avatar + text block */}
         <Avatar className="h-10 w-10 shrink-0">
           <AvatarImage src={avatarUrl} alt={name || 'Chat Avatar'} data-ai-hint={chat.type === 'group' ? 'group people' : 'person abstract'}/>
           <AvatarFallback>
             {initials || <Icon className="h-5 w-5 text-sidebar-foreground/70" />}
           </AvatarFallback>
         </Avatar>
-        <div className="flex-1 min-w-0 overflow-hidden"> {/* Container A */}
-          <div className="flex justify-between items-center min-w-0 overflow-hidden"> {/* Container B */}
-            <div className="flex items-center flex-1 min-w-0 mr-2 overflow-hidden"> {/* Container C */}
+        {/* Container A: Main content area for all text (name row, status message row) */}
+        <div className="flex-1 min-w-0 overflow-hidden"> 
+          {/* Container B: Holds the name row (name + timestamp/badge) */}
+          <div className="flex justify-between items-center min-w-0 overflow-hidden"> 
+            {/* Container C: Holds icons + name wrapper. This needs to shrink. */}
+            <div className="flex items-center flex-1 min-w-0 mr-2 overflow-hidden"> 
               {showPendingClockIcon && !chat.isRejected && (
                 <Clock className="h-4 w-4 mr-1.5 text-sidebar-foreground/70 shrink-0" />
               )}
               {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
-              <div className="flex-1 min-w-0 overflow-hidden max-w-[100px]"> {/* Wrapper Div for name, added overflow-hidden */}
-                <h4 className={cn(
-                    "font-semibold text-sm truncate min-w-0 overflow-hidden text-ellipsis whitespace-nowrap", // truncate and min-w-0 are key
+              {/* Name's direct wrapper: This also needs to shrink. */}
+              <div className="flex-1 min-w-0 overflow-hidden"> 
+                <h4 
+                  className={cn(
+                    "font-semibold text-sm truncate", 
                     (chat.type === 'direct' && chat.isRejected) && "text-destructive",
                     (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
                   )}
+                  // title={name} // Temporarily remove title to isolate the issue
                 >
                   {name}
                 </h4>
               </div>
             </div>
 
-            <div className="shrink-0"> {/* Timestamp/Badge/Actions Area */}
+            {/* Timestamp/Badge/Actions Area: This should not grow, shrink-0 is important. */}
+            <div className="shrink-0"> 
               {(() => {
-                if (showAcceptRejectActions) {
+                 if (showAcceptRejectActions) {
                   return (
                     <div className="flex items-center space-x-1 shrink-0">
                       <Button
@@ -216,7 +216,7 @@ export function ChatItem({
                     </div>
                   );
                 }
-                if (showDeleteAction) { // This handles rejected chats
+                if (showDeleteAction) { 
                   return (
                     <Button
                       size="icon"
@@ -229,7 +229,7 @@ export function ChatItem({
                     </Button>
                   );
                 }
-                 if (chat.type === 'direct' && chat.blockedByUser === currentUser.id) { // Show unblock icon
+                 if (chat.type === 'direct' && chat.blockedByUser === currentUser.id) { 
                     return (
                          <Button
                             size="icon"
@@ -242,7 +242,6 @@ export function ChatItem({
                         </Button>
                     );
                 }
-
                 if (calculatedUnreadCount > 0 && !specialStatusText && !chat.blockedByUser && !showPendingClockIcon && !chat.isRejected) {
                   return (
                     <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0">
@@ -250,21 +249,16 @@ export function ChatItem({
                     </Badge>
                   );
                 }
-
                 if (chat.type === 'direct' && calculatedUnreadCount === 0 && !specialStatusText && !chat.blockedByUser && !showAcceptRejectActions && !showPendingClockIcon && !chat.isRejected) {
                   const status = otherParticipantStatus || "Offline";
                   const isOnline = status === "Online";
                   return (
                     <div className="flex items-center space-x-1.5 shrink-0">
-                      <span className={cn(
-                        "h-2 w-2 rounded-full block",
-                        isOnline ? "bg-green-500" : "bg-sidebar-foreground/30"
-                      )}></span>
+                      <span className={cn("h-2 w-2 rounded-full block", isOnline ? "bg-green-500" : "bg-sidebar-foreground/30")}></span>
                       <span className="text-xs text-sidebar-foreground/70">{status}</span>
                     </div>
                   );
                 }
-
                 if (statusTimestamp && !specialStatusText && !showPendingClockIcon && !chat.isRejected && !(calculatedUnreadCount > 0 && !chat.blockedByUser) ) {
                      return (
                         <span className="text-xs text-sidebar-foreground/60 shrink-0">
@@ -276,8 +270,9 @@ export function ChatItem({
               })()}
             </div>
           </div>
+          {/* Last message text: This also needs to truncate if too long. */}
           {statusMessageToDisplay && (
-            <p className="text-xs text-sidebar-foreground/70 truncate overflow-hidden">
+            <p className="text-xs text-sidebar-foreground/70 truncate">
               {statusMessageToDisplay}
             </p>
           )}
@@ -287,4 +282,4 @@ export function ChatItem({
   );
 }
 
-      
+    
