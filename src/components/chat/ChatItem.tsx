@@ -45,28 +45,16 @@ export function ChatItem({
 
     if (chat.type === "direct") {
       const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
-      nameForDisplay = (otherParticipant?.name || "").trim(); // Added .trim()
+      nameForDisplay = (otherParticipant?.name || "").trim();
       avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
       otherParticipantStatus = otherParticipant?.status;
     } else {
-      nameForDisplay = (chat.name || "Unnamed Group").trim(); // Added .trim()
+      nameForDisplay = (chat.name || "Unnamed Group").trim();
       avatarForDisplay = chat.avatarUrl;
       IconComponent = Users;
     }
 
-    initials = (nameForDisplay ? nameForDisplay.substring(0, 2) : "??").toUpperCase();
-    if (nameForDisplay.startsWith("...") && nameForDisplay.length > 2) {
-        initials = nameForDisplay.substring(3,5).toUpperCase() || "??";
-    } else if (nameForDisplay.includes("...")) {
-        const firstMeaningfulChar = nameForDisplay.replace("...", "")[0];
-        initials = (firstMeaningfulChar || "?").toUpperCase();
-         if (nameForDisplay.length > 1 && nameForDisplay.replace("...", "").length > 1) {
-            const secondMeaningfulChar = nameForDisplay.replace("...", "")[1];
-            initials += (secondMeaningfulChar || "?").toUpperCase();
-        } else if (initials.length === 1) {
-            initials += (nameForDisplay.substring(0,1) || "?").toUpperCase();
-        }
-    } else if (nameForDisplay) {
+    if (nameForDisplay) {
         initials = nameForDisplay.substring(0,2).toUpperCase();
     } else {
         initials = "??";
@@ -164,20 +152,22 @@ export function ChatItem({
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0 overflow-hidden"> {/* Container A */}
-          <div className="flex justify-between items-center min-w-0 overflow-hidden"> {/* Container B - Added min-w-0 and overflow-hidden */}
+          <div className="flex justify-between items-center min-w-0 overflow-hidden"> {/* Container B */}
             <div className="flex items-center flex-1 min-w-0 mr-2 overflow-hidden"> {/* Container C */}
               {showPendingClockIcon && !chat.isRejected && (
                 <Clock className="h-4 w-4 mr-1.5 text-sidebar-foreground/70 shrink-0" />
               )}
               {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
-              <h4 className={cn(
-                  "font-semibold text-sm truncate min-w-0", // Ensure h4 has truncate and min-w-0
-                  (chat.type === 'direct' && chat.isRejected) && "text-destructive",
-                  (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
-                )}
-              >
-                {name}
-              </h4>
+              <div className="flex-1 min-w-0"> {/* New Wrapper Div */}
+                <h4 className={cn(
+                    "font-semibold text-sm truncate", 
+                    (chat.type === 'direct' && chat.isRejected) && "text-destructive",
+                    (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
+                  )}
+                >
+                  {name}
+                </h4>
+              </div>
             </div>
 
             <div className="shrink-0"> {/* Timestamp/Badge/Actions Area */}
