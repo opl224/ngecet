@@ -367,7 +367,7 @@ export function ChatView({
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <h2 className="text-lg font-semibold line-clamp-2 md:truncate">{displayDetails.name}</h2>
+                  <h2 className="text-lg font-semibold truncate">{displayDetails.name}</h2>
                   <p className="text-xs text-muted-foreground truncate">
                     {chat.type === 'direct'
                       ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline"))
@@ -707,6 +707,8 @@ export function ChatView({
 
 
 
+
+    
 
     
 
