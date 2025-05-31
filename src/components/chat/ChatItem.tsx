@@ -23,7 +23,7 @@ interface ChatItemProps {
   isMobileView: boolean;
 }
 
-const MAX_DISPLAY_WORDS = 12;
+// Removed MAX_DISPLAY_WORDS, relying on CSS truncate
 
 export function ChatItem({
   chat,
@@ -41,33 +41,47 @@ export function ChatItem({
   const getChatDisplayDetails = () => {
     let nameForDisplay: string;
     let avatarForDisplay: string | undefined;
-    let initials: string;
+    let initialsToUse: string;
     let IconComponent: React.ElementType = UserIcon;
     let otherParticipantStatus: string | undefined = undefined;
+    let originalNameForInitials: string;
 
     if (chat.type === "direct") {
       const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
-      nameForDisplay = (otherParticipant?.name || "").trim();
+      originalNameForInitials = (otherParticipant?.name || "Direct Chat").trim();
+      nameForDisplay = originalNameForInitials;
       avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
       otherParticipantStatus = otherParticipant?.status;
     } else {
-      nameForDisplay = (chat.name || "Unnamed Group").trim();
+      originalNameForInitials = (chat.name || "Unnamed Group").trim();
+      nameForDisplay = originalNameForInitials;
       avatarForDisplay = chat.avatarUrl;
       IconComponent = Users;
     }
 
-    if (nameForDisplay) {
-        const words = nameForDisplay.split(' ');
-        if (words.length > MAX_DISPLAY_WORDS) {
-            nameForDisplay = words.slice(0, MAX_DISPLAY_WORDS).join(' ') + "...";
+    // Calculate initials from the *original* name
+    if (originalNameForInitials) {
+        const nameParts = originalNameForInitials.split(' ').filter(Boolean); // filter(Boolean) to remove empty strings
+        if (nameParts.length === 0) {
+            initialsToUse = "??";
+        } else if (nameParts.length === 1) {
+            initialsToUse = nameParts[0].substring(0, 2).toUpperCase();
+        } else {
+            initialsToUse = (nameParts[0][0] || '') + (nameParts[nameParts.length - 1][0] || '');
+            initialsToUse = initialsToUse.toUpperCase();
         }
-        initials = nameForDisplay.substring(0,2).toUpperCase();
+        if (initialsToUse.length === 0 && originalNameForInitials.length > 0) { // Fallback if only symbols etc.
+             initialsToUse = originalNameForInitials.substring(0,2).toUpperCase();
+        }
+        if (initialsToUse.length === 0) {
+            initialsToUse = "??";
+        }
+
     } else {
-        initials = "??";
+        initialsToUse = "??";
     }
 
-
-    return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials, Icon: IconComponent, otherParticipantStatus };
+    return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials: initialsToUse, Icon: IconComponent, otherParticipantStatus };
   };
 
   const { name, avatarUrl, initials, Icon, otherParticipantStatus } = getChatDisplayDetails();
@@ -86,7 +100,7 @@ export function ChatItem({
         specialStatusText = null;
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
-        const blockerName = chat.participants.find(p => p.id === chat.blockedByUser)?.name || "Pengguna";
+        // const blockerName = chat.participants.find(p => p.id === chat.blockedByUser)?.name || "Pengguna";
         specialStatusText = `${name} mungkin memblokir Anda.`;
         statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
     } else if (chat.pendingApprovalFromUserId === currentUser.id) {
@@ -151,7 +165,7 @@ export function ChatItem({
       <div
         className={cn( "w-full flex items-center space-x-3" )}
       >
-        <Avatar className="h-10 w-10">
+        <Avatar className="h-10 w-10 shrink-0">
           <AvatarImage src={avatarUrl} alt={name || 'Chat Avatar'} data-ai-hint={chat.type === 'group' ? 'group people' : 'person abstract'}/>
           <AvatarFallback>
             {initials || <Icon className="h-5 w-5 text-sidebar-foreground/70" />}
@@ -164,9 +178,9 @@ export function ChatItem({
                 <Clock className="h-4 w-4 mr-1.5 text-sidebar-foreground/70 shrink-0" />
               )}
               {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
-              <div className="flex-1 min-w-0"> {/* New Wrapper Div for name */}
+              <div className="flex-1 min-w-0 overflow-hidden"> {/* Wrapper Div for name, added overflow-hidden */}
                 <h4 className={cn(
-                    "font-semibold text-sm truncate min-w-0",
+                    "font-semibold text-sm truncate min-w-0", // truncate and min-w-0 are key
                     (chat.type === 'direct' && chat.isRejected) && "text-destructive",
                     (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
                   )}
@@ -272,3 +286,5 @@ export function ChatItem({
     </div>
   );
 }
+
+      
