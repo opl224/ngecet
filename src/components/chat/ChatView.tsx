@@ -346,6 +346,15 @@ export function ChatView({
       setOpenMobile(true);
     }
   };
+  
+  const truncatedNameForButton = useMemo(() => {
+    const name = displayDetails.name || "";
+    const limit = 15;
+    if (name.length > limit) {
+      return name.substring(0, limit) + "...";
+    }
+    return name;
+  }, [displayDetails.name]);
 
   return (
     <div className="flex flex-col flex-1 bg-background overflow-hidden">
@@ -367,7 +376,7 @@ export function ChatView({
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <h2 className="text-lg font-semibold truncate">{displayDetails.name}</h2>
+                  <h2 className={cn("text-lg font-semibold", isMobileView ? "line-clamp-2" : "truncate")}>{displayDetails.name}</h2>
                   <p className="text-xs text-muted-foreground truncate">
                     {chat.type === 'direct'
                       ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline"))
@@ -443,7 +452,7 @@ export function ChatView({
                     <displayDetails.Icon className="h-12 w-12 text-muted-foreground" />
                   </AvatarFallback>
                 </Avatar>
-                <DialogTitle className="text-2xl">{displayDetails.name}</DialogTitle>
+                <DialogTitle className="text-2xl truncate w-full px-4">{displayDetails.name}</DialogTitle>
                 <DialogDescription className="text-base">
                   <span className={cn("font-medium", isChatActive && displayDetails.status === "Online" ? "text-green-500" : "text-muted-foreground")}>
                     {isChatActive ? (displayDetails.status || "Offline")
@@ -459,7 +468,7 @@ export function ChatView({
                         <displayDetails.Icon className="h-12 w-12 text-muted-foreground" />
                     </AvatarFallback>
                 </Avatar>
-                <DialogTitle className="text-2xl">{displayDetails.name}</DialogTitle>
+                <DialogTitle className="text-2xl truncate w-full px-4">{displayDetails.name}</DialogTitle>
                  <DialogDescription className="text-base">
                     {displayDetails.description}
                 </DialogDescription>
@@ -478,7 +487,7 @@ export function ChatView({
                         disabled={!!chat.blockedByUser}
                     >
                         <Users className="mr-2 h-4 w-4" />
-                        Buat grup dengan {displayDetails.name}
+                        Buat grup dengan {truncatedNameForButton}
                     </Button>
                 </div>
             </>
@@ -707,6 +716,8 @@ export function ChatView({
 
 
 
+
+    
 
     
 

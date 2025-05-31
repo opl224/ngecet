@@ -178,9 +178,9 @@ export function ChatItem({
                 <Clock className="h-4 w-4 mr-1.5 text-sidebar-foreground/70 shrink-0" />
               )}
               {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
-              <div className="flex-1 min-w-0 overflow-hidden"> {/* Wrapper Div for name, added overflow-hidden */}
+              <div className="flex-1 min-w-0 overflow-hidden max-w-[100px]"> {/* Wrapper Div for name, added overflow-hidden */}
                 <h4 className={cn(
-                    "font-semibold text-sm truncate min-w-0", // truncate and min-w-0 are key
+                    "font-semibold text-sm truncate min-w-0 overflow-hidden text-ellipsis whitespace-nowrap", // truncate and min-w-0 are key
                     (chat.type === 'direct' && chat.isRejected) && "text-destructive",
                     (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
                   )}
