@@ -45,11 +45,11 @@ export function ChatItem({
 
     if (chat.type === "direct") {
       const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
-      nameForDisplay = otherParticipant?.name || "";
+      nameForDisplay = (otherParticipant?.name || "").trim(); // Added .trim()
       avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
       otherParticipantStatus = otherParticipant?.status;
     } else {
-      nameForDisplay = chat.name || "Unnamed Group";
+      nameForDisplay = (chat.name || "Unnamed Group").trim(); // Added .trim()
       avatarForDisplay = chat.avatarUrl;
       IconComponent = Users;
     }
@@ -276,3 +276,5 @@ export function ChatItem({
     </div>
   );
 }
+
+    
