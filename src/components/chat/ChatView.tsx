@@ -356,6 +356,7 @@ export function ChatView({
     return name;
   }, [displayDetails.name]);
 
+
   return (
     <div className="flex flex-col flex-1 bg-background overflow-hidden">
       <Dialog> 
@@ -376,7 +377,9 @@ export function ChatView({
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <h2 className={cn("text-lg font-semibold", isMobileView ? "line-clamp-2" : "truncate")}>{displayDetails.name}</h2>
+                  <h2 className={cn("text-lg font-semibold", isMobileView ? "line-clamp-2" : "truncate")}>
+                    {displayDetails.name}
+                  </h2>
                   <p className="text-xs text-muted-foreground truncate">
                     {chat.type === 'direct'
                       ? (isChatActive ? (displayDetails.status || (currentUser.id === chat.participants?.find(p => p.id === currentUser.id)?.id ? currentUser.status : "Offline"))
@@ -486,7 +489,7 @@ export function ChatView({
                         onClick={() => onStartGroupWithUser(displayDetails.otherParticipantObject!)}
                         disabled={!!chat.blockedByUser}
                     >
-                        <Users className="mr-2 h-4 w-4" />
+                        <Users className="mr-2 h-4 w-4 truncate" />
                         Buat grup dengan {truncatedNameForButton}
                     </Button>
                 </div>
@@ -712,17 +715,3 @@ export function ChatView({
   );
 }
 
-    
-
-
-
-
-    
-
-    
-
-    
-
-    
-
-    
