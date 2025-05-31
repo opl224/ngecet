@@ -163,15 +163,15 @@ export function ChatItem({
             {initials || <Icon className="h-5 w-5 text-sidebar-foreground/70" />}
           </AvatarFallback>
         </Avatar>
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center flex-1 min-w-0 mr-2 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-hidden"> {/* Container A */}
+          <div className="flex justify-between items-center min-w-0 overflow-hidden"> {/* Container B - Added min-w-0 and overflow-hidden */}
+            <div className="flex items-center flex-1 min-w-0 mr-2 overflow-hidden"> {/* Container C */}
               {showPendingClockIcon && !chat.isRejected && (
                 <Clock className="h-4 w-4 mr-1.5 text-sidebar-foreground/70 shrink-0" />
               )}
               {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
               <h4 className={cn(
-                  "font-semibold text-sm truncate min-w-0",
+                  "font-semibold text-sm truncate min-w-0", // Ensure h4 has truncate and min-w-0
                   (chat.type === 'direct' && chat.isRejected) && "text-destructive",
                   (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
                 )}
@@ -180,7 +180,7 @@ export function ChatItem({
               </h4>
             </div>
 
-            <div className="shrink-0">
+            <div className="shrink-0"> {/* Timestamp/Badge/Actions Area */}
               {(() => {
                 if (showAcceptRejectActions) {
                   return (
