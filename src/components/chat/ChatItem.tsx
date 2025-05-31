@@ -171,7 +171,7 @@ export function ChatItem({
               )}
               {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
               <h4 className={cn(
-                  "font-semibold text-sm truncate",
+                  "font-semibold text-sm overflow-hidden text-ellipsis whitespace-nowrap",
                   (chat.type === 'direct' && chat.isRejected) && "text-destructive",
                   (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
                 )}
