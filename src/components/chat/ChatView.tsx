@@ -377,7 +377,7 @@ export function ChatView({
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <h2 className={cn("text-lg font-semibold", isMobileView ? "line-clamp-2" : "truncate")}>
+                  <h2 className={cn("text-lg font-semibold break-words", !isMobileView && "")}>
                     {displayDetails.name}
                   </h2>
                   <p className="text-xs text-muted-foreground truncate">
@@ -485,12 +485,13 @@ export function ChatView({
                 <div className="pb-2">
                     <Button
                         variant="outline"
-                        className="w-full"
+                        className="w-full whitespace-normal"
                         onClick={() => onStartGroupWithUser(displayDetails.otherParticipantObject!)}
                         disabled={!!chat.blockedByUser}
                     >
                         <Users className="mr-2 h-4 w-4 truncate" />
                         Buat grup dengan {truncatedNameForButton}
+                        {/* Buat grup dengan {truncatedNameForButton} */}
                     </Button>
                 </div>
             </>
@@ -520,8 +521,8 @@ export function ChatView({
                              <AvatarImage src={participantUser.avatarUrl} alt={participantName} data-ai-hint="person abstract small"/>
                              <AvatarFallback>{participantUser?.name?.substring(0,1).toUpperCase() || '?'}</AvatarFallback>
                            </Avatar>
-                           <div className="truncate">
-                              <span className="font-medium truncate">{participantName}</span>
+                           <div className="min-w-0">
+                              <span className="font-medium whitespace-normal">{participantName}</span>
                               {isCurrentUserInList && !isChatAdmin && <span className="text-xs text-muted-foreground"> (Anda)</span>}
                            </div>
                          </div>

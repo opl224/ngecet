@@ -3,6 +3,13 @@
 @tailwind components;
 @tailwind utilities;
 
+.no-truncate-mobile {
+  @apply whitespace-normal overflow-visible;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
 body {
   font-family: var(--font-poppins), Arial, Helvetica, sans-serif; /* Use Poppins font variable */
 }
