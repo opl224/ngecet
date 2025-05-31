@@ -23,6 +23,8 @@ interface ChatItemProps {
   isMobileView: boolean;
 }
 
+const MAX_DISPLAY_WORDS = 12;
+
 export function ChatItem({
   chat,
   currentUser,
@@ -55,6 +57,10 @@ export function ChatItem({
     }
 
     if (nameForDisplay) {
+        const words = nameForDisplay.split(' ');
+        if (words.length > MAX_DISPLAY_WORDS) {
+            nameForDisplay = words.slice(0, MAX_DISPLAY_WORDS).join(' ') + "...";
+        }
         initials = nameForDisplay.substring(0,2).toUpperCase();
     } else {
         initials = "??";
@@ -158,9 +164,9 @@ export function ChatItem({
                 <Clock className="h-4 w-4 mr-1.5 text-sidebar-foreground/70 shrink-0" />
               )}
               {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
-              <div className="flex-1 min-w-0"> {/* New Wrapper Div */}
+              <div className="flex-1 min-w-0"> {/* New Wrapper Div for name */}
                 <h4 className={cn(
-                    "font-semibold text-sm truncate", 
+                    "font-semibold text-sm truncate min-w-0",
                     (chat.type === 'direct' && chat.isRejected) && "text-destructive",
                     (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
                   )}
@@ -266,5 +272,3 @@ export function ChatItem({
     </div>
   );
 }
-
-    
