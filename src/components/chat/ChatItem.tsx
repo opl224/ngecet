@@ -42,7 +42,6 @@ export function ChatItem({
     let initials: string;
     let IconComponent: React.ElementType = UserIcon;
     let otherParticipantStatus: string | undefined = undefined;
-    const MAX_NAME_LENGTH = 10;
 
     if (chat.type === "direct") {
       const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
@@ -55,10 +54,8 @@ export function ChatItem({
       IconComponent = Users;
     }
 
-    // Apply 10-character truncation regardless of isMobileView for ChatItem consistency
-    if (nameForDisplay.length > MAX_NAME_LENGTH) {
-      nameForDisplay = nameForDisplay.substring(0, MAX_NAME_LENGTH) + "...";
-    }
+    // The explicit 10-character truncation logic is removed.
+    // CSS truncate class on h4 will handle overflow.
 
     initials = (nameForDisplay ? nameForDisplay.substring(0, 2) : "??").toUpperCase();
     if (nameForDisplay.startsWith("...") && nameForDisplay.length > 2) {
