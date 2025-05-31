@@ -196,7 +196,6 @@ export function ChatView({
 
 
   const displayDetails = useMemo(() => {
-    const MAX_NAME_LENGTH = 10;
     let nameToDisplay: string;
     let avatarUrlToDisplay: string | undefined;
     let IconComponent: React.ElementType = UserIcon;
@@ -217,10 +216,6 @@ export function ChatView({
       descriptionText = `Grup • ${chat.participants?.length || 0} anggota`;
     }
 
-    if (isMobileView && nameToDisplay.length > MAX_NAME_LENGTH) {
-      nameToDisplay = nameToDisplay.substring(0, MAX_NAME_LENGTH) + "...";
-    }
-
     return {
       name: nameToDisplay,
       avatarUrl: avatarUrlToDisplay,
@@ -229,7 +224,7 @@ export function ChatView({
       status: statusText,
       otherParticipantObject
     };
-  }, [chat, currentUser.id, isMobileView]);
+  }, [chat, currentUser.id]);
 
 
   const isChatEffectivelyBlocked = chat.type === 'direct' &&
@@ -357,7 +352,7 @@ export function ChatView({
       <Dialog> 
         <header className="p-4 border-b flex items-center justify-between shadow-sm">
           <div className="flex items-center space-x-1 flex-1 min-w-0">
-            {onGoBack && isMobile && (
+            {onGoBack && isMobileView && (
               <Button variant="ghost" size="icon" className="mr-1 shrink-0" onClick={handleMobileBackClick}>
                 <ArrowLeft className="h-5 w-5" />
                 <span className="sr-only">Kembali</span>
@@ -396,7 +391,7 @@ export function ChatView({
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        {onGoBack && !isMobile && ( 
+                        {onGoBack && !isMobileView && ( 
                             <DropdownMenuItem onClick={onGoBack} className="py-2">
                                 <span>Tutup Chat</span>
                             </DropdownMenuItem>
@@ -709,3 +704,4 @@ export function ChatView({
 }
 
     
+
