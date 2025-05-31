@@ -54,9 +54,6 @@ export function ChatItem({
       IconComponent = Users;
     }
 
-    // The explicit 10-character truncation logic is removed.
-    // CSS truncate class on h4 will handle overflow.
-
     initials = (nameForDisplay ? nameForDisplay.substring(0, 2) : "??").toUpperCase();
     if (nameForDisplay.startsWith("...") && nameForDisplay.length > 2) {
         initials = nameForDisplay.substring(3,5).toUpperCase() || "??";
