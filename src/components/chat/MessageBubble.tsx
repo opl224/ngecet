@@ -79,6 +79,15 @@ export function MessageBubble({
     }
   }
 
+  const repliedSenderNameToDisplay = (() => {
+    if (!message.replyToMessageSenderName) return "";
+    const words = message.replyToMessageSenderName.trim().split(/\s+/);
+    if (words.length > 5) {
+      return words.slice(0, 5).join(" ") + "...";
+    }
+    return message.replyToMessageSenderName;
+  })();
+
   interface BubbleContentLayoutProps extends HTMLAttributes<HTMLDivElement> {
     children?: React.ReactNode;
   }
@@ -120,9 +129,9 @@ export function MessageBubble({
           isCurrentUserMessage ? "border-primary-foreground/50 bg-primary-foreground/10" : "border-primary bg-muted/70"
         )}>
           <p className={cn(
-            "text-xs font-semibold truncate", // Added truncate here
+            "text-xs font-semibold truncate", 
             isCurrentUserMessage ? "text-primary-foreground" : "text-primary"
-          )}>{message.replyToMessageSenderName}</p>
+          )}>{repliedSenderNameToDisplay}</p>
           <p className={cn(
             "text-xs opacity-90",
             isCurrentUserMessage ? "text-primary-foreground/90" : "text-card-foreground/90"
@@ -225,27 +234,27 @@ export function MessageBubble({
 
   return (
     <div className={cn(
-      "flex w-full items-center group", // Changed from items-start to items-center
+      "flex w-full items-center group", 
       isCurrentUserMessage ? "justify-end" : "justify-start",
     )}>
       {isCurrentUserMessage ? (
         <>
-          {/* Order 1: Action Buttons (Message Options) */}
+          
           <div className="order-1 mr-1 self-center">
             <SenderActionButtons />
           </div>
-          {/* Order 2: Bubble Content */}
+          
           <BubbleContentLayout className="order-2 mr-2" />
-          {/* Order 3: Avatar (only for group chats) */}
+          
           {chatType === 'group' && <UserAvatarComponent className="order-3 ml-0 self-start" />}
         </>
       ) : (
         <>
-          {/* Avatar (only for group chats) */}
+          
           {chatType === 'group' && <UserAvatarComponent className="mr-2 self-start" />}
-          {/* Bubble Content */}
+          
           <BubbleContentLayout className={cn(chatType === 'direct' ? "ml-0" : "", "mr-1")} />
-          {/* Action Button (Reply) */}
+          
           <div className="ml-1 self-center">
             <ReceiverActionButton />
           </div>
