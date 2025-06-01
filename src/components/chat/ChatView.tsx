@@ -455,7 +455,7 @@ export function ChatView({
                     <displayDetails.Icon className="h-12 w-12 text-muted-foreground" />
                   </AvatarFallback>
                 </Avatar>
-                <DialogTitle className="text-2xl truncate w-full px-4">{displayDetails.name}</DialogTitle>
+                <DialogTitle className="text-2xl line-clamp-2 break-all w-full px-4">{displayDetails.name}</DialogTitle>
                 <DialogDescription className="text-base">
                   <span className={cn("font-medium", isChatActive && displayDetails.status === "Online" ? "text-green-500" : "text-muted-foreground")}>
                     {isChatActive ? (displayDetails.status || "Offline")
@@ -471,7 +471,7 @@ export function ChatView({
                         <displayDetails.Icon className="h-12 w-12 text-muted-foreground" />
                     </AvatarFallback>
                 </Avatar>
-                <DialogTitle className="text-2xl truncate w-full px-4">{displayDetails.name}</DialogTitle>
+                <DialogTitle className="text-2xl line-clamp-2 break-all w-full px-4">{displayDetails.name}</DialogTitle>
                  <DialogDescription className="text-base">
                     {displayDetails.description}
                 </DialogDescription>
