@@ -377,7 +377,7 @@ export function ChatView({
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <h2 className={cn("text-lg font-semibold break-words", !isMobileView && "")}>
+                  <h2 className={cn("text-lg font-semibold break-words", isMobileView ? "" : "")}>
                     {displayDetails.name}
                   </h2>
                   <p className="text-xs text-muted-foreground truncate">
@@ -491,7 +491,6 @@ export function ChatView({
                     >
                         <Users className="mr-2 h-4 w-4 truncate" />
                         Buat grup dengan {truncatedNameForButton}
-                        {/* Buat grup dengan {truncatedNameForButton} */}
                     </Button>
                 </div>
             </>
