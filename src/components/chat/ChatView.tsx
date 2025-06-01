@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { SendHorizonal, Users, User as UserIcon, X, AlertTriangle, Lock, Check, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, ShieldAlert, ShieldOff, Clock, ArrowLeft, PencilLine } from "lucide-react";
+import { SendHorizonal, Users, User as UserIcon, X, AlertTriangle, Lock, Check, MoreVertical, LogOut, Trash2, UserPlus, UserMinus, ShieldAlert, ShieldOff, Clock, ArrowLeft, PencilLine, Smile } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -25,6 +25,12 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import EmojiPicker, { type EmojiClickData, Theme } from 'emoji-picker-react';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -84,27 +90,41 @@ export function ChatView({
   const prevEditingMessageDetailsRef = useRef<Message | null>(null);
 
   const { isMobile, setOpenMobile } = useSidebar();
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const nextCursorPositionRef = useRef<number | null>(null);
+
+
+  useEffect(() => {
+    if (messageInputRef.current) {
+      messageInputRef.current.style.height = 'auto';
+      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); 
+      messageInputRef.current.style.height = `${newHeight}px`;
+
+      if (nextCursorPositionRef.current !== null && document.activeElement === messageInputRef.current) {
+        messageInputRef.current.selectionStart = nextCursorPositionRef.current;
+        messageInputRef.current.selectionEnd = nextCursorPositionRef.current;
+        nextCursorPositionRef.current = null; 
+      }
+    }
+  }, [newMessage]);
+
 
   const handleCancelEditClick = useCallback(() => {
     onCancelEditMessage(); 
     setNewMessage("");    
-    if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto';
-    }
   }, [onCancelEditMessage]);
 
   const handleCancelReplyClick = useCallback(() => {
     setReplyingToMessage(null);
     setNewMessage(""); 
-    if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto';
-    }
   }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        if (propsEditingMessageDetails) {
+        if (isEmojiPickerOpen) {
+          setIsEmojiPickerOpen(false);
+        } else if (propsEditingMessageDetails) {
           handleCancelEditClick();
         } else if (replyingToMessage) {
           handleCancelReplyClick();
@@ -118,7 +138,7 @@ export function ChatView({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [propsEditingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick]);
+  }, [propsEditingMessageDetails, replyingToMessage, onGoBack, handleCancelEditClick, handleCancelReplyClick, isEmojiPickerOpen]);
 
 
   useEffect(() => {
@@ -127,28 +147,20 @@ export function ChatView({
          setReplyingToMessage(null); 
       }
       if (messageInputRef.current) {
-        if (messageInputRef.current.value !== propsEditingMessageDetails.content) {
-           messageInputRef.current.value = propsEditingMessageDetails.content;
-        }
+        // value will be set by React from newMessage state
         setNewMessage(propsEditingMessageDetails.content); 
-        
-        messageInputRef.current.style.height = 'auto';
-        const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); 
-        messageInputRef.current.style.height = `${newHeight}px`;
         
         setTimeout(() => {
           if (messageInputRef.current) {
             messageInputRef.current.focus();
             const len = propsEditingMessageDetails.content.length; 
-            messageInputRef.current.selectionStart = len;
-            messageInputRef.current.selectionEnd = len;
+            nextCursorPositionRef.current = len;
           }
         }, 50); 
       }
     } else if (!propsEditingMessageDetails && prevEditingMessageDetailsRef.current && prevEditingMessageDetailsRef.current.chatId === chat.id) {
       if (messageInputRef.current && !replyingToMessage ) {
           setNewMessage(""); 
-          messageInputRef.current.style.height = 'auto';
       }
     }
     prevEditingMessageDetailsRef.current = propsEditingMessageDetails;
@@ -161,9 +173,7 @@ export function ChatView({
     if (chatJustSwitched) {
       setNewMessage(""); 
       setReplyingToMessage(null);
-      if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto';
-      }
+      setIsEmojiPickerOpen(false);
       if (propsEditingMessageDetails && propsEditingMessageDetails.chatId !== chat.id) {
         onCancelEditMessage(); 
       }
@@ -292,10 +302,7 @@ export function ChatView({
         if (replyingToMessage !== null) setReplyingToMessage(null);
       }
       setNewMessage(""); 
-
-      if (messageInputRef.current) {
-        messageInputRef.current.style.height = 'auto'; 
-      }
+      setIsEmojiPickerOpen(false);
     }
   };
 
@@ -312,12 +319,25 @@ export function ChatView({
 
   const handleTextareaInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setNewMessage(event.target.value);
-    if (messageInputRef.current) {
-      messageInputRef.current.style.height = 'auto'; 
-      const newHeight = Math.min(messageInputRef.current.scrollHeight, 120); 
-      messageInputRef.current.style.height = `${newHeight}px`;
-    }
   };
+  
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    if (messageInputRef.current) {
+      const { selectionStart, selectionEnd } = messageInputRef.current;
+      const textBefore = newMessage.substring(0, selectionStart);
+      const textAfter = newMessage.substring(selectionEnd);
+      const newText = textBefore + emojiData.emoji + textAfter;
+      
+      setNewMessage(newText);
+      nextCursorPositionRef.current = selectionStart + emojiData.emoji.length;
+      
+      // Focus after emoji insertion
+      // The useEffect for newMessage will handle cursor positioning
+      messageInputRef.current.focus(); 
+    }
+    // setIsEmojiPickerOpen(false); // Keep picker open for multiple emojis
+  };
+
 
   const userClearedTimestamp = chat.clearedTimestamp?.[currentUser.id] || 0;
   const displayedMessages = messages.filter(msg => msg.timestamp > userClearedTimestamp);
@@ -349,7 +369,7 @@ export function ChatView({
   
   const truncatedNameForButton = useMemo(() => {
     const name = displayDetails.name || "";
-    const limit = 15;
+    const limit = 15; // You can adjust this limit
     if (name.length > limit) {
       return name.substring(0, limit) + "...";
     }
@@ -433,8 +453,7 @@ export function ChatView({
                                     </DropdownMenuItem>
                                 ) : (
                                     <DropdownMenuItem onClick={() => onBlockUser && onBlockUser(chat.id)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2">
-                                         <ShieldAlert className="mr-2 h-4 w-4" />
-                                        <span>Blokir pengguna</span>
+                                        <span>Blokir Pengguna</span>
                                     </DropdownMenuItem>
                                 )}
                             </>
@@ -682,6 +701,30 @@ export function ChatView({
       )}
       <footer className="p-4 border-t">
         <form onSubmit={handleSubmit} className="flex items-end space-x-2">
+          <Popover open={isEmojiPickerOpen} onOpenChange={setIsEmojiPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                type="button"
+                disabled={!isChatActive}
+                className="self-end shrink-0"
+                aria-label="Buka emoji picker"
+              >
+                <Smile className="h-5 w-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-auto p-0 border-0">
+               <EmojiPicker 
+                 onEmojiClick={onEmojiClick}
+                 theme={Theme.AUTO}
+                 autoFocusSearch={false}
+                 lazyLoadEmojis={true}
+                 height={350}
+                 previewConfig={{showPreview: false}}
+               />
+            </PopoverContent>
+          </Popover>
           <Textarea
             ref={messageInputRef}
             value={newMessage}

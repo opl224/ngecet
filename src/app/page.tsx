@@ -617,7 +617,6 @@ export default function ChatPage() {
     });
 
     setEditingMessageDetails(null);
-    toast({ title: "Pesan Diperbarui" });
 
     setChats(prevChats => {
       if (!editingMessageDetails) return prevChats;
@@ -723,7 +722,6 @@ export default function ChatPage() {
     );
     setIsDeleteAllMessagesConfirmOpen(false);
     setChatIdToDeleteAllMessagesFrom(null);
-    toast({ title: "Pesan Dihapus", description: "Semua pesan dalam chat ini telah dihapus dari tampilan Anda."});
   }, [currentUser, setChats, toast, chatIdToDeleteAllMessagesFrom]);
 
   const handleCancelDeleteAllMessages = useCallback(() => {

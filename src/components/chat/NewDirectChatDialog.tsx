@@ -59,7 +59,7 @@ export function NewDirectChatDialog({ isOpen, onOpenChange, onCreateChat, curren
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Tambah pesan baru</DialogTitle>
+          <DialogTitle>Tambah Pesan Baru</DialogTitle>
           <DialogDescription>
             Cari pengguna berdasarkan username untuk memulai percakapan.
           </DialogDescription>
