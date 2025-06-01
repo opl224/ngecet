@@ -175,14 +175,18 @@ export function ChatItem({
               )}
               {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
               {/* Name's direct wrapper: This also needs to shrink. */}
-              <div className="flex-1 min-w-0 overflow-hidden max-w-[100px]"> 
+              <div className={cn(
+                  "flex-1 min-w-0 overflow-hidden",
+                  !isMobileView && "max-w-[100px]"
+                )}
+              > 
                 <h4 
                   className={cn(
-                    "font-semibold text-sm truncate min-w-0 overflow-hidden text-ellipsis whitespace-nowrap ", 
+                    "font-semibold text-sm truncate min-w-0", 
                     (chat.type === 'direct' && chat.isRejected) && "text-destructive",
-                    (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
+                    (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive",
+                    isMobileView && "no-truncate-mobile" // Apply no-truncate for mobile
                   )}
-                  // title={name} // Temporarily remove title to isolate the issue
                 >
                   {name}
                 </h4>
@@ -281,5 +285,3 @@ export function ChatItem({
     </div>
   );
 }
-
-    
