@@ -9,12 +9,6 @@ import useLocalStorage from "@/hooks/use-local-storage";
 import { AppLogo } from "@/components/core/AppLogo";
 import { UserProfileForm } from "@/components/core/UserProfileForm";
 import { ChatList } from "@/components/chat/ChatList";
-// import { ChatView } from "@/components/chat/ChatView"; // Will be dynamic
-// import { WelcomeMessage } from "@/components/chat/WelcomeMessage"; // Will be dynamic
-// import { NewDirectChatDialog } from "@/components/chat/NewDirectChatDialog"; // Will be dynamic
-// import { NewGroupChatDialog } from "@/components/chat/NewGroupChatDialog"; // Will be dynamic
-// import { AddUserToGroupDialog } from "@/components/chat/AddUserToGroupDialog"; // Will be dynamic
-// import { AuthPage } from "@/components/auth/AuthPage"; // Will be dynamic
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,7 +37,6 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
-  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Trash2, Settings, InfoIcon, Palette, Sun, Moon, Laptop } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -64,7 +57,7 @@ const LS_REGISTERED_USERS_KEY = "ngecet_registered_users";
 
 export default function ChatPage() {
   const { toast } = useToast();
-  // const { theme, setTheme } = useTheme(); // Theme switching temporarily disabled
+  const { theme, setTheme } = useTheme();
 
   const [currentUser, setCurrentUser] = useLocalStorage<User | null>(LS_USER_KEY, null);
 
@@ -1238,6 +1231,26 @@ export default function ChatPage() {
                     <InfoIcon className="mr-2 h-4 w-4" />
                     <span>Tentang aplikasi</span>
                   </DropdownMenuItem>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Palette className="mr-2 h-4 w-4" />
+                      <span>Tema</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={() => setTheme('light')}>
+                        <Sun className="mr-2 h-4 w-4" />
+                        <span>Light</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTheme('dark')}>
+                        <Moon className="mr-2 h-4 w-4" />
+                        <span>Dark</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTheme('system')}>
+                        <Laptop className="mr-2 h-4 w-4" />
+                        <span>System</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => handleLogout(false)}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -1351,6 +1364,26 @@ export default function ChatPage() {
                     <InfoIcon className="mr-2 h-4 w-4" />
                     <span>Tentang aplikasi</span>
                 </DropdownMenuItem>
+                 <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Palette className="mr-2 h-4 w-4" />
+                      <span>Tema</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={() => setTheme('light')}>
+                        <Sun className="mr-2 h-4 w-4" />
+                        <span>Light</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTheme('dark')}>
+                        <Moon className="mr-2 h-4 w-4" />
+                        <span>Dark</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTheme('system')}>
+                        <Laptop className="mr-2 h-4 w-4" />
+                        <span>System</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleLogout(false)}>
                   <LogOut className="mr-2 h-4 w-4" />
@@ -1490,5 +1523,3 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
-
-    

@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 // Import ThemeProvider directly, and alias useTheme internally
-// import { ThemeProvider, useTheme as useNextThemesInternalHook } from 'next-themes';
+import { ThemeProvider, useTheme as useNextThemesInternalHook } from 'next-themes';
 import { Toaster } from "@/components/ui/toaster";
 
 interface ProvidersProps {
@@ -24,21 +24,12 @@ export function Providers({ children }: ProvidersProps) {
   }
 
   return (
-    // <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-    <>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       {children}
       <Toaster />
-    </>
-    // </ThemeProvider>
+    </ThemeProvider>
   );
 }
 
 // Re-export the internally aliased hook as useTheme
-// export const useTheme = useNextThemesInternalHook;
-
-// Placeholder if useTheme is needed elsewhere but next-themes is removed
-export const useTheme = () => ({
-  theme: 'system',
-  setTheme: (theme: string) => console.warn('Theme switching is temporarily disabled.', theme),
-  themes: ['light', 'dark', 'system'],
-});
+export const useTheme = useNextThemesInternalHook;

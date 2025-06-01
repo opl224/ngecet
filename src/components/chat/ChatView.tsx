@@ -31,12 +31,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-// import EmojiPicker, { type EmojiClickData, Theme } from 'emoji-picker-react'; // Will be dynamic
-import type { EmojiClickData } from 'emoji-picker-react'; // Keep type import
-import { Theme as EmojiTheme } from 'emoji-picker-react'; // Import Theme separately for use with dynamic import
+import type { EmojiClickData } from 'emoji-picker-react'; 
+import { Theme as EmojiTheme } from 'emoji-picker-react'; 
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
+import { useTheme } from '@/components/core/Providers';
+
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), {
   ssr: false,
@@ -88,6 +89,7 @@ export function ChatView({
   isMobileView,
 }: ChatViewProps) {
   const { toast } = useToast();
+  const { theme: appTheme } = useTheme();
   const [newMessage, setNewMessage] = useState("");
   const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -722,7 +724,7 @@ export function ChatView({
             <PopoverContent side="top" align="start" className="w-auto p-0 border-0">
                <EmojiPicker 
                  onEmojiClick={onEmojiClick}
-                 theme={EmojiTheme.AUTO}
+                 theme={appTheme === 'system' ? EmojiTheme.AUTO : appTheme === 'dark' ? EmojiTheme.DARK : EmojiTheme.LIGHT}
                  autoFocusSearch={false}
                  lazyLoadEmojis={true}
                  height={350}
@@ -762,5 +764,3 @@ export function ChatView({
     </div>
   );
 }
-
-    
