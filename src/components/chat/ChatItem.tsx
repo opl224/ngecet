@@ -32,7 +32,7 @@ export function ChatItem({
   onRejectChat,
   onDeleteChatPermanently,
   onUnblockUser,
-  isMobileView,
+  // isMobileView prop is kept for other potential uses, though not for name truncation logic here
 }: ChatItemProps) {
   const { isMobile: isMobileContext, setOpenMobile } = useSidebar();
 
@@ -145,7 +145,10 @@ export function ChatItem({
      statusMessageToDisplay = `${chat.participants.length} anggota`;
   } else if (chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
      statusMessageToDisplay = "Mulai percakapan";
+  } else if (chat.lastMessage) {
+    statusMessageToDisplay = chat.lastMessage;
   }
+
 
   return (
     <div
@@ -175,17 +178,12 @@ export function ChatItem({
               )}
               {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
               {/* Name's direct wrapper: This also needs to shrink. */}
-              <div className={cn(
-                  "flex-1 min-w-0 overflow-hidden",
-                  !isMobileView && "max-w-[100px]"
-                )}
-              > 
+              <div className="flex-1 min-w-0 overflow-hidden"> 
                 <h4 
                   className={cn(
                     "font-semibold text-sm truncate min-w-0", 
                     (chat.type === 'direct' && chat.isRejected) && "text-destructive",
-                    (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive",
-                    isMobileView && "no-truncate-mobile" // Apply no-truncate for mobile
+                    (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive"
                   )}
                 >
                   {name}
@@ -285,3 +283,5 @@ export function ChatItem({
     </div>
   );
 }
+
+    
