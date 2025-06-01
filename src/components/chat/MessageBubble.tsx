@@ -120,7 +120,7 @@ export function MessageBubble({
           isCurrentUserMessage ? "border-primary-foreground/50 bg-primary-foreground/10" : "border-primary bg-muted/70"
         )}>
           <p className={cn(
-            "text-xs font-semibold",
+            "text-xs font-semibold truncate", // Added truncate here
             isCurrentUserMessage ? "text-primary-foreground" : "text-primary"
           )}>{message.replyToMessageSenderName}</p>
           <p className={cn(
@@ -254,3 +254,4 @@ export function MessageBubble({
     </div>
   );
 }
+
