@@ -376,8 +376,8 @@ export function ChatView({
                     <displayDetails.Icon className="h-5 w-5 text-muted-foreground" />
                   </AvatarFallback>
                 </Avatar>
-                <div className="min-w-0">
-                  <h2 className={cn("text-lg font-semibold break-words", isMobileView ? "" : "")}>
+                <div className="min-w-0 flex-1">
+                  <h2 className={cn("text-lg font-semibold truncate")}>
                     {displayDetails.name}
                   </h2>
                   <p className="text-xs text-muted-foreground truncate">
