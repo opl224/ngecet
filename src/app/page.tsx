@@ -1160,7 +1160,7 @@ export default function ChatPage() {
             <AlertDialog open={isDeleteAllMessagesConfirmOpen} onOpenChange={setIsDeleteAllMessagesConfirmOpen}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Hapus semua pesan?</AlertDialogTitle>
+                    <AlertDialogTitle>Hapus Semua Pesan?</AlertDialogTitle>
                     <AlertDialogDescription>
                       Apakah Anda yakin ingin menghapus semua pesan dalam chat ini? Tindakan ini hanya akan menghapus pesan dari tampilan Anda dan tidak dapat dibatalkan.
                     </AlertDialogDescription>
@@ -1503,7 +1503,7 @@ export default function ChatPage() {
       <AlertDialog open={isDeleteAllMessagesConfirmOpen} onOpenChange={setIsDeleteAllMessagesConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus semua pesan?</AlertDialogTitle>
+            <AlertDialogTitle>Hapus Semua Pesan?</AlertDialogTitle>
             <AlertDialogDescription>
               Apakah Anda yakin ingin menghapus semua pesan dalam chat ini? Tindakan ini hanya akan menghapus pesan dari tampilan Anda dan tidak dapat dibatalkan.
             </AlertDialogDescription>

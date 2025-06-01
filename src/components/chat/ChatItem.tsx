@@ -6,9 +6,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNowStrict } from 'date-fns';
+import { formatDistanceToNowStrict, isToday, isYesterday, format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
-import { Users, User as UserIcon, Check, X, Trash2, ShieldAlert, Clock, ShieldOff } from "lucide-react";
+import { User as UserIcon, Users, AlertTriangle, Check, X, ShieldOff, ShieldAlert } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 
 interface ChatItemProps {
@@ -34,253 +34,189 @@ export function ChatItem({
   onUnblockUser,
   isMobileView,
 }: ChatItemProps) {
-  const { isMobile: isMobileContext, setOpenMobile } = useSidebar();
+  const { setOpenMobile } = useSidebar();
 
   const getChatDisplayDetails = () => {
-    let nameForDisplay: string;
-    let avatarForDisplay: string | undefined;
-    let initialsToUse: string;
-    let IconComponent: React.ElementType = UserIcon;
-    let otherParticipantStatus: string | undefined = undefined;
-    let originalNameForInitials: string;
+    let name = "Chat";
+    let avatarUrl = chat.avatarUrl;
+    let IconComponent: React.ElementType = Users;
+    let initials = "?";
+    let statusMessage: string | null = null;
+    let otherParticipant: User | undefined = undefined;
 
     if (chat.type === "direct") {
-      const otherParticipant = chat.participants.find(p => typeof p === 'object' && p.id !== currentUser.id);
-      originalNameForInitials = otherParticipant?.name || "Direct Chat";
-      nameForDisplay = originalNameForInitials.trim();
-      avatarForDisplay = otherParticipant?.avatarUrl || chat.avatarUrl;
-      otherParticipantStatus = otherParticipant?.status;
-    } else {
-      originalNameForInitials = chat.name || "Unnamed Group";
-      nameForDisplay = originalNameForInitials.trim();
-      avatarForDisplay = chat.avatarUrl;
+      otherParticipant = chat.participants.find(p => p.id !== currentUser.id);
+      name = otherParticipant?.name || "Pengguna Tidak Dikenal";
+      avatarUrl = otherParticipant?.avatarUrl || chat.avatarUrl;
+      IconComponent = UserIcon;
+      initials = otherParticipant?.name?.substring(0, 1).toUpperCase() || name.substring(0,1).toUpperCase() || "?";
+
+      if (chat.pendingApprovalFromUserId === currentUser.id) {
+        statusMessage = `Permintaan dari ${name}`;
+      } else if (chat.pendingApprovalFromUserId && chat.pendingApprovalFromUserId !== currentUser.id) {
+        statusMessage = "Permintaan terkirim";
+      } else if (chat.isRejected) {
+         const rejecterName = chat.rejectedByUserId === currentUser.id ? "Anda" : (chat.participants.find(p => p.id === chat.rejectedByUserId)?.name || name);
+         const rejectedTargetName = chat.rejectedByUserId === currentUser.id ? name : "Anda";
+        statusMessage = `Ditolak oleh ${rejecterName}`;
+      } else if (chat.blockedByUser === currentUser.id) {
+        statusMessage = `Anda memblokir ${name}`;
+      } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
+        statusMessage = `${name} memblokir Anda`;
+      }
+    } else if (chat.type === "group") {
+      name = chat.name || "Grup Tanpa Nama";
+      initials = chat.name?.substring(0, 1).toUpperCase() || name.substring(0,1).toUpperCase() || "G";
       IconComponent = Users;
     }
+     if (initials.length > 2) initials = initials.substring(0,1);
 
-    if (originalNameForInitials) {
-        const nameParts = originalNameForInitials.trim().split(' ').filter(Boolean);
-        if (nameParts.length === 0) {
-            initialsToUse = "??";
-        } else if (nameParts.length === 1) {
-            initialsToUse = nameParts[0].substring(0, 2).toUpperCase();
-        } else {
-            initialsToUse = (nameParts[0][0] || '') + (nameParts[nameParts.length - 1][0] || '');
-            initialsToUse = initialsToUse.toUpperCase();
-        }
-        if (initialsToUse.length === 0 && originalNameForInitials.trim().length > 0) {
-             initialsToUse = originalNameForInitials.trim().substring(0,2).toUpperCase();
-        }
-        if (initialsToUse.length === 0) {
-            initialsToUse = "??";
-        }
-    } else {
-        initialsToUse = "??";
-    }
-    
-    return { name: nameForDisplay, avatarUrl: avatarForDisplay, initials: initialsToUse, Icon: IconComponent, otherParticipantStatus };
+
+    return {
+      name,
+      avatarUrl,
+      IconComponent,
+      initials,
+      statusMessage,
+      otherParticipantName: otherParticipant?.name
+    };
   };
 
-  const { name, avatarUrl, initials, Icon, otherParticipantStatus } = getChatDisplayDetails();
+  const { name, avatarUrl, IconComponent, initials, statusMessage, otherParticipantName } = getChatDisplayDetails();
 
-  let statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
-  let showAcceptRejectActions = false;
-  let showDeleteAction = false;
-  let specialStatusText: string | null = null;
-  const calculatedUnreadCount = chat.calculatedUnreadCount || 0;
-  let showPendingClockIcon = false;
-  let showBlockedByCurrentUserIcon = false;
-
-  if (chat.type === "direct") {
-    if (chat.blockedByUser === currentUser.id) {
-        showBlockedByCurrentUserIcon = true;
-        specialStatusText = null;
-        statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
-    } else if (chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
-        specialStatusText = `${name} mungkin memblokir Anda.`;
-        statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
-    } else if (chat.pendingApprovalFromUserId === currentUser.id) {
-      statusTimestamp = chat.requestTimestamp;
-      showAcceptRejectActions = true;
-      specialStatusText = "Permintaan chat baru";
-    } else if (chat.pendingApprovalFromUserId && !chat.isRejected) { 
-      showPendingClockIcon = true;
-      statusTimestamp = chat.requestTimestamp;
-      specialStatusText = null; 
-    } else if (chat.isRejected) {
-      if (chat.rejectedByUserId !== currentUser.id) {
-        const rejecter = chat.participants.find(p => p.id === chat.rejectedByUserId);
-        specialStatusText = `${rejecter?.name || name} menolak permintaan Anda.`;
-      } else {
-         specialStatusText = null; 
+  const formatTimestamp = (timestamp?: number): string => {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    try {
+      if (isToday(date)) {
+        return format(date, "HH:mm", { locale: idLocale });
       }
-      statusTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
-      showDeleteAction = true;
+      if (isYesterday(date)) {
+        return "Kemarin";
+      }
+      return formatDistanceToNowStrict(date, { addSuffix: true, locale: idLocale });
+    } catch (e) {
+      // Fallback for very old dates if formatDistanceToNowStrict throws error
+      return format(date, "dd/MM/yy", { locale: idLocale });
     }
-  }
+  };
 
-  const isClickDisabled =
-    (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser.id && !isActive);
-
+  const unreadCount = chat.calculatedUnreadCount || 0;
+  const displayTimestamp = chat.lastMessageTimestamp || chat.requestTimestamp;
 
   const handleItemClick = () => {
-    if (isClickDisabled) return;
     onSelectChat(chat);
-    if (isMobileContext) { 
+    if (isMobileView) {
       setOpenMobile(false);
     }
   };
 
-  const isItemActiveInList = isActive &&
-    !chat.pendingApprovalFromUserId &&
-    !chat.isRejected &&
-    !(chat.type === 'direct' && chat.blockedByUser);
+  const showActions = chat.type === 'direct' &&
+                      (chat.pendingApprovalFromUserId === currentUser.id ||
+                       (chat.isRejected && chat.rejectedByUserId !== currentUser.id) ||
+                       (chat.blockedByUser === currentUser.id));
 
 
-  let statusMessageToDisplay: React.ReactNode = null;
-  if (specialStatusText) {
-    statusMessageToDisplay = specialStatusText;
-  } else if (showPendingClockIcon && !chat.isRejected) {
-    // No status message
-  } else if (chat.type === "group" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected) {
-     statusMessageToDisplay = `${chat.participants.length} anggota`;
-  } else if (chat.type === "direct" && !chat.lastMessage && !chat.pendingApprovalFromUserId && !chat.isRejected && !chat.blockedByUser) {
-     statusMessageToDisplay = "Mulai percakapan";
-  }
+  const messageOrStatusToDisplay = statusMessage || "";
+
 
   return (
     <div
-      onClick={handleItemClick}
+      onClick={!showActions ? handleItemClick : undefined} // Allow click on whole item if no specific actions are shown
       className={cn(
-        "w-full text-left p-3 rounded-lg hover:bg-sidebar-accent transition-colors",
-        isItemActiveInList ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        isClickDisabled && "opacity-70 cursor-not-allowed",
-        !isClickDisabled && "cursor-pointer"
+        "flex items-center p-2.5 rounded-lg cursor-pointer transition-colors",
+        isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+        showActions && "cursor-default" // Reset cursor if actions are present
       )}
     >
-      <div className="w-full flex items-center space-x-3"> {/* Outer flex container for avatar + text block */}
-        <Avatar className="h-10 w-10 shrink-0">
-          <AvatarImage src={avatarUrl} alt={name || 'Chat Avatar'} data-ai-hint={chat.type === 'group' ? 'group people' : 'person abstract'}/>
-          <AvatarFallback>
-            {initials || <Icon className="h-5 w-5 text-sidebar-foreground/70" />}
-          </AvatarFallback>
-        </Avatar>
-        {/* Container A: Main content area for all text (name row, status message row) */}
-        <div className="flex-1 min-w-0 overflow-hidden"> 
-          {/* Container B: Holds the name row (name + timestamp/badge) */}
-          <div className="flex justify-between items-center min-w-0 overflow-hidden"> 
-            {/* Container C: Holds icons + name wrapper. This needs to shrink. */}
-            <div className="flex items-center flex-1 min-w-0 mr-2 overflow-hidden"> 
-              {showPendingClockIcon && !chat.isRejected && (
-                <Clock className="h-4 w-4 mr-1.5 text-sidebar-foreground/70 shrink-0" />
-              )}
-              {showBlockedByCurrentUserIcon && <ShieldAlert className="h-4 w-4 mr-1.5 text-destructive shrink-0" />}
-              {/* Name's direct wrapper: This also needs to shrink. */}
-              <div className={cn(
-                  "flex-1 min-w-0 overflow-hidden",
-                  !isMobileView && "max-w-[100px]"
-                )}
-              > 
-                <h4 
-                  className={cn(
-                    "font-semibold text-sm truncate min-w-0", 
-                    (chat.type === 'direct' && chat.isRejected) && "text-destructive",
-                    (chat.type === 'direct' && chat.blockedByUser === currentUser.id) && "text-destructive",
-                    isMobileView && "no-truncate-mobile" // Apply no-truncate for mobile
-                  )}
-                >
-                  {name}
-                </h4>
-              </div>
-            </div>
-
-            {/* Timestamp/Badge/Actions Area: This should not grow, shrink-0 is important. */}
-            <div className="shrink-0"> 
-              {(() => {
-                 if (showAcceptRejectActions) {
-                  return (
-                    <div className="flex items-center space-x-1 shrink-0">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={(e) => { e.stopPropagation(); onRejectChat(chat.id); }}
-                        className="h-7 w-7 p-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Tolak Permintaan"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={(e) => { e.stopPropagation(); onAcceptChat(chat.id); }}
-                        className="h-7 w-7 p-1 text-green-600 hover:bg-green-500/10 hover:text-green-700"
-                        aria-label="Terima Permintaan"
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  );
-                }
-                if (showDeleteAction) { 
-                  return (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={(e) => { e.stopPropagation(); onDeleteChatPermanently(chat.id); }}
-                      className="h-7 w-7 p-1 text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0"
-                      aria-label="Hapus Chat"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  );
-                }
-                 if (chat.type === 'direct' && chat.blockedByUser === currentUser.id) { 
-                    return (
-                         <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={(e) => { e.stopPropagation(); onUnblockUser(chat.id); }}
-                            className="h-7 w-7 p-1 text-green-600 hover:bg-green-500/10 hover:text-green-700 shrink-0"
-                            aria-label="Buka Blokir"
-                        >
-                            <ShieldOff className="h-4 w-4" />
-                        </Button>
-                    );
-                }
-                if (calculatedUnreadCount > 0 && !specialStatusText && !chat.blockedByUser && !showPendingClockIcon && !chat.isRejected) {
-                  return (
-                    <Badge variant="default" className="h-5 px-1.5 text-xs shrink-0">
-                      {calculatedUnreadCount > 9 ? '9+' : calculatedUnreadCount}
-                    </Badge>
-                  );
-                }
-                if (chat.type === 'direct' && calculatedUnreadCount === 0 && !specialStatusText && !chat.blockedByUser && !showAcceptRejectActions && !showPendingClockIcon && !chat.isRejected) {
-                  const status = otherParticipantStatus || "Offline";
-                  const isOnline = status === "Online";
-                  return (
-                    <div className="flex items-center space-x-1.5 shrink-0">
-                      <span className={cn("h-2 w-2 rounded-full block", isOnline ? "bg-green-500" : "bg-sidebar-foreground/30")}></span>
-                      <span className="text-xs text-sidebar-foreground/70">{status}</span>
-                    </div>
-                  );
-                }
-                if (statusTimestamp && !specialStatusText && !showPendingClockIcon && !chat.isRejected && !(calculatedUnreadCount > 0 && !chat.blockedByUser) ) {
-                     return (
-                        <span className="text-xs text-sidebar-foreground/60 shrink-0">
-                           {formatDistanceToNowStrict(new Date(statusTimestamp), { locale: idLocale, addSuffix: false })}
-                        </span>
-                     );
-                }
-                return null;
-              })()}
-            </div>
+      <Avatar className="h-10 w-10 mr-3 shrink-0">
+        <AvatarImage src={avatarUrl} alt={name} data-ai-hint={chat.type === 'group' ? 'group abstract' : 'person abstract'} />
+        <AvatarFallback>
+          {initials !== "?" ? initials : <IconComponent className="h-5 w-5 text-muted-foreground" />}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-center">
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-semibold truncate text-sidebar-foreground">
+              {name}
+            </h4>
           </div>
-          {/* Last message text: This also needs to truncate if too long. */}
-          {statusMessageToDisplay && (
-            <p className="text-xs text-sidebar-foreground/70 truncate">
-              {statusMessageToDisplay}
-            </p>
+          {displayTimestamp && (
+            <span className={cn(
+              "text-xs shrink-0 ml-2",
+              isActive ? "text-sidebar-accent-foreground/80" : "text-sidebar-foreground/60"
+            )}>
+              {formatTimestamp(displayTimestamp)}
+            </span>
           )}
         </div>
+        <div className="flex justify-between items-start mt-0.5">
+          <p className={cn(
+            "text-xs truncate",
+            statusMessage && chat.pendingApprovalFromUserId === currentUser.id ? "text-amber-600 dark:text-amber-500 font-medium" :
+            statusMessage && (chat.isRejected || chat.blockedByUser) ? "text-destructive font-medium" :
+            isActive ? "text-sidebar-accent-foreground/90" : "text-sidebar-foreground/70"
+          )}>
+            {messageOrStatusToDisplay}
+          </p>
+          {unreadCount > 0 && !statusMessage && (
+            <Badge
+              variant={isActive ? "default" : "secondary"}
+              className={cn(
+                "ml-2 px-2 py-0.5 text-xs h-5 min-w-[20px] flex items-center justify-center shrink-0",
+                 isActive ? "bg-primary text-primary-foreground" : "bg-sidebar-primary text-sidebar-primary-foreground"
+              )}
+            >
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </Badge>
+          )}
+        </div>
+
+        {showActions && (
+          <div className="mt-2 flex space-x-2">
+            {chat.pendingApprovalFromUserId === currentUser.id && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 text-xs h-8 border-green-500 text-green-600 hover:bg-green-500/10 hover:text-green-700"
+                  onClick={(e) => { e.stopPropagation(); onAcceptChat(chat.id); }}
+                >
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> Terima
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 text-xs h-8 border-destructive text-destructive hover:bg-destructive/10"
+                  onClick={(e) => { e.stopPropagation(); onRejectChat(chat.id); }}
+                >
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Tolak
+                </Button>
+              </>
+            )}
+            {chat.isRejected && chat.rejectedByUserId !== currentUser.id && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full text-xs h-8"
+                  onClick={(e) => { e.stopPropagation(); onDeleteChatPermanently(chat.id); }}
+                >
+                 <Trash2 className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" /> Hapus Chat
+                </Button>
+            )}
+             {chat.blockedByUser === currentUser.id && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full text-xs h-8 text-green-600 border-green-500 hover:bg-green-500/10 hover:text-green-700"
+                  onClick={(e) => { e.stopPropagation(); onUnblockUser(chat.id); }}
+                >
+                  <ShieldOff className="mr-1.5 h-3.5 w-3.5" /> Buka Blokir
+                </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

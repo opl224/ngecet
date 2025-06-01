@@ -170,7 +170,7 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
                 <FormItem>
                   <FormLabel>Nama Tampilan</FormLabel>
                   <FormControl>
-                    <Input placeholder="Masukkan nama" {...field} autoFocus/>
+                    <Input placeholder="Masukkan nama" {...field}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
