@@ -3,6 +3,7 @@
 
 import type { Chat, Message, User, ChatType } from "@/types";
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import dynamic from 'next/dynamic';
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,10 +31,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import EmojiPicker, { type EmojiClickData, Theme } from 'emoji-picker-react';
+// import EmojiPicker, { type EmojiClickData, Theme } from 'emoji-picker-react'; // Will be dynamic
+import type { EmojiClickData } from 'emoji-picker-react'; // Keep type import
+import { Theme as EmojiTheme } from 'emoji-picker-react'; // Import Theme separately for use with dynamic import
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
+
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), {
+  ssr: false,
+  loading: () => <div className="h-[350px] w-full flex items-center justify-center p-4"><p className="text-sm text-muted-foreground">Memuat emoji...</p></div>
+});
 
 
 interface ChatViewProps {
@@ -147,7 +155,6 @@ export function ChatView({
          setReplyingToMessage(null); 
       }
       if (messageInputRef.current) {
-        // value will be set by React from newMessage state
         setNewMessage(propsEditingMessageDetails.content); 
         
         setTimeout(() => {
@@ -331,11 +338,8 @@ export function ChatView({
       setNewMessage(newText);
       nextCursorPositionRef.current = selectionStart + emojiData.emoji.length;
       
-      // Focus after emoji insertion
-      // The useEffect for newMessage will handle cursor positioning
       messageInputRef.current.focus(); 
     }
-    // setIsEmojiPickerOpen(false); // Keep picker open for multiple emojis
   };
 
 
@@ -369,7 +373,7 @@ export function ChatView({
   
   const truncatedNameForButton = useMemo(() => {
     const name = displayDetails.name || "";
-    const limit = 15; // You can adjust this limit
+    const limit = 15;
     if (name.length > limit) {
       return name.substring(0, limit) + "...";
     }
@@ -453,6 +457,7 @@ export function ChatView({
                                     </DropdownMenuItem>
                                 ) : (
                                     <DropdownMenuItem onClick={() => onBlockUser && onBlockUser(chat.id)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 py-2">
+                                        <ShieldAlert className="mr-2 h-4 w-4" />
                                         <span>Blokir Pengguna</span>
                                     </DropdownMenuItem>
                                 )}
@@ -717,7 +722,7 @@ export function ChatView({
             <PopoverContent side="top" align="start" className="w-auto p-0 border-0">
                <EmojiPicker 
                  onEmojiClick={onEmojiClick}
-                 theme={Theme.AUTO}
+                 theme={EmojiTheme.AUTO}
                  autoFocusSearch={false}
                  lazyLoadEmojis={true}
                  height={350}
@@ -758,3 +763,4 @@ export function ChatView({
   );
 }
 
+    

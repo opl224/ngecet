@@ -2,18 +2,19 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import dynamic from 'next/dynamic';
 import type { User, Chat, Message, RegisteredUser } from "@/types";
-import { useIsMobile } from "@/hooks/use-mobile"; // Import useIsMobile
-import useLocalStorage from "@/hooks/use-local-storage"; // Import the actual useLocalStorage
+import { useIsMobile } from "@/hooks/use-mobile";
+import useLocalStorage from "@/hooks/use-local-storage";
 import { AppLogo } from "@/components/core/AppLogo";
 import { UserProfileForm } from "@/components/core/UserProfileForm";
 import { ChatList } from "@/components/chat/ChatList";
-import { ChatView } from "@/components/chat/ChatView";
-import { WelcomeMessage } from "@/components/chat/WelcomeMessage";
-import { NewDirectChatDialog } from "@/components/chat/NewDirectChatDialog";
-import { NewGroupChatDialog } from "@/components/chat/NewGroupChatDialog";
-import { AddUserToGroupDialog } from "@/components/chat/AddUserToGroupDialog";
-import { AuthPage } from "@/components/auth/AuthPage";
+// import { ChatView } from "@/components/chat/ChatView"; // Will be dynamic
+// import { WelcomeMessage } from "@/components/chat/WelcomeMessage"; // Will be dynamic
+// import { NewDirectChatDialog } from "@/components/chat/NewDirectChatDialog"; // Will be dynamic
+// import { NewGroupChatDialog } from "@/components/chat/NewGroupChatDialog"; // Will be dynamic
+// import { AddUserToGroupDialog } from "@/components/chat/AddUserToGroupDialog"; // Will be dynamic
+// import { AuthPage } from "@/components/auth/AuthPage"; // Will be dynamic
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +48,13 @@ import {
 import { LogOut, Trash2, Settings, InfoIcon, Palette, Sun, Moon, Laptop } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from '@/components/core/Providers';
+
+const AuthPage = dynamic(() => import('@/components/auth/AuthPage').then(mod => mod.AuthPage), { ssr: false, loading: () => <div className="flex items-center justify-center h-screen bg-background"><AppLogo className="w-16 h-16 text-primary animate-pulse" /></div> });
+const ChatView = dynamic(() => import('@/components/chat/ChatView').then(mod => mod.ChatView), { ssr: false, loading: () => <div className="flex-1 flex items-center justify-center"><AppLogo className="w-10 h-10 text-primary animate-pulse" /></div> });
+const WelcomeMessage = dynamic(() => import('@/components/chat/WelcomeMessage').then(mod => mod.WelcomeMessage), { ssr: false, loading: () => <div className="flex-1 flex items-center justify-center"><AppLogo className="w-10 h-10 text-primary animate-pulse" /></div> });
+const NewDirectChatDialog = dynamic(() => import('@/components/chat/NewDirectChatDialog').then(mod => mod.NewDirectChatDialog), { ssr: false });
+const NewGroupChatDialog = dynamic(() => import('@/components/chat/NewGroupChatDialog').then(mod => mod.NewGroupChatDialog), { ssr: false });
+const AddUserToGroupDialog = dynamic(() => import('@/components/chat/AddUserToGroupDialog').then(mod => mod.AddUserToGroupDialog), { ssr: false });
 
 
 const LS_USER_KEY = "ngecet_user";
@@ -88,11 +96,10 @@ export default function ChatPage() {
 
 
   const [isClient, setIsClient] = useState(false);
-  const isMobileView = useIsMobile(); // Use the dedicated hook for mobile view detection
+  const isMobileView = useIsMobile();
 
   useEffect(() => {
     setIsClient(true);
-    // The useIsMobile hook already handles resize events, so the manual listener can be removed.
   }, []);
 
   const handleRegister = useCallback((email: string, username: string, password_mock: string): boolean => {
@@ -169,12 +176,6 @@ export default function ChatPage() {
                            updatedChatName = otherParticipant.name;
                            updatedChatAvatar = otherParticipant.avatarUrl;
                         } else if (chat.participants.some(p => p.id === currentUser.id) && chat.participants.find(p=> p.id !== currentUser.id)?.name === name){
-                           // No need to change name/avatar if the other participant's name is the one being updated in their own profile.
-                           // This case should ideally be handled when *that* other participant updates their profile.
-                           // For direct chat, the chat.name and chat.avatarUrl should reflect the *other* user.
-                           // If the current user is one of the participants, this chat.name/avatarUrl should NOT change.
-                           // The participants array has been updated, that's the main thing.
-                           // Re-assign to ensure it reflects the *other* user
                            updatedChatName = otherParticipant.name;
                            updatedChatAvatar = otherParticipant.avatarUrl;
                         }
@@ -444,15 +445,11 @@ export default function ChatPage() {
   const handleSelectChat = useCallback((chat: Chat) => {
     if (currentUser && chat.id) {
         if (chat.type === 'direct' && chat.blockedByUser === currentUser.id) {
-            // User has blocked this person, allow selecting to show overlay
         } else if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
-            // User is blocked by this person, allow selecting to show overlay
         } else if (chat.pendingApprovalFromUserId === currentUser.id) {
-            // User has a pending request from this person, allow selecting
         }
-        setSelectedChat(chat); // Select the chat regardless of the conditions above for overlay display
+        setSelectedChat(chat);
 
-        // Only update lastReadBy if the chat is active and not blocked
         if (chat.id && chat.lastReadBy &&
             !chat.pendingApprovalFromUserId &&
             !chat.isRejected &&
@@ -722,7 +719,7 @@ export default function ChatPage() {
     );
     setIsDeleteAllMessagesConfirmOpen(false);
     setChatIdToDeleteAllMessagesFrom(null);
-  }, [currentUser, setChats, toast, chatIdToDeleteAllMessagesFrom]);
+  }, [currentUser, setChats, chatIdToDeleteAllMessagesFrom]);
 
   const handleCancelDeleteAllMessages = useCallback(() => {
     setIsDeleteAllMessagesConfirmOpen(false);
@@ -1063,11 +1060,7 @@ export default function ChatPage() {
   }
 
   if (!currentUser) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-         <AuthPage onLogin={handleLogin} onRegister={handleRegister} />
-      </div>
-    );
+    return <AuthPage onLogin={handleLogin} onRegister={handleRegister} />;
   }
 
   const currentRegisteredUserForProfile = currentUser ? registeredUsers.find(ru => ru.profile.id === currentUser.id) : null;
@@ -1100,14 +1093,14 @@ export default function ChatPage() {
                 onLeaveGroup={handleLeaveGroup}
                 isMobileView={isMobileView}
             />
-           <NewDirectChatDialog
+           {isNewDirectChatDialogOpen && <NewDirectChatDialog
               isOpen={isNewDirectChatDialogOpen}
               onOpenChange={setIsNewDirectChatDialogOpen}
               onCreateChat={handleCreateDirectChat}
               currentUserId={currentUser?.id}
               registeredUsers={registeredUsers}
-            />
-            <NewGroupChatDialog
+            />}
+            {isNewGroupChatDialogOpen && <NewGroupChatDialog
               isOpen={isNewGroupChatDialogOpen}
               onOpenChange={(isOpen) => {
                   setIsNewGroupChatDialogOpen(isOpen);
@@ -1119,8 +1112,8 @@ export default function ChatPage() {
               currentUserObj={currentUser}
               initialMemberName={groupDialogInitialMemberName}
               chats={chats}
-            />
-            <AddUserToGroupDialog
+            />}
+            {isAddUserToGroupDialogOpen && <AddUserToGroupDialog
               isOpen={isAddUserToGroupDialogOpen}
               onOpenChange={setIsAddUserToGroupDialogOpen}
               onAddUser={handleAddNewUserToGroup}
@@ -1128,7 +1121,7 @@ export default function ChatPage() {
               chats={chats}
               chatIdToAddTo={chatIdToAddTo}
               registeredUsers={registeredUsers}
-            />
+            />}
             <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -1210,30 +1203,6 @@ export default function ChatPage() {
                         displayMode="compact"
                         userEmail={currentUserEmailForProfile}
                     />
-                    {/* <div className="md:hidden">
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
-                            <Palette className="h-5 w-5" />
-                            <span className="sr-only">Pilih Tema</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" sideOffset={4}>
-                            <DropdownMenuItem onClick={() => setTheme("light")}>
-                            <Sun className="mr-2 h-4 w-4" />
-                            <span>Terang</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setTheme("dark")}>
-                            <Moon className="mr-2 h-4 w-4" />
-                            <span>Gelap</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setTheme("system")}>
-                            <Laptop className="mr-2 h-4 w-4" />
-                            <span>Sistem</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div> */}
                 </div>
               </div>
             </SidebarHeader>
@@ -1270,31 +1239,6 @@ export default function ChatPage() {
                     <span>Tentang aplikasi</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {/* <div className="hidden md:block">
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        <Palette className="mr-2 h-4 w-4" />
-                        <span>Tema</span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuPortal>
-                        <DropdownMenuSubContent sideOffset={isMobileView ? -5 : 8} align={isMobileView ? "center" : "start"}>
-                          <DropdownMenuItem onClick={() => setTheme("light")}>
-                            <Sun className="mr-2 h-4 w-4" />
-                            <span>Terang</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setTheme("dark")}>
-                            <Moon className="mr-2 h-4 w-4" />
-                            <span>Gelap</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setTheme("system")}>
-                            <Laptop className="mr-2 h-4 w-4" />
-                            <span>Sistem</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuPortal>
-                    </DropdownMenuSub>
-                    <DropdownMenuSeparator />
-                  </div> */}
                   <DropdownMenuItem onClick={() => handleLogout(false)}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Keluar (Simpan Data)</span>
@@ -1306,14 +1250,14 @@ export default function ChatPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </SidebarFooter>
-            <NewDirectChatDialog
+            {isNewDirectChatDialogOpen && <NewDirectChatDialog
                 isOpen={isNewDirectChatDialogOpen}
                 onOpenChange={setIsNewDirectChatDialogOpen}
                 onCreateChat={handleCreateDirectChat}
                 currentUserId={currentUser?.id}
                 registeredUsers={registeredUsers}
-              />
-              <NewGroupChatDialog
+              />}
+              {isNewGroupChatDialogOpen && <NewGroupChatDialog
                 isOpen={isNewGroupChatDialogOpen}
                 onOpenChange={(isOpen) => {
                     setIsNewGroupChatDialogOpen(isOpen);
@@ -1325,7 +1269,7 @@ export default function ChatPage() {
                 currentUserObj={currentUser}
                 initialMemberName={groupDialogInitialMemberName}
                 chats={chats}
-              />
+              />}
               <AlertDialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
                   <AlertDialogContent>
                     <AlertDialogHeader>
@@ -1372,56 +1316,6 @@ export default function ChatPage() {
                         displayMode="compact"
                         userEmail={currentUserEmailForProfile}
                     />
-                    {/* Theme button for desktop view - REMOVED */}
-                    {/* <div className="hidden md:block">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
-                                    <Palette className="h-5 w-5" />
-                                    <span className="sr-only">Pilih Tema</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" sideOffset={4}>
-                                <DropdownMenuItem onClick={() => setTheme("light")}>
-                                    <Sun className="mr-2 h-4 w-4" />
-                                    <span>Terang</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setTheme("dark")}>
-                                    <Moon className="mr-2 h-4 w-4" />
-                                    <span>Gelap</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setTheme("system")}>
-                                    <Laptop className="mr-2 h-4 w-4" />
-                                    <span>Sistem</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div> */}
-                     {/* Theme button for desktop view but small screens - REMOVED */}
-                     {/* <div className="md:hidden">
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
-                            <Palette className="h-5 w-5" />
-                            <span className="sr-only">Pilih Tema</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" sideOffset={4}>
-                            <DropdownMenuItem onClick={() => setTheme("light")}>
-                            <Sun className="mr-2 h-4 w-4" />
-                            <span>Terang</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setTheme("dark")}>
-                            <Moon className="mr-2 h-4 w-4" />
-                            <span>Gelap</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setTheme("system")}>
-                            <Laptop className="mr-2 h-4 w-4" />
-                            <span>Sistem</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div> */}
                 </div>
              </div>
           </SidebarHeader>
@@ -1458,31 +1352,6 @@ export default function ChatPage() {
                     <span>Tentang aplikasi</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                 {/* <div className="hidden md:block">
-                    <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                        <Palette className="mr-2 h-4 w-4" />
-                        <span>Tema</span>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuPortal>
-                        <DropdownMenuSubContent sideOffset={isMobileView ? -5 : 8} align={isMobileView ? "center" : "start"}>
-                            <DropdownMenuItem onClick={() => setTheme("light")}>
-                            <Sun className="mr-2 h-4 w-4" />
-                            <span>Terang</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setTheme("dark")}>
-                            <Moon className="mr-2 h-4 w-4" />
-                            <span>Gelap</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setTheme("system")}>
-                            <Laptop className="mr-2 h-4 w-4" />
-                            <span>Sistem</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                    </DropdownMenuSub>
-                    <DropdownMenuSeparator />
-                  </div> */}
                 <DropdownMenuItem onClick={() => handleLogout(false)}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Keluar (Simpan Data)</span>
@@ -1525,14 +1394,14 @@ export default function ChatPage() {
         </SidebarInset>
       </div>
 
-      <NewDirectChatDialog
+      {isClient && isNewDirectChatDialogOpen && <NewDirectChatDialog
         isOpen={isNewDirectChatDialogOpen}
         onOpenChange={setIsNewDirectChatDialogOpen}
         onCreateChat={handleCreateDirectChat}
         currentUserId={currentUser?.id}
         registeredUsers={registeredUsers}
-      />
-      <NewGroupChatDialog
+      />}
+      {isClient && isNewGroupChatDialogOpen && <NewGroupChatDialog
         isOpen={isNewGroupChatDialogOpen}
         onOpenChange={(isOpen) => {
             setIsNewGroupChatDialogOpen(isOpen);
@@ -1544,8 +1413,8 @@ export default function ChatPage() {
         currentUserObj={currentUser}
         initialMemberName={groupDialogInitialMemberName}
         chats={chats}
-      />
-      <AddUserToGroupDialog
+      />}
+      {isClient && isAddUserToGroupDialogOpen && <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}
         onOpenChange={setIsAddUserToGroupDialogOpen}
         onAddUser={handleAddNewUserToGroup}
@@ -1553,7 +1422,7 @@ export default function ChatPage() {
         chats={chats}
         chatIdToAddTo={chatIdToAddTo}
         registeredUsers={registeredUsers}
-      />
+      />}
        <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1621,3 +1490,5 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+
+    
