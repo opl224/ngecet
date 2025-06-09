@@ -1099,7 +1099,7 @@ export default function ChatPage() {
               />
             ) : (
               <SidebarProvider defaultOpen className="flex-1">
-                <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+                <div className="flex flex-1 flex-col bg-sidebar text-sidebar-foreground">
                   <SidebarHeader className="p-0">
                     <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
                       <div className="flex items-center gap-2 shrink-0 mr-2">
@@ -1500,3 +1500,6 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
+
+
+    
