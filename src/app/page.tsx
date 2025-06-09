@@ -125,18 +125,17 @@ export default function ChatPage() {
     if (!currentUser) return;
     setStatusReadTimestamps(prev => {
       const currentUserReads = prev[currentUser.id] || {};
-      // Only update if the new timestamp is greater than the existing one
-      const newTimestampForUser = Math.max(currentUserReads[viewedUserId] || 0, latestTimestampViewed);
-      if (newTimestampForUser !== (currentUserReads[viewedUserId] || 0)) {
+      // Directly set the latestTimestampViewed. If it's different, it will trigger update.
+      if (latestTimestampViewed !== (currentUserReads[viewedUserId] || 0)) {
         return {
           ...prev,
           [currentUser.id]: {
             ...currentUserReads,
-            [viewedUserId]: newTimestampForUser,
+            [viewedUserId]: latestTimestampViewed,
           }
         };
       }
-      return prev; // No change needed
+      return prev; // No change needed if the timestamp is identical
     });
   }, [currentUser, setStatusReadTimestamps]);
 
