@@ -6,16 +6,21 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, MoreVertical, Plus, Pencil, Camera } from "lucide-react";
+import { useState } from "react";
+import dynamic from "next/dynamic";
+
+const CreateTextStatus = dynamic(() => import('./CreateTextStatus').then(mod => mod.CreateTextStatus), { ssr: false });
 
 interface StatusPageProps {
   currentUser: User | null;
 }
 
-// Mock data for recent updates - now empty
 const mockRecentUpdates: { id: string, userName: string, avatarUrl: string, timestamp: string, isUnread: boolean, dataAiHint: string }[] = [];
 
 
 export function StatusPage({ currentUser }: StatusPageProps) {
+  const [isCreatingTextStatus, setIsCreatingTextStatus] = useState(false);
+
   if (!currentUser) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center p-4 text-muted-foreground">
@@ -30,6 +35,13 @@ export function StatusPage({ currentUser }: StatusPageProps) {
     if (names.length === 1) return names[0].substring(0, length).toUpperCase();
     if (length === 1) return names[0][0].toUpperCase();
     return names[0][0].toUpperCase() + (names.length > 1 ? names[names.length - 1][0].toUpperCase() : "");
+  };
+
+  const handlePostStatus = (text: string, bgColor: string) => {
+    // For now, just log and close. Later, this would interact with a status service.
+    console.log("Status Posted:", { text, bgColor });
+    // Potentially show a toast here
+    setIsCreatingTextStatus(false);
   };
 
   return (
@@ -98,16 +110,32 @@ export function StatusPage({ currentUser }: StatusPageProps) {
 
       {/* Floating Action Buttons */}
       <div className="absolute bottom-6 right-4 flex flex-col items-end space-y-3 z-20">
-         <Button variant="secondary" size="icon" className="rounded-2xl h-12 w-12 shadow-lg bg-card md:hover:bg-muted focus-visible:ring-gray-400">
+         <Button 
+            variant="secondary" 
+            size="icon" 
+            className="rounded-2xl h-12 w-12 shadow-lg bg-card md:hover:bg-muted focus-visible:ring-gray-400"
+            onClick={() => setIsCreatingTextStatus(true)}
+            aria-label="Buat status teks"
+          >
             <Pencil className="h-5 w-5 text-foreground/90" />
-            <span className="sr-only">Buat status teks</span>
          </Button>
-         <Button variant="default" size="icon" className="rounded-2xl h-14 w-14 shadow-lg bg-green-500 md:hover:bg-green-600 text-white focus-visible:ring-green-300">
+         <Button 
+            variant="default" 
+            size="icon" 
+            className="rounded-2xl h-14 w-14 shadow-lg bg-green-500 md:hover:bg-green-600 text-white focus-visible:ring-green-300"
+            aria-label="Buat status foto atau video"
+          >
             <Camera className="h-6 w-6" />
-            <span className="sr-only">Buat status foto</span>
          </Button>
       </div>
+
+      {isCreatingTextStatus && currentUser && (
+        <CreateTextStatus
+          currentUser={currentUser}
+          onClose={() => setIsCreatingTextStatus(false)}
+          onPostStatus={handlePostStatus}
+        />
+      )}
     </div>
   );
 }
-
