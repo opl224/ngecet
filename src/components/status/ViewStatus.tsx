@@ -5,8 +5,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { User, UserStatus } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress'; 
-import { X, Trash2 } from 'lucide-react'; // Added Trash2
+import { Progress } from '@/components/ui/progress';
+import { X, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStatusThemeClasses } from '@/config/statusThemes';
 import { formatDistanceToNowStrict, isToday, isYesterday, format } from 'date-fns';
@@ -15,11 +15,11 @@ import { id as idLocale } from 'date-fns/locale/id';
 const STATUS_VIEW_DURATION = 5000; // 5 seconds
 
 interface ViewStatusProps {
-  statuses: UserStatus[]; 
-  initialStatusIndex?: number; 
+  statuses: UserStatus[];
+  initialStatusIndex?: number;
   onClose: () => void;
-  currentUser: User | null; // Added currentUser
-  onDeleteStatus?: (statusId: string) => void; // Added onDeleteStatus
+  currentUser: User | null;
+  onDeleteStatus?: (statusId: string) => void;
 }
 
 export function ViewStatus({
@@ -72,8 +72,8 @@ export function ViewStatus({
       if (prevIndex < statuses.length - 1) {
         return prevIndex + 1;
       }
-      onClose(); 
-      return prevIndex; 
+      queueMicrotask(() => onClose());
+      return prevIndex;
     });
   }, [statuses.length, onClose]);
 
@@ -82,25 +82,25 @@ export function ViewStatus({
       if (prevIndex > 0) {
         return prevIndex - 1;
       }
-      return prevIndex; 
+      return prevIndex;
     });
   }, []);
 
   useEffect(() => {
     if (!currentStatus) {
-      onClose();
+      queueMicrotask(() => onClose());
       return;
     }
-    setProgressValue(0); 
+    setProgressValue(0);
     const interval = setInterval(() => {
       setProgressValue((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
           return 100;
         }
-        return prev + (100 / (STATUS_VIEW_DURATION / 100)); 
+        return prev + (100 / (STATUS_VIEW_DURATION / 100));
       });
-    }, 100); 
+    }, 100);
 
     const timer = setTimeout(() => {
       goToNextStatus();
@@ -111,7 +111,7 @@ export function ViewStatus({
       clearTimeout(timer);
     };
   }, [currentIndex, goToNextStatus, currentStatus, onClose]);
-  
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -128,39 +128,34 @@ export function ViewStatus({
     };
   }, [onClose, goToNextStatus, goToPrevStatus]);
 
-  // Effect to adjust currentIndex if statuses prop changes (e.g., item deleted)
   useEffect(() => {
-    if (statuses.length === 0) {
-      onClose(); // Close if no statuses left
-    } else if (currentIndex >= statuses.length) {
-      // If current index is out of bounds (e.g. current item was last and deleted)
-      setCurrentIndex(Math.max(0, statuses.length - 1)); // Go to the new last item or 0
+    if (statuses.length === 0 && currentStatus !== null) { // only close if there was a status before
+        queueMicrotask(() => onClose());
+    } else if (currentIndex >= statuses.length && statuses.length > 0) {
+      setCurrentIndex(Math.max(0, statuses.length - 1));
     }
-    // If the specific status at statuses[currentIndex] changed (e.g. content edit, not just list order),
-    // `currentStatus` useMemo will pick it up.
-  }, [statuses, currentIndex, onClose]);
+  }, [statuses, currentIndex, onClose, currentStatus]);
 
 
   if (!currentStatus) {
-    // This can happen briefly if statuses list is updated and becomes empty
-    // The useEffect above should call onClose, but this is a safeguard.
     return null;
   }
 
   const handleDeleteClick = () => {
     if (currentUser && currentStatus.userId === currentUser.id && onDeleteStatus) {
       onDeleteStatus(currentStatus.id);
-      // The parent (StatusPage) will handle updating `viewingUserAllStatuses`
-      // which will cause this component to re-render with new `statuses`.
-      // The useEffect for `statuses` change will then handle closing or index adjustment.
     }
   };
+
+  const handleCloseDeferred = () => {
+    queueMicrotask(() => onClose());
+  }
 
   return (
     <div
       className={cn(
         "fixed inset-0 z-[70] flex flex-col items-center justify-center transition-colors duration-300",
-        themeClasses.bg 
+        themeClasses.bg
       )}
     >
       <div
@@ -207,7 +202,7 @@ export function ViewStatus({
                 <Trash2 className="h-5 w-5" />
               </Button>
             )}
-            <Button variant="ghost" size="icon" onClick={onClose} className="text-white rounded-full hover:bg-white/20">
+            <Button variant="ghost" size="icon" onClick={handleCloseDeferred} className="text-white rounded-full hover:bg-white/20">
               <X className="h-6 w-6" />
               <span className="sr-only">Tutup</span>
             </Button>
@@ -229,4 +224,3 @@ export function ViewStatus({
     </div>
   );
 }
-
