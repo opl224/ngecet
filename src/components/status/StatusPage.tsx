@@ -171,12 +171,14 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus }: Statu
                         <Plus className="h-3 w-3 text-white" />
                     </div>
                 ) : (
-                   <div className={cn(
-                    "absolute -bottom-1 -right-1 rounded-full p-0 flex items-center justify-center border-2 border-background",
-                    myLatestStatusTheme ? myLatestStatusTheme.bg : 'bg-gray-400' // Fallback color
-                   )}>
-                     <div className={cn("h-4 w-4 rounded-full border-2 border-background", myLatestStatusTheme ? myLatestStatusTheme.bg : 'bg-gray-400')} />
-                   </div>
+                   myLatestStatusTheme && (
+                    <div className={cn(
+                      "absolute -bottom-1 -right-1 rounded-full p-0 flex items-center justify-center border-2 border-background",
+                      myLatestStatusTheme.bg
+                    )}>
+                      <div className={cn("h-4 w-4 rounded-full border-2 border-background", myLatestStatusTheme.bg)} />
+                    </div>
+                   )
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -195,7 +197,6 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus }: Statu
               <h2 className="text-xs font-semibold text-muted-foreground mb-2 tracking-wide">PEMBARUAN TERKINI</h2>
               <div className="space-y-0.5">
                 {otherUsersLatestStatus.map(status => {
-                    const theme = getStatusThemeClasses(status.backgroundColorName);
                     const allStatusesForThisUser = otherUsersGroupedStatuses[status.userId] || [];
                     const unreadCount = allStatusesForThisUser.length; // Placeholder logic, real unread would be more complex
 
@@ -218,9 +219,6 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus }: Statu
                             <div className="flex-1 min-w-0">
                                 <p className="font-medium text-foreground truncate">{status.userName}</p>
                                 <div className="flex items-center space-x-1.5">
-                                    {status.type === 'text' && (
-                                        <div className={cn("w-3 h-3 rounded-xs shrink-0", theme.bg)} title={status.content.substring(0,50) + "..."}/>
-                                    )}
                                     <p className="text-xs text-muted-foreground truncate">{formatTimestamp(status.timestamp)}</p>
                                     {unreadCount > 1 && (
                                       <span className="text-xs text-muted-foreground">&bull; {unreadCount} baru</span>
@@ -286,3 +284,4 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus }: Statu
     </div>
   );
 }
+
