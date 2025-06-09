@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import dynamic from 'next/dynamic';
-import type { User, Chat, Message, RegisteredUser } from "@/types";
+import type { User, Chat, Message, RegisteredUser, UserStatus } from "@/types"; // Added UserStatus
 import { useIsMobile } from "@/hooks/use-mobile";
 import useLocalStorage from "@/hooks/use-local-storage";
 import { AppLogo } from "@/components/core/AppLogo";
@@ -41,7 +41,7 @@ import {
 import { LogOut, Trash2, Settings, InfoIcon, Palette, Sun, Moon, Laptop } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from '@/components/core/Providers';
-import { BottomNavigationBar } from "@/components/layout/BottomNavigationBar"; // Import BottomNavigationBar
+import { BottomNavigationBar } from "@/components/layout/BottomNavigationBar"; 
 
 const AuthPage = dynamic(() => import('@/components/auth/AuthPage').then(mod => mod.AuthPage), { ssr: false, loading: () => <div className="flex items-center justify-center h-screen bg-background"><AppLogo className="w-16 h-16 text-primary animate-pulse" /></div> });
 const ChatView = dynamic(() => import('@/components/chat/ChatView').then(mod => mod.ChatView), { ssr: false, loading: () => <div className="flex-1 flex items-center justify-center"><AppLogo className="w-10 h-10 text-primary animate-pulse" /></div> });
@@ -56,6 +56,7 @@ const LS_USER_KEY = "ngecet_user";
 const LS_CHATS_KEY = "ngecet_chats";
 const LS_MESSAGES_PREFIX = "ngecet_messages_";
 const LS_REGISTERED_USERS_KEY = "ngecet_registered_users";
+const LS_USER_STATUSES_KEY = "ngecet_user_statuses"; // New key for statuses
 
 export default function ChatPage() {
   const { toast } = useToast();
@@ -71,6 +72,10 @@ export default function ChatPage() {
 
   const initialAllMessagesValue = useMemo(() => ({}), []);
   const [allMessages, setAllMessages] = useLocalStorage<Record<string, Message[]>>(`${LS_MESSAGES_PREFIX}all`, initialAllMessagesValue);
+
+  const initialUserStatusesValue = useMemo(() => [], []); // Initial value for statuses
+  const [userStatuses, setUserStatuses] = useLocalStorage<UserStatus[]>(LS_USER_STATUSES_KEY, initialUserStatusesValue);
+
 
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [isNewDirectChatDialogOpen, setIsNewDirectChatDialogOpen] = useState(false);
@@ -98,6 +103,18 @@ export default function ChatPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+  
+  const handleAddUserStatus = useCallback((newStatus: UserStatus) => {
+    setUserStatuses(prevStatuses => {
+      // Remove any existing status from the same user to ensure only one "latest" active status is prominent
+      // Or, if you want multiple statuses per user, just add: [...prevStatuses, newStatus]
+      // For now, let's allow multiple and sort by timestamp for "latest" in StatusPage
+      const updatedStatuses = [...prevStatuses, newStatus].sort((a,b) => b.timestamp - a.timestamp);
+      return updatedStatuses;
+    });
+    toast({ title: "Status Terkirim", description: "Status teks Anda telah diposting." });
+  }, [setUserStatuses, toast]);
+
 
   const handleRegister = useCallback((email: string, username: string, password_mock: string): boolean => {
     if (registeredUsers.find(u => u.username.toLowerCase() === username.toLowerCase())) {
@@ -202,10 +219,18 @@ export default function ChatPage() {
             }
             return newAllMessages;
         });
+        
+        setUserStatuses(prevStatuses => 
+            prevStatuses.map(status => 
+                status.userId === currentUser.id 
+                    ? { ...status, userName: updatedCurrentUser.name, userAvatarUrl: updatedCurrentUser.avatarUrl }
+                    : status
+            )
+        );
 
         toast({ title: "Profil Diperbarui" });
     }
-  }, [currentUser, setCurrentUser, setRegisteredUsers, setChats, setAllMessages, toast]);
+  }, [currentUser, setCurrentUser, setRegisteredUsers, setChats, setAllMessages, setUserStatuses, toast]);
 
 
   const handleCreateDirectChat = useCallback((recipientUsername: string) => {
@@ -236,7 +261,7 @@ export default function ChatPage() {
       } else if (existingChat.pendingApprovalFromUserId === currentUser.id) {
         toast({ title: "Permintaan Tertunda", description: `Anda memiliki permintaan chat dari ${recipientUser.name}. Terima atau tolak dari daftar chat.` });
       }
-      setActiveMobileTab('chat'); // Switch to chat tab if on mobile
+      setActiveMobileTab('chat'); 
       return;
     }
 
@@ -263,7 +288,7 @@ export default function ChatPage() {
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
-    setActiveMobileTab('chat'); // Switch to chat tab if on mobile
+    setActiveMobileTab('chat'); 
     toast({ title: "Permintaan Terkirim", description: `Permintaan chat telah dikirim ke ${recipientUser.name}.` });
   }, [currentUser, chats, setChats, toast, registeredUsers]);
 
@@ -472,7 +497,7 @@ export default function ChatPage() {
 
 
   const handleSelectChatMobile = useCallback((chat: Chat) => {
-    handleSelectChat(chat); // handleSelectChat already sets activeMobileTab to 'chat'
+    handleSelectChat(chat); 
   }, [handleSelectChat]);
 
 
@@ -676,6 +701,7 @@ export default function ChatPage() {
       setChats([]);
       setAllMessages({});
       setRegisteredUsers([]);
+      setUserStatuses([]); // Clear statuses as well
       if (typeof window !== "undefined") {
         Object.keys(window.localStorage).forEach(key => {
           if (key.startsWith("ngecet_")) {
@@ -685,14 +711,14 @@ export default function ChatPage() {
       }
       toast({ title: "Logout Berhasil", description: "Sesi dan semua data Anda telah dihapus." });
     } else {
-      toast({ title: "Logout Berhasil", description: "Sesi Anda telah dihapus. Data chat tetap tersimpan." });
+      toast({ title: "Logout Berhasil", description: "Sesi Anda telah dihapus. Data chat dan status tetap tersimpan." });
     }
   };
 
   const handleGoBack = useCallback(() => {
     setSelectedChat(null);
     setEditingMessageDetails(null);
-    setActiveMobileTab('chat'); // Ensure we are on chat tab when going back to list
+    setActiveMobileTab('chat'); 
   }, []);
 
   const handleTriggerDeleteAllMessages = useCallback((chatId: string) => {
@@ -1073,7 +1099,7 @@ export default function ChatPage() {
   if (isMobileView) {
     return (
       <div className="flex h-screen w-full flex-col">
-        <div className="flex flex-1 flex-col"> {/* Removed overflow-y-auto here */}
+        <div className="flex flex-1 flex-col"> 
           {activeMobileTab === 'chat' ? (
             selectedChat ? (
               <ChatView
@@ -1178,12 +1204,15 @@ export default function ChatPage() {
                       isMobileView={isMobileView}
                     />
                   </SidebarContent>
-                  {/* SidebarFooter is removed for mobile chat list view */}
                 </div>
               </SidebarProvider>
             )
           ) : activeMobileTab === 'status' ? (
-            <StatusPage currentUser={currentUser} />
+             <StatusPage 
+                currentUser={currentUser} 
+                userStatuses={userStatuses}
+                onAddUserStatus={handleAddUserStatus}
+             />
           ) : null}
         </div>
 

@@ -48,3 +48,19 @@ export interface RegisteredUser {
   profile: User;    // The User object associated with this registration
   email: string; // Added email field
 }
+
+// Status related types
+export type StatusType = 'text' | 'image'; // For future use
+
+export interface UserStatus {
+  id: string; // Unique ID for the status
+  userId: string;
+  userName: string;
+  userAvatarUrl?: string;
+  type: StatusType;
+  content: string; // For text status, this is the text. For image, could be URL.
+  backgroundColorName?: string; // For text status, e.g., 'Mustard'
+  timestamp: number;
+  // impressions?: User[]; // Who has seen this status (future)
+  // duration?: number; // Default 24 hours (future)
+}
