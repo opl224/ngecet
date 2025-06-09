@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
-import { X, Trash2, SendHorizonal, Heart, ChevronUp } from 'lucide-react';
+import { X, Trash2, SendHorizonal, Heart, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStatusThemeClasses } from '@/config/statusThemes';
 import { format } from 'date-fns';
@@ -15,7 +15,8 @@ import { id as idLocale } from 'date-fns/locale/id';
 import { useToast } from '@/hooks/use-toast';
 
 const STATUS_VIEW_DURATION = 5000; // 5 seconds
-const MIN_SWIPE_UP_DISTANCE = 50;
+const MIN_SWIPE_UP_DISTANCE_REPLY_AREA = 50; // Min swipe distance for reply area
+
 
 interface ViewStatusProps {
   statuses: UserStatus[];
@@ -46,15 +47,14 @@ export function ViewStatus({
   const navLeftRef = useRef<HTMLDivElement>(null);
   const navRightRef = useRef<HTMLDivElement>(null);
 
-  // States for reply UI
   const [isReplyingMode, setIsReplyingMode] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [isReplyInputFocused, setIsReplyInputFocused] = useState(false);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
-
-  // Refs for swipe-up gesture
-  const touchStartYRef = useRef<number | null>(null);
-  const isSwipingToReplyRef = useRef<boolean>(false);
+  
+  const replyAreaRef = useRef<HTMLDivElement>(null);
+  const replyAreaTouchStartYRef = useRef<number | null>(null);
+  const isSwipingOnReplyAreaRef = useRef<boolean>(false);
 
 
   const currentStatus = useMemo(() => {
@@ -95,35 +95,51 @@ export function ViewStatus({
       return format(date, "PPpp", { locale: idLocale });
     }
   };
-
+  
   const handleCancelReply = useCallback(() => {
     setIsReplyingMode(false);
     setReplyText('');
     setIsReplyInputFocused(false);
-    if (isPaused && !isSwipingToReplyRef.current) { // Resume only if pause was due to reply mode
-      setIsPaused(false); // This will trigger useEffect to resume timers
+    if (isPaused) { 
+      setIsPaused(false); 
     }
   }, [isPaused]);
 
+  const handleSendReply = useCallback(() => {
+    if (!replyText.trim() || !currentStatus) return;
+    toast({
+      title: `Balasan terkirim ke ${currentStatus.userName}`,
+      description: replyText,
+    });
+    const statusBeingRepliedTo = currentStatus;
+    handleCancelReply(); 
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    onMarkAsRead(statusBeingRepliedTo.timestamp); // Mark as read since interaction occurred
+    onClose(); // Close status viewer after sending
+  }, [replyText, currentStatus, toast, handleCancelReply, onClose, onMarkAsRead]);
+
+
   const performCloseActions = useCallback(() => {
     if (isReplyingMode) {
-      handleCancelReply(); // Close reply mode first
-      // Do not close the whole status viewer yet, allow user to resume viewing
-      // If they click X again, then it will close.
-      return;
+      handleCancelReply(); 
+      return; 
     }
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
-    // onMarkAsRead is handled by timer completion or manual navigation
+    
+    if (currentStatus) {
+      onMarkAsRead(currentStatus.timestamp);
+    }
     queueMicrotask(() => onClose());
-  }, [onClose, isReplyingMode, handleCancelReply]);
+  }, [onClose, isReplyingMode, handleCancelReply, currentStatus, onMarkAsRead]);
 
 
   const advanceToStatus = useCallback((newIndex: number) => {
     if (newIndex >= 0 && newIndex < statuses.length) {
       setCurrentIndex(newIndex);
-      setProgressValue(0); // Reset progress for new status
-      progressAtPauseRef.current = 0; // Reset pause ref as well
+      setProgressValue(0); 
+      progressAtPauseRef.current = 0; 
     } else if (newIndex >= statuses.length) {
       performCloseActions();
     }
@@ -150,7 +166,7 @@ export function ViewStatus({
     }
 
     const progressToDo = 100 - effectiveInitialProgress;
-    const intervalsCount = remainingDuration / 100; // Number of 100ms intervals
+    const intervalsCount = remainingDuration / 100; 
     const incrementPerInterval = intervalsCount > 0 ? progressToDo / intervalsCount : progressToDo;
 
     intervalRef.current = setInterval(() => {
@@ -164,6 +180,8 @@ export function ViewStatus({
     }, 100);
 
     timerRef.current = setTimeout(() => {
+      if (intervalRef.current) clearInterval(intervalRef.current); // Ensure interval is cleared
+      setProgressValue(100); // Explicitly set to 100 before advancing
       onMarkAsRead(currentStatus.timestamp);
       advanceToStatus(currentIndex + 1);
     }, remainingDuration);
@@ -186,7 +204,7 @@ export function ViewStatus({
       return;
     }
 
-    if (isPaused || isReplyingMode) { // Also pause if in replying mode
+    if (isPaused || isReplyingMode) { 
       return;
     }
 
@@ -201,7 +219,7 @@ export function ViewStatus({
 
   const handleManualNavigation = useCallback((direction: 'next' | 'prev') => {
     if (isPaused && !isReplyingMode) return; 
-    if (isReplyingMode) return; // Prevent navigation while actively replying
+    if (isReplyingMode) return; 
 
     const statusBeingLeft = statuses[currentIndex];
     if (direction === 'next') {
@@ -210,8 +228,6 @@ export function ViewStatus({
       }
       advanceToStatus(currentIndex + 1);
     } else {
-      // When going to prev, we don't mark the one we are coming from as read immediately
-      // It will be marked if its timer completes or if navigated past again
       advanceToStatus(currentIndex - 1);
     }
   }, [currentIndex, statuses, onMarkAsRead, advanceToStatus, isPaused, isReplyingMode]);
@@ -220,12 +236,8 @@ export function ViewStatus({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        if (isReplyingMode) {
-          handleCancelReply();
-        } else {
-          performCloseActions();
-        }
-      } else if (!isReplyingMode && !isReplyInputFocused) { // Allow arrow keys only if not typing reply
+        performCloseActions(); // performCloseActions now handles reply mode cancellation first
+      } else if (!isReplyingMode && !isReplyInputFocused) { 
         if (event.key === 'ArrowRight') {
           handleManualNavigation('next');
         } else if (event.key === 'ArrowLeft') {
@@ -237,22 +249,22 @@ export function ViewStatus({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [performCloseActions, handleManualNavigation, isReplyingMode, isReplyInputFocused, handleCancelReply]);
+  }, [performCloseActions, handleManualNavigation, isReplyingMode, isReplyInputFocused]);
 
   const handleDeleteClick = () => {
     if (currentUser && currentStatus && currentStatus.userId === currentUser.id && onDeleteStatus) {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (intervalRef.current) clearInterval(intervalRef.current);
       onDeleteStatus(currentStatus.id);
-      // ViewStatus will close if statuses array becomes empty or currentIndex is out of bounds
     }
   };
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const target = event.target as Node;
-    if (isReplyingMode || // Don't interfere if in reply mode
+    if (isReplyingMode || 
         navLeftRef.current?.contains(target) || 
         navRightRef.current?.contains(target) ||
+        replyAreaRef.current?.contains(target) || 
         (event.target as HTMLElement).closest('button')) { 
       return;
     }
@@ -266,57 +278,37 @@ export function ViewStatus({
   }, [isPaused, progressValue, isReplyingMode]);
 
   const handlePointerUp = useCallback(() => {
-    // Don't resume if we are in reply mode, reply mode handles its own pause
     if (isPaused && !isReplyingMode) { 
       setIsPaused(false); 
     }
   }, [isPaused, isReplyingMode]);
 
-  // Swipe Up to Reply Handlers
-  const handleTouchStartReply = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 1 && !isReplyingMode) {
-      touchStartYRef.current = e.targetTouches[0].clientY;
-      isSwipingToReplyRef.current = true;
-      // Optimistically pause while checking for swipe
-      if (!isPaused) {
-          setIsPaused(true);
-          progressAtPauseRef.current = progressValue;
-          if (timerRef.current) clearTimeout(timerRef.current);
-          if (intervalRef.current) clearInterval(intervalRef.current);
-      }
+
+  const handleReplyAreaTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 1) {
+      replyAreaTouchStartYRef.current = e.targetTouches[0].clientY;
+      isSwipingOnReplyAreaRef.current = true;
     }
   };
 
-  const handleTouchEndReply = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (touchStartYRef.current && isSwipingToReplyRef.current && !isReplyingMode) {
+  const handleReplyAreaTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (replyAreaTouchStartYRef.current && isSwipingOnReplyAreaRef.current) {
       const touchEndY = e.changedTouches[0].clientY;
-      const swipeDistance = touchStartYRef.current - touchEndY;
+      const swipeDistance = replyAreaTouchStartYRef.current - touchEndY;
 
-      if (swipeDistance > MIN_SWIPE_UP_DISTANCE) {
+      if (!isReplyingMode && swipeDistance > MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
         setIsReplyingMode(true);
-        // setIsPaused is already true from touchStart
-        // No need to focus here, the placeholder click will handle it
-      } else {
-        // Not a valid swipe up, resume if it was paused by this attempt
-        if (isPaused && isSwipingToReplyRef.current) {
-            setIsPaused(false);
-        }
+        setIsPaused(true); 
+        setIsReplyInputFocused(true);
+        setTimeout(() => replyInputRef.current?.focus(), 50);
+      } else if (isReplyingMode && swipeDistance < -MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
+        handleCancelReply();
       }
     }
-    touchStartYRef.current = null;
-    isSwipingToReplyRef.current = false;
+    replyAreaTouchStartYRef.current = null;
+    isSwipingOnReplyAreaRef.current = false;
   };
   
-  const handleSendReply = useCallback(() => {
-    if (!replyText.trim() || !currentStatus) return;
-    toast({
-      title: `Balasan terkirim ke ${currentStatus.userName}`,
-      description: replyText,
-    });
-    handleCancelReply(); // Reset reply mode
-    performCloseActions(); // Close status viewer after sending
-  }, [replyText, currentStatus, toast, handleCancelReply, performCloseActions]);
-
 
   if (!currentStatus) {
     return null;
@@ -331,8 +323,6 @@ export function ViewStatus({
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp} 
-      onTouchStart={handleTouchStartReply}
-      onTouchEnd={handleTouchEndReply}
     >
       <div
         ref={navLeftRef}
@@ -352,7 +342,11 @@ export function ViewStatus({
           {statuses.map((_, index) => (
             <div key={index} className="flex-1 h-0.5 bg-white/40 rounded-full overflow-hidden">
               {index === currentIndex ? (
-                <Progress value={isPaused || isReplyingMode ? progressAtPauseRef.current : progressValue} className="h-full bg-transparent" indicatorClassName="bg-white transition-transform duration-100 ease-linear" />
+                <Progress 
+                  value={isPaused || isReplyingMode ? progressAtPauseRef.current : progressValue} 
+                  className="h-full bg-transparent" 
+                  indicatorClassName="bg-white transition-transform duration-100 ease-linear" 
+                />
               ) : index < currentIndex ? (
                 <div className="h-full bg-white rounded-full" />
               ) : null}
@@ -392,7 +386,7 @@ export function ViewStatus({
 
       <div className={cn(
           "flex-1 flex w-full items-center justify-center overflow-hidden px-4 pb-10 pt-20 md:pt-24 z-0 pointer-events-none",
-          isReplyingMode && "opacity-70" // Dim content when replying
+          isReplyingMode && "opacity-70" 
         )}
       >
         <p
@@ -406,41 +400,70 @@ export function ViewStatus({
         </p>
       </div>
 
-      {isReplyingMode && (
-        <div 
-          className="absolute bottom-0 left-0 right-0 p-3 bg-black/90 z-30 transition-transform duration-300 ease-out"
-          style={{ transform: isReplyingMode ? 'translateY(0%)' : 'translateY(100%)' }}
-          onClick={(e) => e.stopPropagation()} // Prevent pause/swipe on reply bar itself
+      <div 
+        ref={replyAreaRef}
+        className={cn(
+          "absolute bottom-0 left-0 right-0 bg-black/90 z-30 transition-transform duration-300 ease-out",
+          "flex flex-col items-center", 
+          isReplyingMode ? "h-auto" : "h-[70px] translate-y-[30px] sm:translate-y-[20px]" 
+        )}
+        style={{ transform: isReplyingMode ? 'translateY(0%)' : `translateY(calc(100% - 40px - env(safe-area-inset-bottom)))` }} 
+        onTouchStart={handleReplyAreaTouchStart}
+        onTouchEnd={handleReplyAreaTouchEnd}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('textarea, button')) return;
+          if (!isReplyingMode) {
+            setIsReplyingMode(true);
+            setIsPaused(true);
+            setIsReplyInputFocused(true);
+            setTimeout(() => replyInputRef.current?.focus(), 50);
+          }
+        }}
+      >
+        <div
+          className={cn(
+            "flex flex-col items-center justify-center text-center w-full cursor-pointer",
+             isReplyingMode ? "py-2" : "pt-1 pb-0.5 absolute top-0 left-0 right-0 h-[40px]" 
+          )}
+          onClick={(e) => {
+            e.stopPropagation(); 
+            if (isReplyingMode) {
+              handleCancelReply();
+            } else {
+              setIsReplyingMode(true);
+              setIsPaused(true);
+              setIsReplyInputFocused(true);
+              setTimeout(() => replyInputRef.current?.focus(), 50);
+            }
+          }}
         >
-          <div className="max-w-xl mx-auto">
-            {/* Chevron up icon to indicate swipe up was actioned - optional */}
-            <div className="flex justify-center mb-1.5">
-                <ChevronUp className="h-5 w-5 text-neutral-500" />
-            </div>
-            <div className="flex items-center space-x-2">
-              {isReplyInputFocused ? (
-                <Textarea 
-                  ref={replyInputRef}
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder={`Balas ke ${currentStatus.userName}...`}
-                  onBlur={() => { if(!replyText.trim()) setIsReplyInputFocused(false); }}
-                  className="flex-1 bg-neutral-700 border-neutral-600 text-white placeholder-neutral-400 rounded-2xl py-2.5 px-4 resize-none min-h-[40px] max-h-[100px] focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-neutral-500 text-sm"
-                  rows={1}
-                />
-              ) : (
-                <div 
-                  className="flex-1 bg-neutral-800 text-white/70 rounded-full h-10 px-4 flex items-center cursor-text text-sm"
-                  onClick={() => {
-                    setIsReplyInputFocused(true);
-                    setTimeout(() => replyInputRef.current?.focus(), 50);
-                  }}
-                >
-                  Balas
-                </div>
-              )}
+          {isReplyingMode ? (
+            <ChevronDown className="h-5 w-5 text-neutral-400" />
+          ) : (
+            <ChevronUp className="h-5 w-5 text-neutral-400" />
+          )}
+          {!isReplyingMode && currentStatus && (
+            <p className="text-xs text-neutral-400 mt-0.5">
+              Balas ke {currentStatus.userName}
+            </p>
+          )}
+        </div>
 
-              {isReplyInputFocused ? (
+        {isReplyingMode && (
+          <div className="w-full max-w-xl mx-auto px-3 pb-3 pt-1">
+            <div className="flex items-center space-x-2">
+              <Textarea 
+                ref={replyInputRef}
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder={`Balas ke ${currentStatus.userName}...`}
+                onFocus={() => setIsReplyInputFocused(true)}
+                onBlur={() => { if(!replyText.trim()) setIsReplyInputFocused(false); }}
+                className="flex-1 bg-neutral-700 border-neutral-600 text-white placeholder-neutral-400 rounded-2xl py-2.5 px-4 resize-none min-h-[40px] max-h-[100px] focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-neutral-500 text-sm"
+                rows={1}
+                 onClick={(e) => e.stopPropagation()}
+              />
+              {isReplyInputFocused || replyText.trim() ? (
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -455,9 +478,10 @@ export function ViewStatus({
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="bg-neutral-800 hover:bg-neutral-700 rounded-full h-10 w-10 p-0 shrink-0"
+                  className="bg-neutral-700 hover:bg-neutral-600 rounded-full h-10 w-10 p-0 shrink-0"
                   onClick={() => {
                       toast({ title: `Status ${currentStatus.userName} disukai!`});
+                       e.stopPropagation();
                   }}
                   aria-label="Sukai status"
                 >
@@ -466,8 +490,9 @@ export function ViewStatus({
               )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
+
