@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import dynamic from 'next/dynamic';
-import type { User, Chat, Message, RegisteredUser, UserStatus, ReadStatusTimestamps } from "@/types"; // Added UserStatus, ReadStatusTimestamps
+import type { User, Chat, Message, RegisteredUser, UserStatus, ReadStatusTimestamps } from "@/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import useLocalStorage from "@/hooks/use-local-storage";
 import { AppLogo } from "@/components/core/AppLogo";
@@ -59,6 +59,8 @@ const LS_REGISTERED_USERS_KEY = "ngecet_registered_users";
 const LS_USER_STATUSES_KEY = "ngecet_user_statuses";
 const LS_STATUS_READ_TIMESTAMPS_KEY = "ngecet_status_read_timestamps";
 
+const MIN_SWIPE_DISTANCE = 75; // Minimum distance in pixels for a swipe to be registered
+
 export default function ChatPage() {
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
@@ -103,6 +105,11 @@ export default function ChatPage() {
   const isMobileView = useIsMobile();
   const [activeMobileTab, setActiveMobileTab] = useState<'chat' | 'status'>('chat');
 
+  // Refs for swipe navigation
+  const touchStartXRef = useRef<number | null>(null);
+  const touchEndXRef = useRef<number | null>(null);
+  const isSwipingRef = useRef<boolean>(false);
+
 
   useEffect(() => {
     setIsClient(true);
@@ -124,21 +131,20 @@ export default function ChatPage() {
   const handleMarkUserStatusesAsRead = useCallback((viewedUserId: string, latestTimestampViewed: number) => {
     if (!currentUser) return;
     setStatusReadTimestamps(prev => {
-      const currentUserReads = prev[currentUser.id] || {};
-      // Directly set the latest timestamp viewed, do not use Math.max
-      // This allows the "read up to this point" logic to work correctly even if viewing older statuses.
-      const newTimestampForUser = latestTimestampViewed;
+        const currentUserReads = prev[currentUser.id] || {};
+        // Use Math.max to ensure we only store the latest timestamp seen for that user
+        const newTimestampForUser = Math.max(currentUserReads[viewedUserId] || 0, latestTimestampViewed);
 
-      if (newTimestampForUser !== (currentUserReads[viewedUserId] || 0)) {
-        return {
-          ...prev,
-          [currentUser.id]: {
-            ...currentUserReads,
-            [viewedUserId]: newTimestampForUser,
-          }
-        };
-      }
-      return prev; // No change needed if the timestamp is identical
+        if (newTimestampForUser !== (currentUserReads[viewedUserId] || 0)) {
+            return {
+                ...prev,
+                [currentUser.id]: {
+                    ...currentUserReads,
+                    [viewedUserId]: newTimestampForUser,
+                }
+            };
+        }
+        return prev; // No change needed if the timestamp is not newer
     });
   }, [currentUser, setStatusReadTimestamps]);
 
@@ -221,8 +227,6 @@ export default function ChatPage() {
                            updatedChatAvatar = otherParticipant.avatarUrl;
                         }
                     } else {
-                        // Case where it's a chat with self (should ideally not happen often for 'direct')
-                        // or if the other participant somehow got removed (unlikely in current logic)
                         if (chat.name === currentUser.name) updatedChatName = updatedCurrentUser.name;
                         if (chat.avatarUrl === currentUser.avatarUrl) updatedChatAvatar = updatedCurrentUser.avatarUrl;
                     }
@@ -292,7 +296,7 @@ export default function ChatPage() {
       } else if (existingChat.pendingApprovalFromUserId === currentUser.id) {
         toast({ title: "Permintaan Tertunda", description: `Anda memiliki permintaan chat dari ${recipientUser.name}. Terima atau tolak dari daftar chat.` });
       }
-      setActiveMobileTab('chat'); // Switch to chat tab if on mobile
+      setActiveMobileTab('chat'); 
       return;
     }
 
@@ -303,23 +307,23 @@ export default function ChatPage() {
       participants: participantsArray,
       name: recipientUser.name,
       avatarUrl: recipientUser.avatarUrl,
-      pendingApprovalFromUserId: recipientUser.id, // Request goes to the other user
+      pendingApprovalFromUserId: recipientUser.id, 
       isRejected: false,
       requestTimestamp: now,
       lastMessage: "Permintaan chat dikirim...",
       lastMessageTimestamp: now,
-      lastReadBy: { // Initialize lastReadBy for both users
-        [currentUser.id]: now, // Sender has "read" up to this point
-        [recipientUser.id]: 0,  // Recipient hasn't read anything yet
+      lastReadBy: { 
+        [currentUser.id]: now, 
+        [recipientUser.id]: 0,  
       },
-      clearedTimestamp: { // Initialize clearedTimestamp
+      clearedTimestamp: { 
         [currentUser.id]: 0,
         [recipientUser.id]: 0,
       },
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
-    setActiveMobileTab('chat'); // Switch to chat tab if on mobile
+    setActiveMobileTab('chat'); 
     toast({ title: "Permintaan Terkirim", description: `Permintaan chat telah dikirim ke ${recipientUser.name}.` });
   }, [currentUser, chats, setChats, toast, registeredUsers]);
 
@@ -343,7 +347,7 @@ export default function ChatPage() {
             lastMessageTimestamp: now,
             lastReadBy: {
               ...(chat.lastReadBy || {}),
-              [currentUser!.id]: now, // Current user (accepter) has read up to this point
+              [currentUser!.id]: now, 
             },
           };
         }
@@ -353,7 +357,7 @@ export default function ChatPage() {
       const acceptedChat = updatedChats.find(c => c.id === chatId);
       if (acceptedChat) {
           setSelectedChat(acceptedChat);
-          setAllMessages(prev => ({ ...prev, [chatId]: prev[chatId] || [] })); // Ensure message array exists
+          setAllMessages(prev => ({ ...prev, [chatId]: prev[chatId] || [] })); 
       }
       return updatedChats;
     });
@@ -375,7 +379,7 @@ export default function ChatPage() {
             ...chat,
             pendingApprovalFromUserId: undefined,
             isRejected: true,
-            rejectedByUserId: currentUser?.id, // Mark who rejected
+            rejectedByUserId: currentUser?.id, 
             lastMessage: "Permintaan chat ditolak.",
             lastMessageTimestamp: now,
             lastReadBy: {
@@ -386,7 +390,6 @@ export default function ChatPage() {
         }
         return chat;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
-      // If the rejected chat was selected, deselect it
       if (selectedChat?.id === chatId) {
         setSelectedChat(null);
       }
@@ -400,10 +403,9 @@ export default function ChatPage() {
     if (!currentUser) return;
 
     const invalidMemberMessages: string[] = [];
-    const finalMemberUsers: User[] = [currentUser]; // Creator is always a member
+    const finalMemberUsers: User[] = [currentUser]; 
 
     for (const name of memberDisplayNames) {
-        // Try to find by profile name first, then by username (which is the user.id)
         const registeredMember = registeredUsers.find(ru => ru.profile.name.toLowerCase() === name.toLowerCase() || ru.username.toLowerCase() === name.toLowerCase());
         const userObjectToAdd = registeredMember?.profile;
 
@@ -412,10 +414,9 @@ export default function ChatPage() {
             continue;
         }
 
-        if (userObjectToAdd.id === currentUser.id) continue; // Already added
-        if (finalMemberUsers.find(u => u.id === userObjectToAdd.id)) continue; // Already in list
+        if (userObjectToAdd.id === currentUser.id) continue; 
+        if (finalMemberUsers.find(u => u.id === userObjectToAdd.id)) continue; 
 
-        // Check direct chat status for adding to group
         const potentialDirectChatIdParts = [currentUser.id, userObjectToAdd.id].sort();
         const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
         const existingDirectChat = chats.find(c => c.id === potentialDirectChatId);
@@ -428,20 +429,18 @@ export default function ChatPage() {
                 reasonForInvalid = `Anda telah memblokir ${userObjectToAdd.name}.`;
             } else if (existingDirectChat.blockedByUser === userObjectToAdd.id) {
                 reasonForInvalid = `${userObjectToAdd.name} telah memblokir Anda.`;
-            } else if (existingDirectChat.pendingApprovalFromUserId === userObjectToAdd.id) { // Request sent TO them is pending
+            } else if (existingDirectChat.pendingApprovalFromUserId === userObjectToAdd.id) { 
                 reasonForInvalid = `Permintaan chat Anda kepada ${userObjectToAdd.name} masih tertunda.`;
-            } else if (existingDirectChat.pendingApprovalFromUserId === currentUser.id) { // Request sent FROM them is pending (current user needs to accept)
+            } else if (existingDirectChat.pendingApprovalFromUserId === currentUser.id) { 
                 reasonForInvalid = `Anda belum menerima permintaan chat dari ${userObjectToAdd.name}.`;
             } else if (existingDirectChat.isRejected) {
                 reasonForInvalid = `Chat langsung dengan ${userObjectToAdd.name} sebelumnya ditolak.`;
             } else if (!existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected && !existingDirectChat.blockedByUser) {
-                // Direct chat is active and fine
                 canAdd = true;
             } else {
                  reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${userObjectToAdd.name}.`;
             }
         } else {
-             // No direct chat history at all
              reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${userObjectToAdd.name}. Harap mulai chat langsung dan tunggu penerimaan.`;
         }
 
@@ -450,7 +449,6 @@ export default function ChatPage() {
         } else if (reasonForInvalid) {
             invalidMemberMessages.push(reasonForInvalid);
         } else {
-            // Fallback if somehow no specific reason was caught but canAdd is false
             invalidMemberMessages.push(`Tidak dapat memvalidasi pengguna ${userObjectToAdd.name}.`);
         }
     }
@@ -460,12 +458,12 @@ export default function ChatPage() {
             title: "Gagal Membuat Grup",
             description: `Pengguna berikut tidak dapat ditambahkan: ${invalidMemberMessages.join("; ")}.`,
             variant: "destructive",
-            duration: 7000, // Longer duration for multiple messages
+            duration: 7000, 
         });
-        return; // Stop group creation
+        return; 
     }
 
-    if (finalMemberUsers.length < 2) { // Needs at least creator + one other
+    if (finalMemberUsers.length < 2) { 
          toast({
             title: "Anggota Diperlukan",
             description: "Harap tambahkan minimal satu anggota lain yang valid.",
@@ -482,7 +480,7 @@ export default function ChatPage() {
     const initialClearedTimestamp: Record<string, number> = {};
 
     finalMemberUsers.forEach(p => {
-        initialLastReadBy[p.id] = p.id === currentUser.id ? Date.now() : 0; // Creator read up to now
+        initialLastReadBy[p.id] = p.id === currentUser.id ? Date.now() : 0; 
         initialClearedTimestamp[p.id] = 0;
     });
 
@@ -500,29 +498,24 @@ export default function ChatPage() {
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
-    setAllMessages(prev => ({ ...prev, [chatId]: [] })); // Initialize messages for the new group
+    setAllMessages(prev => ({ ...prev, [chatId]: [] })); 
     setActiveMobileTab('chat');
     toast({ title: "Grup Dibuat", description: `Grup "${groupName}" telah siap.` });
   }, [currentUser, chats, setChats, setAllMessages, toast, registeredUsers]);
 
   const handleSelectChat = useCallback((chat: Chat) => {
     if (currentUser && chat.id) {
-        // Check for conditions that might affect chat interaction but still allow selection for viewing
         if (chat.type === 'direct' && chat.blockedByUser === currentUser.id) {
-            // Blocked by current user, can still select to see "You blocked..."
         } else if (chat.type === 'direct' && chat.blockedByUser && chat.blockedByUser !== currentUser.id) {
-            // Blocked by other user, can still select
         } else if (chat.pendingApprovalFromUserId === currentUser.id) {
-            // Pending approval from current user, selection shows accept/reject prompt in ChatItem (or view)
         }
         setSelectedChat(chat);
-        setActiveMobileTab('chat'); // Switch to chat tab on mobile
+        setActiveMobileTab('chat'); 
 
-        // Update lastReadBy only if the chat is active and selected
         if (chat.id && chat.lastReadBy &&
-            !chat.pendingApprovalFromUserId && // Not pending approval from anyone
-            !chat.isRejected &&               // Not rejected
-            !(chat.type === 'direct' && chat.blockedByUser)) { // Not blocked
+            !chat.pendingApprovalFromUserId && 
+            !chat.isRejected &&               
+            !(chat.type === 'direct' && chat.blockedByUser)) { 
             setChats(prevChats =>
                 prevChats.map(c =>
                     c.id === chat.id
@@ -533,20 +526,19 @@ export default function ChatPage() {
         }
     }
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
-        setEditingMessageDetails(null); // Cancel edit if switching chats
+        setEditingMessageDetails(null); 
     }
   }, [currentUser, setChats, editingMessageDetails]);
 
 
   const handleSelectChatMobile = useCallback((chat: Chat) => {
-    handleSelectChat(chat); // Same logic as desktop for now
+    handleSelectChat(chat); 
   }, [handleSelectChat]);
 
 
   const handleSendMessage = useCallback((content: string, replyToMessage?: Message | null) => {
     if (!currentUser || !selectedChat) return;
 
-    // Prevent sending if chat is not active
     if (selectedChat.type === 'direct' && selectedChat.blockedByUser === currentUser.id) {
       toast({ title: "Tidak Dapat Mengirim Pesan", description: "Anda telah memblokir pengguna ini.", variant: "destructive"});
       return;
@@ -580,27 +572,22 @@ export default function ChatPage() {
       [selectedChat.id]: [...(prev[selectedChat.id] || []), newMessage],
     }));
 
-    // Update chat metadata (last message, timestamp, and current user's lastReadBy)
     setChats(prevChats => prevChats.map(chat => {
       if (chat.id === selectedChat.id) {
         return {
           ...chat,
           lastMessage: content,
           lastMessageTimestamp: newMessage.timestamp,
-          lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp }, // Current user read their own message
+          lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: newMessage.timestamp }, 
         };
       }
-      // For other chats, if they are active, their unread status might change (not directly handled here but by ChatItem)
-      // No direct update needed for other chats' metadata from this send action
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser)) {
          return {
           ...chat,
-          // Potentially update lastReadBy for other participants if they are in this chat too?
-          // For simplicity, we only update the current user's read status on their action.
          };
       }
       return chat;
-    }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0))); // Re-sort by last message timestamp
+    }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0))); 
   }, [currentUser, selectedChat, setAllMessages, setChats, toast]);
 
   const handleDeleteMessage = useCallback((messageId: string, chatId: string) => {
@@ -611,13 +598,11 @@ export default function ChatPage() {
       const chatMessages = (prev[chatId] || []).filter(msg => msg.id !== messageId);
       const updatedChatMessages = { ...prev, [chatId]: chatMessages };
 
-      // Determine the new last message for the chat list preview
       const lastMessageInChat = chatMessages.length > 0 ? chatMessages[chatMessages.length - 1] : null;
       if (lastMessageInChat) {
         newLastMessageContent = lastMessageInChat.content;
         newLastMessageTimestamp = lastMessageInChat.timestamp;
       }
-      // If no messages left, lastMessage will be handled by the fallback in setChats
       return updatedChatMessages;
     });
 
@@ -632,9 +617,7 @@ export default function ChatPage() {
           } else if (c.type === 'group' && (!newLastMessageContent || c.participants.length === 0) ){
             fallbackLastMessage = c.lastMessage || "Grup telah dibuat.";
           }
-          // If there are still messages, use the newLastMessageContent, otherwise use fallback.
-          // Timestamp should also correspond.
-          const fallbackTimestamp = (c.requestTimestamp || c.lastMessageTimestamp || Date.now()); // Ensure a valid timestamp
+          const fallbackTimestamp = (c.requestTimestamp || c.lastMessageTimestamp || Date.now()); 
           return {
             ...c,
             lastMessage: newLastMessageContent !== undefined ? newLastMessageContent : fallbackLastMessage,
@@ -644,7 +627,7 @@ export default function ChatPage() {
         return c;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
-  }, [setAllMessages, setChats, currentUser]); // Added currentUser dependency
+  }, [setAllMessages, setChats, currentUser]); 
 
   const handleRequestEditMessageInInput = useCallback((messageToEdit: Message) => {
     if (!currentUser || messageToEdit.senderId !== currentUser.id) {
@@ -652,7 +635,7 @@ export default function ChatPage() {
       return;
     }
     const chat = chats.find(c => c.id === messageToEdit.chatId);
-    if (chat?.type === 'direct' && chat.blockedByUser) { // Check any block status
+    if (chat?.type === 'direct' && chat.blockedByUser) { 
         toast({ title: "Gagal Edit", description: "Tidak dapat mengedit pesan dalam chat yang diblokir.", variant: "destructive" });
         return;
     }
@@ -660,28 +643,27 @@ export default function ChatPage() {
   }, [currentUser, toast, chats]);
 
   const handleSaveEditedMessage = useCallback((messageId: string, newContent: string) => {
-    if (!currentUser || !editingMessageDetails) return; // Ensure editingMessageDetails is available
+    if (!currentUser || !editingMessageDetails) return; 
 
     if (newContent.trim() === "") {
       toast({ title: "Edit Gagal", description: "Konten pesan tidak boleh kosong.", variant: "destructive" });
       return;
     }
      if (newContent === editingMessageDetails.content) {
-       setEditingMessageDetails(null); // Clear editing state
+       setEditingMessageDetails(null); 
        toast({ title: "Info Pesan", description: "Konten pesan tidak berubah." });
        return;
     }
 
-    const editedTimestamp = Date.now(); // Use current time for edited message
+    const editedTimestamp = Date.now(); 
     let latestMessageDetailsForChat: { content: string; timestamp: number } | null = null;
 
     setAllMessages(prevAllMessages => {
-      if (!editingMessageDetails) return prevAllMessages; // Double check just in case
+      if (!editingMessageDetails) return prevAllMessages; 
 
       const chatMessages = (prevAllMessages[editingMessageDetails.chatId] || []).map(msg =>
         msg.id === messageId ? { ...msg, content: newContent, isEdited: true, timestamp: editedTimestamp } : msg
       );
-      // Re-sort messages by timestamp to ensure order is maintained if editing affects it
       const sortedChatMessages = [...chatMessages].sort((a, b) => a.timestamp - b.timestamp);
       if (sortedChatMessages.length > 0) {
         const lastMsg = sortedChatMessages[sortedChatMessages.length - 1];
@@ -690,20 +672,19 @@ export default function ChatPage() {
       return { ...prevAllMessages, [editingMessageDetails.chatId]: sortedChatMessages };
     });
 
-    setEditingMessageDetails(null); // Clear editing state
+    setEditingMessageDetails(null); 
 
-    // Update chat list if the edited message is the last message
     setChats(prevChats => {
-      if (!editingMessageDetails) return prevChats; // Guard
+      if (!editingMessageDetails) return prevChats; 
       const updatedChats = prevChats.map(chat => {
         if (chat.id === editingMessageDetails.chatId) {
-          if (latestMessageDetailsForChat) { // If there are messages, use the latest one
+          if (latestMessageDetailsForChat) { 
             return {
               ...chat,
               lastMessage: latestMessageDetailsForChat.content,
               lastMessageTimestamp: latestMessageDetailsForChat.timestamp
             };
-          } else { // No messages left, or logic error somewhere, use fallback
+          } else { 
              let fallbackMsg = "Belum ada pesan";
               if (chat.type === 'direct') {
                 if (chat.blockedByUser === currentUser?.id) fallbackMsg = `Anda memblokir ${chat.participants.find(p=>p.id !== currentUser?.id)?.name || 'pengguna ini'}.`;
@@ -722,7 +703,7 @@ export default function ChatPage() {
         }
         return chat;
       });
-      return updatedChats.sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)); // Re-sort
+      return updatedChats.sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)); 
     });
   }, [currentUser, editingMessageDetails, setAllMessages, setChats, toast]);
 
@@ -732,8 +713,6 @@ export default function ChatPage() {
 
 
   const handleDeleteChatPermanently = useCallback((chatId: string) => {
-    // This is for direct chats that were rejected by THE OTHER user,
-    // allowing the current user to remove it from their list.
     setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
     setAllMessages(prevAllMessages => {
       const newAllMessages = { ...prevAllMessages };
@@ -743,7 +722,6 @@ export default function ChatPage() {
     if (selectedChat?.id === chatId) {
       setSelectedChat(null);
     }
-    // Toast might be good here, e.g., "Chat removed"
   }, [setChats, setAllMessages, selectedChat?.id]);
 
   const handleLogout = (clearData: boolean) => {
@@ -758,7 +736,7 @@ export default function ChatPage() {
       setAllMessages({});
       setRegisteredUsers([]);
       setUserStatuses([]); 
-      setStatusReadTimestamps({}); // Clear read status timestamps
+      setStatusReadTimestamps({}); 
       if (typeof window !== "undefined") {
         Object.keys(window.localStorage).forEach(key => {
           if (key.startsWith("ngecet_")) {
@@ -774,8 +752,8 @@ export default function ChatPage() {
 
   const handleGoBack = useCallback(() => {
     setSelectedChat(null);
-    setEditingMessageDetails(null); // Cancel edit when going back
-    setActiveMobileTab('chat'); // Ensure chat tab is active on mobile when backing out of a chat view
+    setEditingMessageDetails(null); 
+    setActiveMobileTab('chat'); 
   }, []);
 
   const handleTriggerDeleteAllMessages = useCallback((chatId: string) => {
@@ -793,8 +771,8 @@ export default function ChatPage() {
             ...chat,
             lastMessage: "Semua pesan telah dihapus.",
             lastMessageTimestamp: now,
-            lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: now }, // Current user read this action
-            clearedTimestamp: { // Update cleared timestamp for current user
+            lastReadBy: { ...(chat.lastReadBy || {}), [currentUser.id]: now }, 
+            clearedTimestamp: { 
               ...(chat.clearedTimestamp || {}),
               [currentUser.id]: now,
             }
@@ -803,7 +781,6 @@ export default function ChatPage() {
         return chat;
       }).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0))
     );
-    // No need to modify allMessages, as messages are filtered by clearedTimestamp in ChatView
     setIsDeleteAllMessagesConfirmOpen(false);
     setChatIdToDeleteAllMessagesFrom(null);
   }, [currentUser, setChats, chatIdToDeleteAllMessagesFrom]);
@@ -843,7 +820,6 @@ export default function ChatPage() {
         return;
     }
 
-    // Check direct chat status with the user to be added
     const potentialDirectChatIdParts = [currentUser.id, userObjectToAdd.id].sort();
     const potentialDirectChatId = `direct_${potentialDirectChatIdParts[0]}_${potentialDirectChatIdParts[1]}`;
     const existingDirectChat = chats.find(c => c.id === potentialDirectChatId);
@@ -883,8 +859,8 @@ export default function ChatPage() {
       if (!currentChatToUpdate) return prevChats;
 
       const updatedParticipants = [...currentChatToUpdate.participants, userObjectToAdd];
-      const updatedLastReadBy = { ...(currentChatToUpdate.lastReadBy || {}), [userObjectToAdd.id]: 0 }; // New user hasn't read
-      const updatedClearedTimestamp = { ...(currentChatToUpdate.clearedTimestamp || {}), [userObjectToAdd.id]: 0 }; // New user hasn't cleared
+      const updatedLastReadBy = { ...(currentChatToUpdate.lastReadBy || {}), [userObjectToAdd.id]: 0 }; 
+      const updatedClearedTimestamp = { ...(currentChatToUpdate.clearedTimestamp || {}), [userObjectToAdd.id]: 0 }; 
 
       return prevChats.map(c =>
         c.id === chatIdToAddTo
@@ -893,14 +869,14 @@ export default function ChatPage() {
               participants: updatedParticipants,
               lastReadBy: updatedLastReadBy,
               clearedTimestamp: updatedClearedTimestamp,
-              lastMessage: systemMessage, // Update last message to reflect this action
+              lastMessage: systemMessage, 
               lastMessageTimestamp: now,
             }
           : c
       ).sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0));
     });
     toast({ title: "Pengguna Ditambahkan", description: `${userObjectToAdd.name} telah ditambahkan ke grup.` });
-    setChatIdToAddTo(null); // Reset for next use
+    setChatIdToAddTo(null); 
   }, [currentUser, chatIdToAddTo, setChats, toast, chats, registeredUsers]);
 
 
@@ -945,7 +921,7 @@ export default function ChatPage() {
     if (!currentUser) return;
 
     let toastMessageContent: string | null = null;
-    let chatToSelectAfterUpdate: Chat | null = null; // To update selectedChat if it's the one being modified
+    let chatToSelectAfterUpdate: Chat | null = null; 
 
     setChats(prevChats => {
       const chatToUpdate = prevChats.find(c => c.id === chatId);
@@ -972,14 +948,14 @@ export default function ChatPage() {
       const now = Date.now();
       const removalMessage = `${participantToRemove.name} telah dikeluarkan dari grup.`;
 
-      toastMessageContent = removalMessage; // For toast after state update
+      toastMessageContent = removalMessage; 
 
       const updatedChat = {
         ...chatToUpdate,
         participants: updatedParticipants,
         lastReadBy: updatedLastReadBy,
         clearedTimestamp: updatedClearedTimestamp,
-        lastMessage: removalMessage, // Update last message
+        lastMessage: removalMessage, 
         lastMessageTimestamp: now,
       };
 
@@ -995,7 +971,7 @@ export default function ChatPage() {
       toast({ title: "Pengguna Dikeluarkan", description: toastMessageContent });
     }
     if (chatToSelectAfterUpdate) {
-      setSelectedChat(chatToSelectAfterUpdate); // Update selectedChat with new participant list
+      setSelectedChat(chatToSelectAfterUpdate); 
     }
 
   }, [currentUser, setChats, toast, selectedChat]);
@@ -1017,12 +993,11 @@ export default function ChatPage() {
 
         const updatedParticipants = chatBeingLeft.participants.filter(p => p.id !== currentUser.id);
 
-        if (updatedParticipants.length === 0) { // Last member leaving
+        if (updatedParticipants.length === 0) { 
             isGroupDeleted = true;
-            return prevChats.filter(c => c.id !== chatId); // Remove the group
+            return prevChats.filter(c => c.id !== chatId); 
         }
 
-        // If not the last member, update the group
         const updatedLastReadBy = { ...chatBeingLeft.lastReadBy };
         delete updatedLastReadBy[currentUser.id];
         const updatedClearedTimestamp = { ...chatBeingLeft.clearedTimestamp };
@@ -1045,19 +1020,18 @@ export default function ChatPage() {
     });
 
     if (isGroupDeleted) {
-        // Also remove messages for the deleted group
         setAllMessages(prevAllMessages => {
             const newAllMessages = { ...prevAllMessages };
             delete newAllMessages[chatId];
             return newAllMessages;
         });
         toast({ title: "Grup ditinggalkan & dihapus", description: `Anda keluar dari grup "${groupNameForToast}", dan grup tersebut telah dihapus karena kosong.` });
-    } else if (chatBeingLeft) { // Only toast if a chat was actually found and processed
+    } else if (chatBeingLeft) { 
         toast({ title: "Keluar Grup Berhasil", description: `Anda telah keluar dari grup "${groupNameForToast}".` });
     }
 
     if (selectedChat?.id === chatId) {
-        setSelectedChat(null); // Deselect if current user leaves selected group
+        setSelectedChat(null); 
     }
 }, [currentUser, selectedChat?.id, setChats, setAllMessages, toast]);
 
@@ -1084,11 +1058,11 @@ export default function ChatPage() {
             if (c.id === chatId) {
                 const updatedVersion = {
                     ...c,
-                    blockedByUser: currentUser.id, // Current user is blocking
+                    blockedByUser: currentUser.id, 
                     lastMessage: `Anda memblokir ${otherParticipantName}.`,
                     lastMessageTimestamp: Date.now()
                 };
-                if(selectedChat?.id === chatId) { // If this chat is selected, update its state too
+                if(selectedChat?.id === chatId) { 
                     updatedChatForSelection = updatedVersion;
                 }
                 return updatedVersion;
@@ -1111,9 +1085,7 @@ export default function ChatPage() {
         toast({ title: "Error", description: "Hanya chat langsung yang bisa dibuka blokirnya.", variant: "destructive" });
         return;
     }
-    // Ensure only the blocker can unblock
     if (chatToUnblock.blockedByUser !== currentUser.id) {
-        // This scenario shouldn't happen if UI is correct, but good to guard
         toast({ title: "Error", description: "Anda tidak dapat membuka blokir ini.", variant: "destructive" });
         return;
     }
@@ -1127,7 +1099,7 @@ export default function ChatPage() {
             if (c.id === chatId) {
                  const updatedVersion = {
                     ...c,
-                    blockedByUser: undefined, // Clear the block
+                    blockedByUser: undefined, 
                     lastMessage: `Anda membuka blokir ${otherParticipantName}.`,
                     lastMessageTimestamp: Date.now()
                 };
@@ -1146,6 +1118,46 @@ export default function ChatPage() {
     }
     toast({ title: "Blokir Dibuka", description: `Anda telah membuka blokir ${otherParticipantName}.` });
   }, [currentUser, chats, selectedChat, setChats, toast]);
+
+  // Swipe Navigation Handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isMobileView) {
+        touchStartXRef.current = e.targetTouches[0].clientX;
+        touchEndXRef.current = e.targetTouches[0].clientX;
+        isSwipingRef.current = true;
+    }
+  }, [isMobileView]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isSwipingRef.current && isMobileView) {
+        touchEndXRef.current = e.targetTouches[0].clientX;
+    }
+  }, [isMobileView]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!touchStartXRef.current || !touchEndXRef.current || !isSwipingRef.current || !isMobileView) {
+        isSwipingRef.current = false;
+        return;
+    }
+
+    const distance = touchStartXRef.current - touchEndXRef.current;
+    const isLeftSwipe = distance > MIN_SWIPE_DISTANCE;
+    const isRightSwipe = distance < -MIN_SWIPE_DISTANCE;
+
+    if (isLeftSwipe) {
+        if (activeMobileTab === 'chat') {
+            setActiveMobileTab('status');
+        }
+    } else if (isRightSwipe) {
+        if (activeMobileTab === 'status') {
+            setActiveMobileTab('chat');
+        }
+    }
+
+    touchStartXRef.current = null;
+    touchEndXRef.current = null;
+    isSwipingRef.current = false;
+  }, [activeMobileTab, isMobileView, setActiveMobileTab]);
 
 
   if (!isClient) {
@@ -1167,7 +1179,12 @@ export default function ChatPage() {
   if (isMobileView) {
     return (
       <div className="flex h-screen w-full flex-col">
-        <div className="flex flex-1 flex-col"> 
+        <div
+          className="flex flex-1 flex-col overflow-hidden" 
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        > 
           {activeMobileTab === 'chat' ? (
             selectedChat ? (
               <ChatView
@@ -1600,4 +1617,3 @@ export default function ChatPage() {
     </SidebarProvider>
   );
 }
-
