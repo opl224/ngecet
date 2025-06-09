@@ -1073,7 +1073,7 @@ export default function ChatPage() {
   if (isMobileView) {
     return (
       <div className="flex h-screen w-full flex-col">
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-1 flex-col overflow-y-auto">
           {activeMobileTab === 'chat' ? (
             selectedChat ? (
               <ChatView
@@ -1098,7 +1098,7 @@ export default function ChatPage() {
                 isMobileView={isMobileView}
               />
             ) : (
-              <SidebarProvider defaultOpen>
+              <SidebarProvider defaultOpen className="flex-1">
                 <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
                   <SidebarHeader className="p-0">
                     <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
