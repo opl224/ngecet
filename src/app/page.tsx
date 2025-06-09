@@ -41,7 +41,7 @@ import {
 import { LogOut, Trash2, Settings, InfoIcon, Palette, Sun, Moon, Laptop } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from '@/components/core/Providers';
-import { BottomNavigationBar } from "@/components/layout/BottomNavigationBar"; 
+import { BottomNavigationBar } from "@/components/layout/BottomNavigationBar";
 
 const AuthPage = dynamic(() => import('@/components/auth/AuthPage').then(mod => mod.AuthPage), { ssr: false, loading: () => <div className="flex items-center justify-center h-screen bg-background"><AppLogo className="w-16 h-16 text-primary animate-pulse" /></div> });
 const ChatView = dynamic(() => import('@/components/chat/ChatView').then(mod => mod.ChatView), { ssr: false, loading: () => <div className="flex-1 flex items-center justify-center"><AppLogo className="w-10 h-10 text-primary animate-pulse" /></div> });
@@ -59,7 +59,7 @@ const LS_REGISTERED_USERS_KEY = "ngecet_registered_users";
 const LS_USER_STATUSES_KEY = "ngecet_user_statuses";
 const LS_STATUS_READ_TIMESTAMPS_KEY = "ngecet_status_read_timestamps";
 
-const MIN_SWIPE_DISTANCE = 75; // Minimum distance in pixels for a swipe to be registered
+const MIN_SWIPE_DISTANCE_TAB = 50; // Minimum distance in pixels for a swipe to be registered for tab switching
 
 export default function ChatPage() {
   const { toast } = useToast();
@@ -105,15 +105,48 @@ export default function ChatPage() {
   const isMobileView = useIsMobile();
   const [activeMobileTab, setActiveMobileTab] = useState<'chat' | 'status'>('chat');
 
-  // Refs for swipe navigation
+  // Refs and state for interactive swipe navigation
   const touchStartXRef = useRef<number | null>(null);
-  const touchEndXRef = useRef<number | null>(null);
+  const swipeStartTranslateXRef = useRef<number>(0);
   const isSwipingRef = useRef<boolean>(false);
+  const mobileTabContainerRef = useRef<HTMLDivElement>(null);
+  const [currentTranslateX, setCurrentTranslateX] = useState<number>(0);
+  const screenWidthRef = useRef<number>(0);
 
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Initialize and update screenWidthRef and set initial/resized currentTranslateX for mobile view
+  useEffect(() => {
+    if (isMobileView) {
+      const updateLayout = () => {
+        const newScreenWidth = window.innerWidth;
+        screenWidthRef.current = newScreenWidth;
+        
+        // Set currentTranslateX without animation for initial load and resize
+        if (mobileTabContainerRef.current) {
+          mobileTabContainerRef.current.style.transition = 'none';
+        }
+        setCurrentTranslateX(activeMobileTab === 'chat' ? 0 : -newScreenWidth);
+      };
+      updateLayout();
+      window.addEventListener('resize', updateLayout);
+      return () => window.removeEventListener('resize', updateLayout);
+    }
+  }, [isMobileView, activeMobileTab]);
+
+  // Effect to animate currentTranslateX when activeMobileTab changes programmatically (e.g., bottom nav)
+  useEffect(() => {
+    if (isMobileView && screenWidthRef.current > 0 && !isSwipingRef.current) {
+      if (mobileTabContainerRef.current) {
+        mobileTabContainerRef.current.style.transition = 'transform 0.3s ease-out';
+      }
+      setCurrentTranslateX(activeMobileTab === 'chat' ? 0 : -screenWidthRef.current);
+    }
+  }, [activeMobileTab, isMobileView]); // Removed screenWidthRef.current as a dependency
+
   
   const handleAddUserStatus = useCallback((newStatus: UserStatus) => {
     setUserStatuses(prevStatuses => {
@@ -132,7 +165,6 @@ export default function ChatPage() {
     if (!currentUser) return;
     setStatusReadTimestamps(prev => {
         const currentUserReads = prev[currentUser.id] || {};
-        // Directly set the latestTimestampViewed, do not use Math.max
         const newTimestampForUser = latestTimestampViewed;
 
         if (newTimestampForUser !== (currentUserReads[viewedUserId] || 0)) {
@@ -144,7 +176,7 @@ export default function ChatPage() {
                 }
             };
         }
-        return prev; // No change needed if the timestamp is not newer
+        return prev;
     });
   }, [currentUser, setStatusReadTimestamps]);
 
@@ -1119,44 +1151,56 @@ export default function ChatPage() {
     toast({ title: "Blokir Dibuka", description: `Anda telah membuka blokir ${otherParticipantName}.` });
   }, [currentUser, chats, selectedChat, setChats, toast]);
 
-  // Swipe Navigation Handlers
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 1 && isMobileView) {
+  // Swipe Navigation Handlers for Mobile Tabs
+  const handleMobileTabTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isMobileView && screenWidthRef.current > 0) {
         touchStartXRef.current = e.targetTouches[0].clientX;
-        touchEndXRef.current = e.targetTouches[0].clientX;
+        swipeStartTranslateXRef.current = currentTranslateX;
         isSwipingRef.current = true;
+        // No need to change transition here, style object handles it
     }
+  }, [isMobileView, currentTranslateX]);
+
+  const handleMobileTabTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isSwipingRef.current || touchStartXRef.current === null || !isMobileView || screenWidthRef.current === 0) {
+        return;
+    }
+    const currentX = e.targetTouches[0].clientX;
+    const deltaX = currentX - touchStartXRef.current;
+    let newTranslateX = swipeStartTranslateXRef.current + deltaX;
+
+    // Clamp newTranslateX
+    newTranslateX = Math.max(-screenWidthRef.current, Math.min(0, newTranslateX));
+    setCurrentTranslateX(newTranslateX);
   }, [isMobileView]);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 1 && isSwipingRef.current && isMobileView) {
-        touchEndXRef.current = e.targetTouches[0].clientX;
-    }
-  }, [isMobileView]);
-
-  const handleTouchEnd = useCallback(() => {
-    if (!touchStartXRef.current || !touchEndXRef.current || !isSwipingRef.current || !isMobileView) {
-        isSwipingRef.current = false;
+  const handleMobileTabTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!isSwipingRef.current || touchStartXRef.current === null || !isMobileView || screenWidthRef.current === 0) {
+        isSwipingRef.current = false; // Ensure swiping flag is reset
         return;
     }
 
-    const distance = touchStartXRef.current - touchEndXRef.current;
-    const isLeftSwipe = distance > MIN_SWIPE_DISTANCE;
-    const isRightSwipe = distance < -MIN_SWIPE_DISTANCE;
+    isSwipingRef.current = false; // Transition will be re-enabled by style object
 
-    if (isLeftSwipe) {
-        if (activeMobileTab === 'chat') {
-            setActiveMobileTab('status');
+    const endX = e.changedTouches[0].clientX;
+    const finalDeltaX = endX - touchStartXRef.current;
+    const threshold = screenWidthRef.current / 3; // Swipe 1/3 of screen to change tabs
+
+    let newActiveTab = activeMobileTab;
+
+    if (swipeStartTranslateXRef.current === 0) { // Was on chat tab
+        if (finalDeltaX < -threshold) {
+            newActiveTab = 'status';
         }
-    } else if (isRightSwipe) {
-        if (activeMobileTab === 'status') {
-            setActiveMobileTab('chat');
+    } else if (swipeStartTranslateXRef.current === -screenWidthRef.current) { // Was on status tab
+        if (finalDeltaX > threshold) {
+            newActiveTab = 'chat';
         }
     }
+    
+    setActiveMobileTab(newActiveTab); // This will trigger useEffect to animate/set currentTranslateX
 
     touchStartXRef.current = null;
-    touchEndXRef.current = null;
-    isSwipingRef.current = false;
   }, [activeMobileTab, isMobileView, setActiveMobileTab]);
 
 
@@ -1178,135 +1222,147 @@ export default function ChatPage() {
 
   if (isMobileView) {
     return (
-      <SidebarProvider defaultOpen>
+      <SidebarProvider defaultOpen> {/* SidebarProvider for mobile specific dialogs/sheets if needed, or general context */}
         <div className="flex h-screen w-full flex-col">
           <div
             className="flex flex-1 flex-col overflow-hidden" 
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          > 
-            {activeMobileTab === 'chat' ? (
-              selectedChat ? (
-                <ChatView
-                  chat={selectedChat}
-                  messages={allMessages[selectedChat.id] || []}
-                  currentUser={currentUser}
-                  onSendMessage={handleSendMessage}
-                  editingMessageDetails={editingMessageDetails}
-                  onSaveEditedMessage={handleSaveEditedMessage}
-                  onRequestEditMessage={handleRequestEditMessageInInput}
-                  onCancelEditMessage={handleCancelEditInInput}
-                  onDeleteMessage={handleDeleteMessage}
-                  onGoBack={handleGoBack}
-                  onTriggerDeleteAllMessages={handleTriggerDeleteAllMessages}
-                  onTriggerAddUserToGroup={() => handleOpenAddUserToGroupDialog(selectedChat.id)}
-                  onTriggerDeleteGroup={handleTriggerDeleteGroup}
-                  onRemoveParticipant={handleRemoveParticipantFromGroup}
-                  onStartGroupWithUser={handleStartGroupWithUser}
-                  onBlockUser={handleBlockUser}
-                  onUnblockUser={handleUnblockUser}
-                  onLeaveGroup={handleLeaveGroup}
-                  isMobileView={isMobileView}
-                />
-              ) : (
-                <div className="flex flex-1 flex-col bg-sidebar text-sidebar-foreground">
-                  <SidebarHeader className="p-0">
-                    <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
-                      <div className="flex items-center gap-2 shrink-0 mr-2">
-                        <AppLogo className="h-7 w-7" />
-                        <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">Ngecet</h1>
+            onTouchStart={handleMobileTabTouchStart}
+            onTouchMove={handleMobileTabTouchMove}
+            onTouchEnd={handleMobileTabTouchEnd}
+          >
+            <div
+              ref={mobileTabContainerRef}
+              style={{
+                display: 'flex',
+                width: '200%', // Two tabs
+                height: '100%',
+                transform: `translateX(${currentTranslateX}px)`,
+                transition: isSwipingRef.current ? 'none' : 'transform 0.3s ease-out',
+              }}
+            >
+              <div style={{ width: '50%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                {selectedChat ? (
+                  <ChatView
+                    chat={selectedChat}
+                    messages={allMessages[selectedChat.id] || []}
+                    currentUser={currentUser}
+                    onSendMessage={handleSendMessage}
+                    editingMessageDetails={editingMessageDetails}
+                    onSaveEditedMessage={handleSaveEditedMessage}
+                    onRequestEditMessage={handleRequestEditMessageInInput}
+                    onCancelEditMessage={handleCancelEditInInput}
+                    onDeleteMessage={handleDeleteMessage}
+                    onGoBack={handleGoBack}
+                    onTriggerDeleteAllMessages={handleTriggerDeleteAllMessages}
+                    onTriggerAddUserToGroup={() => handleOpenAddUserToGroupDialog(selectedChat.id)}
+                    onTriggerDeleteGroup={handleTriggerDeleteGroup}
+                    onRemoveParticipant={handleRemoveParticipantFromGroup}
+                    onStartGroupWithUser={handleStartGroupWithUser}
+                    onBlockUser={handleBlockUser}
+                    onUnblockUser={handleUnblockUser}
+                    onLeaveGroup={handleLeaveGroup}
+                    isMobileView={isMobileView}
+                  />
+                ) : (
+                  <div className="flex flex-1 flex-col bg-sidebar text-sidebar-foreground h-full"> {/* Ensure this container takes full height */}
+                    <SidebarHeader className="p-0 shrink-0">
+                      <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
+                        <div className="flex items-center gap-2 shrink-0 mr-2">
+                          <AppLogo className="h-7 w-7" />
+                          <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">Ngecet</h1>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <UserProfileForm
+                            currentUser={currentUser}
+                            onSaveProfile={handleSaveProfile}
+                            displayMode="compact"
+                            userEmail={currentUserEmailForProfile}
+                          />
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-sidebar-foreground h-9 w-9">
+                                <Settings className="h-5 w-5" />
+                                <span className="sr-only">Pengaturan</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
+                              <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
+                                <InfoIcon className="mr-2 h-4 w-4" />
+                                <span>Tentang aplikasi</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>
+                                  <Palette className="mr-2 h-4 w-4" />
+                                  <span>Tema</span>
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent>
+                                  <DropdownMenuItem onClick={() => setTheme('light')}>
+                                    <Sun className="mr-2 h-4 w-4" />
+                                    <span>Light</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setTheme('dark')}>
+                                    <Moon className="mr-2 h-4 w-4" />
+                                    <span>Dark</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setTheme('system')}>
+                                    <Laptop className="mr-2 h-4 w-4" />
+                                    <span>System</span>
+                                  </DropdownMenuItem>
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleLogout(false)}>
+                                <LogOut className="mr-2 h-4 w-4" />
+                                <span>Keluar (Simpan Data)</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Keluar & Hapus Data</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <UserProfileForm
-                          currentUser={currentUser}
-                          onSaveProfile={handleSaveProfile}
-                          displayMode="compact"
-                          userEmail={currentUserEmailForProfile}
-                        />
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-sidebar-foreground h-9 w-9">
-                              <Settings className="h-5 w-5" />
-                              <span className="sr-only">Pengaturan</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
-                            <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
-                              <InfoIcon className="mr-2 h-4 w-4" />
-                              <span>Tentang aplikasi</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSub>
-                              <DropdownMenuSubTrigger>
-                                <Palette className="mr-2 h-4 w-4" />
-                                <span>Tema</span>
-                              </DropdownMenuSubTrigger>
-                              <DropdownMenuSubContent>
-                                <DropdownMenuItem onClick={() => setTheme('light')}>
-                                  <Sun className="mr-2 h-4 w-4" />
-                                  <span>Light</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setTheme('dark')}>
-                                  <Moon className="mr-2 h-4 w-4" />
-                                  <span>Dark</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setTheme('system')}>
-                                  <Laptop className="mr-2 h-4 w-4" />
-                                  <span>System</span>
-                                </DropdownMenuItem>
-                              </DropdownMenuSubContent>
-                            </DropdownMenuSub>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleLogout(false)}>
-                              <LogOut className="mr-2 h-4 w-4" />
-                              <span>Keluar (Simpan Data)</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Keluar & Hapus Data</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  </SidebarHeader>
-                  <SidebarContent className="p-0 flex-1">
-                    <ChatList
-                      chats={chats}
-                      currentUser={currentUser}
-                      allMessages={allMessages}
-                      onSelectChat={handleSelectChatMobile}
-                      selectedChatId={selectedChat?.id}
-                      onNewDirectChat={() => setIsNewDirectChatDialogOpen(true)}
-                      onNewGroupChat={() => {
-                        setGroupDialogInitialMemberName(null);
-                        setIsNewGroupChatDialogOpen(true);
-                      }}
-                      onAcceptChat={handleAcceptChatRequest}
-                      onRejectChat={handleRejectChatRequest}
-                      onDeleteChatPermanently={handleDeleteChatPermanently}
-                      onUnblockUser={handleUnblockUser}
-                      isMobileView={isMobileView}
-                    />
-                  </SidebarContent>
-                </div>
-              )
-            ) : activeMobileTab === 'status' ? (
-               <StatusPage 
-                  currentUser={currentUser} 
-                  userStatuses={userStatuses}
-                  onAddUserStatus={handleAddUserStatus}
-                  onDeleteUserStatus={handleDeleteUserStatus}
-                  statusReadTimestamps={statusReadTimestamps}
-                  onMarkUserStatusesAsRead={handleMarkUserStatusesAsRead}
-               />
-            ) : null}
+                    </SidebarHeader>
+                    <SidebarContent className="p-0 flex-1"> {/* Ensure SidebarContent can flex grow */}
+                      <ChatList
+                        chats={chats}
+                        currentUser={currentUser}
+                        allMessages={allMessages}
+                        onSelectChat={handleSelectChatMobile}
+                        selectedChatId={selectedChat?.id}
+                        onNewDirectChat={() => setIsNewDirectChatDialogOpen(true)}
+                        onNewGroupChat={() => {
+                          setGroupDialogInitialMemberName(null);
+                          setIsNewGroupChatDialogOpen(true);
+                        }}
+                        onAcceptChat={handleAcceptChatRequest}
+                        onRejectChat={handleRejectChatRequest}
+                        onDeleteChatPermanently={handleDeleteChatPermanently}
+                        onUnblockUser={handleUnblockUser}
+                        isMobileView={isMobileView}
+                      />
+                    </SidebarContent>
+                  </div>
+                )}
+              </div>
+              <div style={{ width: '50%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                 <StatusPage 
+                    currentUser={currentUser} 
+                    userStatuses={userStatuses}
+                    onAddUserStatus={handleAddUserStatus}
+                    onDeleteUserStatus={handleDeleteUserStatus}
+                    statusReadTimestamps={statusReadTimestamps}
+                    onMarkUserStatusesAsRead={handleMarkUserStatusesAsRead}
+                 />
+              </div>
+            </div>
           </div>
 
           <BottomNavigationBar
               activeTab={activeMobileTab}
               onTabChange={(tab) => {
-                  setActiveMobileTab(tab);
+                  setActiveMobileTab(tab); // This will trigger useEffect to animate currentTranslateX
               }}
           />
 
