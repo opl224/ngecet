@@ -94,10 +94,10 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
           onChange={(e) => setStatusText(e.target.value)}
           placeholder="Ketik status"
           className={cn(
-            "bg-transparent border-none focus:ring-0 focus-visible:ring-0 text-center text-3xl md:text-4xl lg:text-5xl font-medium resize-none outline-none w-full max-w-2xl overflow-y-auto hide-scrollbar p-2",
+            "bg-transparent border-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-center text-3xl md:text-4xl lg:text-5xl font-medium resize-none w-full max-w-2xl overflow-y-auto hide-scrollbar p-2",
             themeClasses.text,
             currentTheme.placeholder, // Use specific placeholder class from theme object
-            "h-auto min-h-[100px] max-h-[70vh]" 
+            "h-auto min-h-[100px] max-h-[70vh]"
           )}
           style={{ lineHeight: '1.4' }}
         />
