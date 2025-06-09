@@ -14,25 +14,26 @@ body {
   font-family: var(--font-poppins), Arial, Helvetica, sans-serif; /* Use Poppins font variable */
 }
 
-/* Custom class for transparent scrollbar on message input textarea */
+/* Custom class for INVISIBLE scrollbar on message input textarea */
 .message-input-textarea::-webkit-scrollbar {
-  width: 5px; /* Adjust width as needed, or set to 0 for complete invisibility */
-  height: 5px; /* For horizontal scrollbar if ever needed */
+  width: 0px;  /* Make scrollbar invisible for Webkit by setting width to 0 */
+  height: 0px; /* For horizontal scrollbar if ever needed */
+  background: transparent; /* Fallback for older webkit, ensures no background color */
 }
 
 .message-input-textarea::-webkit-scrollbar-track {
-  background: transparent; /* Make the track transparent */
+  background: transparent; /* Ensure track is transparent */
 }
 
 .message-input-textarea::-webkit-scrollbar-thumb {
-  background: transparent; /* Make the thumb transparent */
-  border-radius: 3px; /* Optional: if you want rounded corners for the thumb */
+  background: transparent; /* Ensure thumb is transparent */
 }
 
-/* For Firefox */
+/* For Firefox - make scrollbar invisible */
 .message-input-textarea {
-  scrollbar-width: thin; /* Can be "auto", "thin", or "none" */
-  scrollbar-color: transparent transparent; /* thumb color track color */
+  scrollbar-width: none; /* Hide scrollbar in Firefox */
+  /* For good measure, ensure scrollbar colors are transparent if 'none' isn't fully supported or overridden */
+  scrollbar-color: transparent transparent; 
 }
 
 
