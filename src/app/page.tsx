@@ -1073,7 +1073,7 @@ export default function ChatPage() {
   if (isMobileView) {
     return (
       <div className="flex h-screen w-full flex-col">
-        <div className="flex flex-1 flex-col overflow-y-auto">
+        <div className="flex flex-1 flex-col"> {/* Removed overflow-y-auto here */}
           {activeMobileTab === 'chat' ? (
             selectedChat ? (
               <ChatView
@@ -1501,5 +1501,3 @@ export default function ChatPage() {
   );
 }
 
-
-    
