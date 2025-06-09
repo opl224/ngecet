@@ -14,6 +14,28 @@ body {
   font-family: var(--font-poppins), Arial, Helvetica, sans-serif; /* Use Poppins font variable */
 }
 
+/* Custom class for transparent scrollbar on message input textarea */
+.message-input-textarea::-webkit-scrollbar {
+  width: 5px; /* Adjust width as needed, or set to 0 for complete invisibility */
+  height: 5px; /* For horizontal scrollbar if ever needed */
+}
+
+.message-input-textarea::-webkit-scrollbar-track {
+  background: transparent; /* Make the track transparent */
+}
+
+.message-input-textarea::-webkit-scrollbar-thumb {
+  background: transparent; /* Make the thumb transparent */
+  border-radius: 3px; /* Optional: if you want rounded corners for the thumb */
+}
+
+/* For Firefox */
+.message-input-textarea {
+  scrollbar-width: thin; /* Can be "auto", "thin", or "none" */
+  scrollbar-color: transparent transparent; /* thumb color track color */
+}
+
+
 @layer base {
   :root {
     --background: 0 0% 96%; /* Light Gray #F5F5F5 */
@@ -99,3 +121,5 @@ body {
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+    

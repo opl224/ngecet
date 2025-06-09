@@ -744,7 +744,9 @@ export function ChatView({
                 ? `Balas ke ${replyingToMessage.senderName}...`
                 : "Ketik pesan..."
             }
-            className="flex-1 bg-input border-border focus-visible:ring-ring resize-none overflow-y-auto"
+            className={cn(
+              "flex-1 bg-input border-border focus-visible:ring-ring resize-none overflow-y-auto message-input-textarea"
+            )}
             aria-label="Message input"
             disabled={!isChatActive}
             rows={1}
@@ -763,3 +765,5 @@ export function ChatView({
     </div>
   );
 }
+
+    
