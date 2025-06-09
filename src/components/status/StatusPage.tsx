@@ -159,14 +159,13 @@ export function StatusPage({
 
   const hasMyStatus = currentUserActiveStatuses.length > 0;
   const myLatestStatus = hasMyStatus ? currentUserActiveStatuses[0] : null;
-  const myLatestStatusThemeClasses = myLatestStatus ? getStatusThemeClasses(myLatestStatus.backgroundColorName) : null;
 
   const handleViewUserStatuses = useCallback((userIdToView: string) => {
     let statusesToDisplay: UserStatus[] = [];
     if (currentUser && userIdToView === currentUser.id) {
-      statusesToDisplay = [...currentUserActiveStatuses]; // Use already filtered & sorted
+      statusesToDisplay = [...currentUserActiveStatuses].sort((a, b) => b.timestamp - a.timestamp); 
     } else {
-      statusesToDisplay = [...(otherUsersGroupedStatuses[userIdToView] || [])]; // Use already grouped & sorted
+      statusesToDisplay = [...(otherUsersGroupedStatuses[userIdToView] || [])].sort((a, b) => b.timestamp - a.timestamp); 
     }
 
     if (statusesToDisplay.length > 0) {
@@ -229,25 +228,23 @@ export function StatusPage({
                   <AvatarImage src={currentUser.avatarUrl} alt="My Status Avatar" data-ai-hint="person abstract"/>
                   <AvatarFallback>{getInitials(currentUser.name, 2)}</AvatarFallback>
                 </Avatar>
-                {!hasMyStatus ? (
-                    <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-background flex items-center justify-center">
-                        <Plus className="h-3 w-3 text-white" />
-                    </div>
-                ) : (
-                   myLatestStatusThemeClasses && ( // Only show dot if has status and theme
-                    <div className={cn(
-                      "absolute -bottom-1 -right-1 rounded-full p-0.5 flex items-center justify-center border-2 border-background",
-                       myLatestStatusThemeClasses.bg 
-                    )}>
-                       <div className={cn("h-3 w-3 rounded-full")} />
-                    </div>
-                   )
-                )}
+                {/* Always show the green plus icon indicator */}
+                <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-background flex items-center justify-center">
+                    <Plus className="h-3 w-3 text-white" />
+                </div>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground truncate">
-                    {hasMyStatus ? "Status Saya" : "Tambah Status"}
-                </p>
+                 <div className="flex items-center space-x-2">
+                    <p className="font-medium text-foreground truncate">
+                        Status Saya
+                    </p>
+                    {hasMyStatus && myLatestStatus && (
+                         <div className={cn(
+                            "h-2 w-2 rounded-full shrink-0",
+                            getStatusThemeClasses(myLatestStatus.backgroundColorName).bg
+                         )} />
+                    )}
+                 </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {hasMyStatus && myLatestStatus
                     ? `${currentUserActiveStatuses.length} pembaruan • ${formatTimestamp(myLatestStatus.timestamp)}`
@@ -276,10 +273,10 @@ export function StatusPage({
                         >
                             <div className="relative">
                                 <div
-                                    className="absolute inset-0 pointer-events-none" // Added pointer-events-none
+                                    className="absolute inset-0 pointer-events-none" 
                                     dangerouslySetInnerHTML={{ __html: createSegmentedRingSVGSimple(segmentCount, isAllRead) }}
                                 />
-                                <Avatar className="h-12 w-12 border-2 border-transparent"> {/* Transparent border for layout, SVG provides visual */}
+                                <Avatar className="h-12 w-12 border-2 border-transparent"> 
                                 <AvatarImage src={latestStatusOfUser.userAvatarUrl} alt={latestStatusOfUser.userName} data-ai-hint="person abstract status"/>
                                 <AvatarFallback>{getInitials(latestStatusOfUser.userName, 2)}</AvatarFallback>
                                 </Avatar>
