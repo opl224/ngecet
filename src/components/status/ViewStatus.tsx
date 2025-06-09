@@ -15,7 +15,7 @@ import { id as idLocale } from 'date-fns/locale/id';
 const STATUS_VIEW_DURATION = 5000; // 5 seconds
 
 interface ViewStatusProps {
-  statuses: UserStatus[]; // Should be sorted newest first by parent
+  statuses: UserStatus[]; // Should be sorted OLDEST first by parent for viewer
   initialStatusIndex?: number;
   onClose: () => void;
   currentUser: User | null;
@@ -78,16 +78,21 @@ export function ViewStatus({
   };
   
   const performCloseActions = useCallback(() => {
-    // NOTE: onMarkAsRead is NOT called here anymore.
-    // It's called when a timer finishes or when manually navigating NEXT.
+    // Mark the currently displayed status as read when closing
+    if (currentStatus) {
+        onMarkAsRead(currentStatus.timestamp);
+    }
     queueMicrotask(() => onClose());
-  }, [onClose]);
+  }, [onClose, currentStatus, onMarkAsRead]);
 
 
   const advanceToStatus = useCallback((newIndex: number) => {
     if (newIndex >= 0 && newIndex < statuses.length) {
       setCurrentIndex(newIndex);
     } else if (newIndex >= statuses.length) { 
+      // This means we've advanced past the last status.
+      // The onMarkAsRead for the *last* status would have been called by the timer/nav that led to this state.
+      // So, just perform close actions.
       performCloseActions();
     }
   }, [statuses.length, performCloseActions]);
@@ -98,9 +103,9 @@ export function ViewStatus({
     if (intervalRef.current) clearInterval(intervalRef.current);
 
     if (!currentStatus) {
-      if (statuses.length > 0) {
-          setCurrentIndex(Math.max(0, statuses.length - 1));
-      } else { 
+      if (statuses.length > 0 && prevCurrentStatusRef.current !== null) { // Only close if it was previously showing something
+          performCloseActions();
+      } else if (statuses.length === 0 && prevCurrentStatusRef.current !== null) {
           performCloseActions();
       }
       return;
@@ -145,6 +150,9 @@ export function ViewStatus({
       }
       advanceToStatus(currentIndex + 1);
     } else { 
+      // When going to 'prev', we don't mark the (newer) one we are leaving as read.
+      // Its timer was interrupted. The `lastReadTimestamp` should reflect the
+      // furthest *completed or explicitly closed on* status.
       advanceToStatus(currentIndex - 1);
     }
   }, [currentIndex, statuses, onMarkAsRead, advanceToStatus]);
@@ -168,23 +176,33 @@ export function ViewStatus({
 
 
   useEffect(() => {
+    // This effect handles scenarios where the 'statuses' prop array changes externally (e.g., due to deletion)
     if (statuses.length === 0 && prevCurrentStatusRef.current !== null) { 
       performCloseActions();
     } else if (currentIndex >= statuses.length && statuses.length > 0) {
+      // If current index is out of bounds (e.g. last status deleted), try to go to the new last status
       setCurrentIndex(statuses.length - 1);
     } else if (currentIndex < 0 && statuses.length > 0) { 
+      // Should not happen with current logic, but as a safeguard
       setCurrentIndex(0);
     }
   }, [statuses, currentIndex, performCloseActions]);
 
 
   if (!currentStatus) {
+    // This can happen briefly if statuses array becomes empty after a delete
+    // The useEffect above should handle closing the viewer.
     return null; 
   }
 
   const handleDeleteClick = () => {
     if (currentUser && currentStatus.userId === currentUser.id && onDeleteStatus) {
+      // Clear timers before deletion to prevent issues with state updates post-unmount/change
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
       onDeleteStatus(currentStatus.id);
+      // The parent (StatusPage) will update `viewingUserAllStatuses`,
+      // which will trigger the useEffect in this component to re-evaluate currentIndex or close.
     }
   };
 
@@ -241,7 +259,7 @@ export function ViewStatus({
                 <Trash2 className="h-5 w-5" />
               </Button>
             )}
-            <Button variant="ghost" size="icon" onClick={() => queueMicrotask(performCloseActions)} className="text-white rounded-full hover:bg-white/20">
+            <Button variant="ghost" size="icon" onClick={performCloseActions} className="text-white rounded-full hover:bg-white/20">
               <X className="h-6 w-6" />
               <span className="sr-only">Tutup</span>
             </Button>
@@ -263,3 +281,4 @@ export function ViewStatus({
     </div>
   );
 }
+

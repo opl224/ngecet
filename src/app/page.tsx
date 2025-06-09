@@ -57,7 +57,7 @@ const LS_CHATS_KEY = "ngecet_chats";
 const LS_MESSAGES_PREFIX = "ngecet_messages_";
 const LS_REGISTERED_USERS_KEY = "ngecet_registered_users";
 const LS_USER_STATUSES_KEY = "ngecet_user_statuses";
-const LS_STATUS_READ_TIMESTAMPS_KEY = "ngecet_status_read_timestamps"; // New key for read status tracking
+const LS_STATUS_READ_TIMESTAMPS_KEY = "ngecet_status_read_timestamps";
 
 export default function ChatPage() {
   const { toast } = useToast();
@@ -125,8 +125,9 @@ export default function ChatPage() {
     if (!currentUser) return;
     setStatusReadTimestamps(prev => {
       const currentUserReads = prev[currentUser.id] || {};
-      // Use Math.max to ensure we always store the highest (latest) timestamp encountered for this user's statuses.
-      const newTimestampForUser = Math.max(currentUserReads[viewedUserId] || 0, latestTimestampViewed);
+      // Directly set the latest timestamp viewed, do not use Math.max
+      // This allows the "read up to this point" logic to work correctly even if viewing older statuses.
+      const newTimestampForUser = latestTimestampViewed;
 
       if (newTimestampForUser !== (currentUserReads[viewedUserId] || 0)) {
         return {
@@ -137,7 +138,7 @@ export default function ChatPage() {
           }
         };
       }
-      return prev; // No change needed if the timestamp is identical or older
+      return prev; // No change needed if the timestamp is identical
     });
   }, [currentUser, setStatusReadTimestamps]);
 
