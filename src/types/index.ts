@@ -64,3 +64,7 @@ export interface UserStatus {
   // impressions?: User[]; // Who has seen this status (future)
   // duration?: number; // Default 24 hours (future)
 }
+
+// Type for storing read status timestamps
+// Structure: { [viewerId: string]: { [statusAuthorId: string]: lastStatusTimestampRead } }
+export type ReadStatusTimestamps = Record<string, Record<string, number>>;

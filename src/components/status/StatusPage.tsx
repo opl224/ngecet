@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { User, UserStatus } from "@/types";
+import type { User, UserStatus, ReadStatusTimestamps } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,12 +24,62 @@ interface StatusPageProps {
   currentUser: User | null;
   userStatuses: UserStatus[];
   onAddUserStatus: (newStatus: UserStatus) => void;
-  onDeleteUserStatus: (statusId: string) => void; // New prop
+  onDeleteUserStatus: (statusId: string) => void;
+  statusReadTimestamps: ReadStatusTimestamps;
+  onMarkUserStatusesAsRead: (viewedUserId: string, latestTimestampViewed: number) => void;
 }
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
-export function StatusPage({ currentUser, userStatuses, onAddUserStatus, onDeleteUserStatus }: StatusPageProps) {
+// SVG Helper for segmented ring
+const createSegmentedRingSVGSimple = (
+  segmentCount: number,
+  isAllRead: boolean,
+  avatarSize: number = 48, // Corresponds to h-12 w-12 Tailwind class (48px)
+  strokeWidth: number = 2.5,
+  gapPercentage: number = 0.08 // 8% gap, adjust as needed
+): string => {
+  if (segmentCount <= 0) return "";
+
+  const radius = avatarSize / 2 - strokeWidth / 2;
+  const circumference = 2 * Math.PI * radius;
+  
+  // Use HSL variables from globals.css for colors
+  const color = isAllRead ? 'hsl(var(--border))' : 'hsl(var(--primary))';
+
+  if (segmentCount === 1) { // Full ring for a single status
+    return `<svg viewBox="0 0 ${avatarSize} ${avatarSize}" class="absolute inset-0 h-full w-full overflow-visible">
+              <circle cx="${avatarSize / 2}" cy="${avatarSize / 2}" r="${radius}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" />
+            </svg>`;
+  }
+
+  // For multiple segments
+  const totalSegmentLength = circumference / segmentCount;
+  const dashLength = totalSegmentLength * (1 - gapPercentage);
+  const gapLength = totalSegmentLength * gapPercentage;
+
+  return `<svg viewBox="0 0 ${avatarSize} ${avatarSize}" class="absolute inset-0 h-full w-full overflow-visible">
+            <circle 
+              cx="${avatarSize / 2}" 
+              cy="${avatarSize / 2}" 
+              r="${radius}" 
+              fill="none" 
+              stroke="${color}" 
+              stroke-width="${strokeWidth}"
+              stroke-dasharray="${dashLength} ${gapLength}"
+              transform="rotate(-90 ${avatarSize / 2} ${avatarSize / 2})" />
+          </svg>`;
+};
+
+
+export function StatusPage({ 
+  currentUser, 
+  userStatuses, 
+  onAddUserStatus, 
+  onDeleteUserStatus,
+  statusReadTimestamps,
+  onMarkUserStatusesAsRead,
+}: StatusPageProps) {
   const [isCreatingTextStatus, setIsCreatingTextStatus] = useState(false);
   const [viewingUserAllStatuses, setViewingUserAllStatuses] = useState<UserStatus[] | null>(null);
   const [viewingUserInitialStatusIndex, setViewingUserInitialStatusIndex] = useState<number>(0);
@@ -94,15 +144,16 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus, onDelet
         if (!grouped[status.userId]) {
           grouped[status.userId] = [];
         }
-        grouped[status.userId].push(status); 
+        grouped[status.userId].push(status); // Already sorted by timestamp due to activeUserStatuses
       }
     });
     return grouped;
   }, [activeUserStatuses, currentUser]);
 
+  // Get the latest status from each *other* user to display in the list
   const otherUsersLatestStatus = useMemo(() => {
-    return Object.values(otherUsersGroupedStatuses).map(statuses => statuses[0]) 
-           .sort((a,b) => b.timestamp - a.timestamp); 
+    return Object.values(otherUsersGroupedStatuses).map(statuses => statuses[0]) // statuses[0] is the latest because activeUserStatuses is sorted
+           .sort((a,b) => b.timestamp - a.timestamp); // Then sort these latest statuses by timestamp again
   }, [otherUsersGroupedStatuses]);
 
 
@@ -110,22 +161,23 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus, onDelet
   const myLatestStatus = hasMyStatus ? currentUserActiveStatuses[0] : null;
   const myLatestStatusThemeClasses = myLatestStatus ? getStatusThemeClasses(myLatestStatus.backgroundColorName) : null;
 
-  const handleViewUserStatuses = useCallback((userId: string) => {
-    const userStatusesToView = otherUsersGroupedStatuses[userId] || [];
-    if (userStatusesToView.length > 0) {
-      setViewingUserAllStatuses([...userStatusesToView]); // Pass sorted (newest first)
-      setViewingUserInitialStatusIndex(0); 
-    }
-  }, [otherUsersGroupedStatuses]);
-
-  const handleViewMyStatuses = useCallback(() => {
-    if (currentUserActiveStatuses.length > 0) {
-      setViewingUserAllStatuses([...currentUserActiveStatuses]); // Pass sorted (newest first)
-      setViewingUserInitialStatusIndex(0);
+  const handleViewUserStatuses = useCallback((userIdToView: string) => {
+    let statusesToDisplay: UserStatus[] = [];
+    if (currentUser && userIdToView === currentUser.id) {
+      statusesToDisplay = [...currentUserActiveStatuses]; // Use already filtered & sorted
     } else {
-      setIsCreatingTextStatus(true); 
+      statusesToDisplay = [...(otherUsersGroupedStatuses[userIdToView] || [])]; // Use already grouped & sorted
     }
-  }, [currentUserActiveStatuses]);
+
+    if (statusesToDisplay.length > 0) {
+      setViewingUserAllStatuses(statusesToDisplay);
+      setViewingUserInitialStatusIndex(0); // Always start from the newest
+    } else if (currentUser && userIdToView === currentUser.id) {
+      // If viewing "My Status" and no statuses exist, open creation dialog
+      setIsCreatingTextStatus(true);
+    }
+  }, [currentUser, currentUserActiveStatuses, otherUsersGroupedStatuses]);
+
 
   const handleDeleteStatusInView = useCallback((statusIdToDelete: string) => {
     onDeleteUserStatus(statusIdToDelete); 
@@ -133,9 +185,9 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus, onDelet
         if (!prev) return null;
         const updated = prev.filter(s => s.id !== statusIdToDelete);
         if (updated.length === 0) {
-             return null; // This will close ViewStatus via its own effect
+             return null; 
         }
-        return updated; // ViewStatus will adjust its internal currentIndex
+        return updated; 
     });
   }, [onDeleteUserStatus, setViewingUserAllStatuses]);
 
@@ -170,7 +222,7 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus, onDelet
             <h2 className="text-md font-semibold mb-1.5 text-foreground">Status</h2>
             <div
               className="flex items-center space-x-3 cursor-pointer md:hover:bg-muted/30 p-1.5 -ml-1.5 rounded-lg"
-              onClick={handleViewMyStatuses}
+              onClick={() => handleViewUserStatuses(currentUser.id)}
             >
               <div className="relative">
                 <Avatar className="h-12 w-12">
@@ -182,12 +234,11 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus, onDelet
                         <Plus className="h-3 w-3 text-white" />
                     </div>
                 ) : (
-                   myLatestStatusThemeClasses && (
+                   myLatestStatusThemeClasses && ( // Only show dot if has status and theme
                     <div className={cn(
                       "absolute -bottom-1 -right-1 rounded-full p-0.5 flex items-center justify-center border-2 border-background",
-                       myLatestStatusThemeClasses.bg // Use the theme background for the dot itself
+                       myLatestStatusThemeClasses.bg 
                     )}>
-                      {/* The inner div is purely for sizing if needed, or can be removed if p-0.5 on parent is enough */}
                        <div className={cn("h-3 w-3 rounded-full")} />
                     </div>
                    )
@@ -210,32 +261,33 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus, onDelet
             <div>
               <h2 className="text-xs font-semibold text-muted-foreground mb-2 tracking-wide">PEMBARUAN TERKINI</h2>
               <div className="space-y-0.5">
-                {otherUsersLatestStatus.map(status => {
-                    const allStatusesForThisUser = otherUsersGroupedStatuses[status.userId] || [];
-                    const unreadCount = allStatusesForThisUser.length; 
+                {otherUsersLatestStatus.map(latestStatusOfUser => {
+                    const allStatusesForThisUser = otherUsersGroupedStatuses[latestStatusOfUser.userId] || [];
+                    const segmentCount = allStatusesForThisUser.length;
+                    
+                    const lastReadTimestampByCurrentUser = currentUser?.id && statusReadTimestamps?.[currentUser.id]?.[latestStatusOfUser.userId] || 0;
+                    const isAllRead = allStatusesForThisUser.length > 0 && allStatusesForThisUser[0].timestamp <= lastReadTimestampByCurrentUser;
 
                     return (
                         <div 
-                          key={status.id} 
+                          key={latestStatusOfUser.id} 
                           className="flex items-center space-x-3 cursor-pointer md:hover:bg-muted/30 p-1.5 -ml-1.5 rounded-lg"
-                          onClick={() => handleViewUserStatuses(status.userId)}
+                          onClick={() => handleViewUserStatuses(latestStatusOfUser.userId)}
                         >
-                            <div className={cn(
-                                "relative p-0.5 rounded-full",
-                                "bg-gradient-to-tr from-green-400 to-emerald-600"
-                            )}>
-                                <Avatar className="h-12 w-12 border-2 border-background">
-                                <AvatarImage src={status.userAvatarUrl} alt={status.userName} data-ai-hint="person abstract status"/>
-                                <AvatarFallback>{getInitials(status.userName, 2)}</AvatarFallback>
+                            <div className="relative">
+                                <div
+                                    className="absolute inset-0 pointer-events-none" // Added pointer-events-none
+                                    dangerouslySetInnerHTML={{ __html: createSegmentedRingSVGSimple(segmentCount, isAllRead) }}
+                                />
+                                <Avatar className="h-12 w-12 border-2 border-transparent"> {/* Transparent border for layout, SVG provides visual */}
+                                <AvatarImage src={latestStatusOfUser.userAvatarUrl} alt={latestStatusOfUser.userName} data-ai-hint="person abstract status"/>
+                                <AvatarFallback>{getInitials(latestStatusOfUser.userName, 2)}</AvatarFallback>
                                 </Avatar>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="font-medium text-foreground truncate">{status.userName}</p>
+                                <p className="font-medium text-foreground truncate">{latestStatusOfUser.userName}</p>
                                 <div className="flex items-center space-x-1.5">
-                                    <p className="text-xs text-muted-foreground truncate">{formatTimestamp(status.timestamp)}</p>
-                                    {unreadCount > 1 && (
-                                      <span className="text-xs text-muted-foreground">&bull; {unreadCount} baru</span>
-                                    )}
+                                    <p className="text-xs text-muted-foreground truncate">{formatTimestamp(latestStatusOfUser.timestamp)}</p>
                                 </div>
                             </div>
                         </div>
@@ -300,9 +352,14 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus, onDelet
           }}
           currentUser={currentUser}
           onDeleteStatus={handleDeleteStatusInView}
+          onMarkAsRead={(timestamp) => {
+            if (viewingUserAllStatuses && viewingUserAllStatuses.length > 0) {
+              // Pass the userId of the user whose statuses are being viewed
+              onMarkUserStatusesAsRead(viewingUserAllStatuses[0].userId, timestamp);
+            }
+          }}
         />
       )}
     </div>
   );
 }
-

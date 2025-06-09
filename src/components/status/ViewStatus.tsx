@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { User, UserStatus } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -15,11 +15,12 @@ import { id as idLocale } from 'date-fns/locale/id';
 const STATUS_VIEW_DURATION = 5000; // 5 seconds
 
 interface ViewStatusProps {
-  statuses: UserStatus[];
+  statuses: UserStatus[]; // Should be sorted newest first by parent
   initialStatusIndex?: number;
   onClose: () => void;
   currentUser: User | null;
   onDeleteStatus?: (statusId: string) => void;
+  onMarkAsRead: (latestTimestampViewed: number) => void;
 }
 
 export function ViewStatus({
@@ -28,9 +29,12 @@ export function ViewStatus({
   onClose,
   currentUser,
   onDeleteStatus,
+  onMarkAsRead,
 }: ViewStatusProps) {
   const [currentIndex, setCurrentIndex] = useState(initialStatusIndex);
   const [progressValue, setProgressValue] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentStatus = useMemo(() => {
     if (currentIndex >= 0 && currentIndex < statuses.length) {
@@ -40,6 +44,15 @@ export function ViewStatus({
   }, [statuses, currentIndex]);
 
   const themeClasses = useMemo(() => getStatusThemeClasses(currentStatus?.backgroundColorName), [currentStatus]);
+  
+  const prevCurrentStatusRef = useRef<UserStatus | null>(null);
+  useEffect(() => {
+    if (currentStatus) {
+      onMarkAsRead(currentStatus.timestamp);
+    }
+    prevCurrentStatusRef.current = currentStatus;
+  }, [currentStatus, onMarkAsRead]);
+
 
   const getInitials = (name: string | undefined, length: number = 1) => {
     if (!name) return "?";
@@ -67,13 +80,18 @@ export function ViewStatus({
     }
   };
 
+  const handleCloseDeferred = () => {
+    queueMicrotask(() => onClose());
+  }
+
   const goToNextStatus = useCallback(() => {
     setCurrentIndex((prevIndex) => {
       if (prevIndex < statuses.length - 1) {
         return prevIndex + 1;
       }
-      queueMicrotask(() => onClose());
-      return prevIndex;
+      // If it's the last status, close
+      handleCloseDeferred();
+      return prevIndex; // Keep current index to avoid issues during unmount
     });
   }, [statuses.length, onClose]);
 
@@ -82,40 +100,48 @@ export function ViewStatus({
       if (prevIndex > 0) {
         return prevIndex - 1;
       }
-      return prevIndex;
+      return prevIndex; // Stay on the first status
     });
   }, []);
 
   useEffect(() => {
+    // Clear any existing timers when currentStatus (or its index) changes
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
     if (!currentStatus) {
-      queueMicrotask(() => onClose());
+      if (statuses.length > 0) { // If statuses were there but now currentStatus is null (e.g. index out of bounds)
+         handleCloseDeferred();
+      }
       return;
     }
-    setProgressValue(0);
-    const interval = setInterval(() => {
+    
+    setProgressValue(0); // Reset progress for new status
+
+    intervalRef.current = setInterval(() => {
       setProgressValue((prev) => {
         if (prev >= 100) {
-          clearInterval(interval);
+          if (intervalRef.current) clearInterval(intervalRef.current);
           return 100;
         }
-        return prev + (100 / (STATUS_VIEW_DURATION / 100));
+        return prev + (100 / (STATUS_VIEW_DURATION / 100)); // Increment based on 100ms interval
       });
     }, 100);
 
-    const timer = setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       goToNextStatus();
     }, STATUS_VIEW_DURATION);
 
     return () => {
-      clearInterval(interval);
-      clearTimeout(timer);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [currentIndex, goToNextStatus, currentStatus, onClose]);
+  }, [currentIndex, currentStatus, goToNextStatus, statuses.length]); // Add statuses.length
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose();
+        handleCloseDeferred();
       } else if (event.key === 'ArrowRight') {
         goToNextStatus();
       } else if (event.key === 'ArrowLeft') {
@@ -128,28 +154,34 @@ export function ViewStatus({
     };
   }, [onClose, goToNextStatus, goToPrevStatus]);
 
+  // Effect to handle external changes to the statuses prop (e.g., deletion)
   useEffect(() => {
-    if (statuses.length === 0 && currentStatus !== null) { // only close if there was a status before
-        queueMicrotask(() => onClose());
+    if (statuses.length === 0 && prevCurrentStatusRef.current !== null) { // Check if there was a status before
+      handleCloseDeferred();
     } else if (currentIndex >= statuses.length && statuses.length > 0) {
-      setCurrentIndex(Math.max(0, statuses.length - 1));
+      // If current index is out of bounds due to deletion, go to the new last status
+      setCurrentIndex(statuses.length - 1);
+    } else if (currentIndex < 0 && statuses.length > 0) {
+      // Should not happen, but as a safeguard
+      setCurrentIndex(0);
     }
-  }, [statuses, currentIndex, onClose, currentStatus]);
+  }, [statuses, currentIndex, onClose]);
 
 
   if (!currentStatus) {
+    // This might be briefly hit if statuses array becomes empty after a delete
+    // The useEffect above should handle closing.
     return null;
   }
 
   const handleDeleteClick = () => {
     if (currentUser && currentStatus.userId === currentUser.id && onDeleteStatus) {
       onDeleteStatus(currentStatus.id);
+      // ViewStatus will re-render with updated statuses prop.
+      // The useEffect watching `statuses` prop will handle index adjustment or closing.
     }
   };
 
-  const handleCloseDeferred = () => {
-    queueMicrotask(() => onClose());
-  }
 
   return (
     <div
@@ -158,24 +190,28 @@ export function ViewStatus({
         themeClasses.bg
       )}
     >
+      {/* Clickable areas for navigation */}
       <div
         className="absolute top-0 left-0 h-full w-1/3 z-10"
         onClick={goToPrevStatus}
+        aria-label="Status Sebelumnya"
       />
       <div
         className="absolute top-0 right-0 h-full w-1/3 z-10"
         onClick={goToNextStatus}
+        aria-label="Status Berikutnya"
       />
 
+      {/* Header with progress bars, user info, and close button */}
       <div className="absolute top-0 left-0 right-0 p-3 md:p-4 z-20 bg-gradient-to-b from-black/50 via-black/30 to-transparent">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-1 mb-2"> {/* Reduced gap for progress bars */}
           {statuses.map((_, index) => (
-            <div key={index} className="flex-1 h-1 bg-white/40 rounded-full overflow-hidden">
+            <div key={index} className="flex-1 h-0.5 bg-white/40 rounded-full overflow-hidden"> {/* Reduced height */}
               {index === currentIndex ? (
-                <Progress value={progressValue} className="h-1 bg-white transition-all duration-100 ease-linear" />
+                <Progress value={progressValue} className="h-full bg-white transition-all duration-100 ease-linear" />
               ) : index < currentIndex ? (
-                <div className="h-1 bg-white rounded-full" />
-              ) : null}
+                <div className="h-full bg-white rounded-full" /> // Filled for already seen
+              ) : null /* Empty for upcoming */}
             </div>
           ))}
         </div>
@@ -210,6 +246,7 @@ export function ViewStatus({
         </div>
       </div>
 
+      {/* Content area for the status text */}
       <div className="flex-1 flex w-full items-center justify-center overflow-hidden px-4 pb-10 pt-20 md:pt-24">
         <p
           className={cn(
