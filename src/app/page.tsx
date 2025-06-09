@@ -41,6 +41,7 @@ import {
 import { LogOut, Trash2, Settings, InfoIcon, Palette, Sun, Moon, Laptop } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from '@/components/core/Providers';
+import { BottomNavigationBar } from "@/components/layout/BottomNavigationBar"; // Import BottomNavigationBar
 
 const AuthPage = dynamic(() => import('@/components/auth/AuthPage').then(mod => mod.AuthPage), { ssr: false, loading: () => <div className="flex items-center justify-center h-screen bg-background"><AppLogo className="w-16 h-16 text-primary animate-pulse" /></div> });
 const ChatView = dynamic(() => import('@/components/chat/ChatView').then(mod => mod.ChatView), { ssr: false, loading: () => <div className="flex-1 flex items-center justify-center"><AppLogo className="w-10 h-10 text-primary animate-pulse" /></div> });
@@ -48,6 +49,7 @@ const WelcomeMessage = dynamic(() => import('@/components/chat/WelcomeMessage').
 const NewDirectChatDialog = dynamic(() => import('@/components/chat/NewDirectChatDialog').then(mod => mod.NewDirectChatDialog), { ssr: false });
 const NewGroupChatDialog = dynamic(() => import('@/components/chat/NewGroupChatDialog').then(mod => mod.NewGroupChatDialog), { ssr: false });
 const AddUserToGroupDialog = dynamic(() => import('@/components/chat/AddUserToGroupDialog').then(mod => mod.AddUserToGroupDialog), { ssr: false });
+const StatusPage = dynamic(() => import('@/components/status/StatusPage').then(mod => mod.StatusPage), { ssr: false, loading: () => <div className="flex-1 flex items-center justify-center"><AppLogo className="w-10 h-10 text-primary animate-pulse" /></div> });
 
 
 const LS_USER_KEY = "ngecet_user";
@@ -90,6 +92,8 @@ export default function ChatPage() {
 
   const [isClient, setIsClient] = useState(false);
   const isMobileView = useIsMobile();
+  const [activeMobileTab, setActiveMobileTab] = useState<'chat' | 'status'>('chat');
+
 
   useEffect(() => {
     setIsClient(true);
@@ -232,6 +236,7 @@ export default function ChatPage() {
       } else if (existingChat.pendingApprovalFromUserId === currentUser.id) {
         toast({ title: "Permintaan Tertunda", description: `Anda memiliki permintaan chat dari ${recipientUser.name}. Terima atau tolak dari daftar chat.` });
       }
+      setActiveMobileTab('chat'); // Switch to chat tab if on mobile
       return;
     }
 
@@ -258,8 +263,9 @@ export default function ChatPage() {
     };
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
+    setActiveMobileTab('chat'); // Switch to chat tab if on mobile
     toast({ title: "Permintaan Terkirim", description: `Permintaan chat telah dikirim ke ${recipientUser.name}.` });
-  }, [currentUser, chats, setChats, toast, registeredUsers]);
+  }, [currentUser, chats, setChats, toast, registeredUsers, isMobileView]);
 
 
   const handleAcceptChatRequest = useCallback((chatId: string) => {
@@ -295,9 +301,10 @@ export default function ChatPage() {
       }
       return updatedChats;
     });
+    setActiveMobileTab('chat');
     toast({ title: "Permintaan Diterima", description: `Anda sekarang dapat mengirim pesan dengan ${acceptedChatName}.` });
 
-  }, [currentUser, setChats, toast, setAllMessages]);
+  }, [currentUser, setChats, toast, setAllMessages, isMobileView]);
 
   const handleRejectChatRequest = useCallback((chatId: string) => {
     if (!currentUser) return;
@@ -432,8 +439,9 @@ export default function ChatPage() {
     setChats(prev => [newChat, ...prev].sort((a, b) => (b.lastMessageTimestamp || b.requestTimestamp || 0) - (a.lastMessageTimestamp || a.requestTimestamp || 0)));
     setSelectedChat(newChat);
     setAllMessages(prev => ({ ...prev, [chatId]: [] }));
+    setActiveMobileTab('chat');
     toast({ title: "Grup Dibuat", description: `Grup "${groupName}" telah siap.` });
-  }, [currentUser, chats, setChats, setAllMessages, toast, registeredUsers]);
+  }, [currentUser, chats, setChats, setAllMessages, toast, registeredUsers, isMobileView]);
 
   const handleSelectChat = useCallback((chat: Chat) => {
     if (currentUser && chat.id) {
@@ -442,6 +450,7 @@ export default function ChatPage() {
         } else if (chat.pendingApprovalFromUserId === currentUser.id) {
         }
         setSelectedChat(chat);
+        setActiveMobileTab('chat');
 
         if (chat.id && chat.lastReadBy &&
             !chat.pendingApprovalFromUserId &&
@@ -459,11 +468,11 @@ export default function ChatPage() {
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
         setEditingMessageDetails(null);
     }
-  }, [currentUser, setChats, editingMessageDetails]);
+  }, [currentUser, setChats, editingMessageDetails, isMobileView]);
 
 
   const handleSelectChatMobile = useCallback((chat: Chat) => {
-    handleSelectChat(chat);
+    handleSelectChat(chat); // handleSelectChat already sets activeMobileTab to 'chat'
   }, [handleSelectChat]);
 
 
@@ -515,8 +524,6 @@ export default function ChatPage() {
       if (chat.id !== selectedChat.id && !chat.pendingApprovalFromUserId && !chat.isRejected && !(chat.type === 'direct' && chat.blockedByUser)) {
          return {
           ...chat,
-          lastMessage: "Aktivitas baru di " + chat.name,
-          lastMessageTimestamp: newMessage.timestamp,
          };
       }
       return chat;
@@ -662,6 +669,8 @@ export default function ChatPage() {
     setCurrentUser(null);
     setSelectedChat(null);
     setEditingMessageDetails(null);
+    setActiveMobileTab('chat');
+
 
     if (clearData) {
       setChats([]);
@@ -683,6 +692,7 @@ export default function ChatPage() {
   const handleGoBack = useCallback(() => {
     setSelectedChat(null);
     setEditingMessageDetails(null);
+    setActiveMobileTab('chat'); // Ensure we are on chat tab when going back to list
   }, []);
 
   const handleTriggerDeleteAllMessages = useCallback((chatId: string) => {
@@ -1061,11 +1071,12 @@ export default function ChatPage() {
 
 
   if (isMobileView) {
-    if (selectedChat) {
-      return (
-        <SidebarProvider>
-            <div className="h-screen w-full flex flex-col">
-            <ChatView
+    return (
+      <div className="flex h-screen w-full flex-col">
+        <div className="flex-1 overflow-y-auto">
+          {activeMobileTab === 'chat' ? (
+            selectedChat ? (
+              <ChatView
                 chat={selectedChat}
                 messages={allMessages[selectedChat.id] || []}
                 currentUser={currentUser}
@@ -1085,233 +1096,205 @@ export default function ChatPage() {
                 onUnblockUser={handleUnblockUser}
                 onLeaveGroup={handleLeaveGroup}
                 isMobileView={isMobileView}
-            />
-           {isNewDirectChatDialogOpen && <NewDirectChatDialog
-              isOpen={isNewDirectChatDialogOpen}
-              onOpenChange={setIsNewDirectChatDialogOpen}
-              onCreateChat={handleCreateDirectChat}
-              currentUserId={currentUser?.id}
-              registeredUsers={registeredUsers}
-            />}
-            {isNewGroupChatDialogOpen && <NewGroupChatDialog
-              isOpen={isNewGroupChatDialogOpen}
-              onOpenChange={(isOpen) => {
-                  setIsNewGroupChatDialogOpen(isOpen);
-                  if (!isOpen) {
-                      setGroupDialogInitialMemberName(null);
-                  }
-              }}
-              onCreateChat={handleCreateGroupChat}
-              currentUserObj={currentUser}
-              initialMemberName={groupDialogInitialMemberName}
-              chats={chats}
-            />}
-            {isAddUserToGroupDialogOpen && <AddUserToGroupDialog
-              isOpen={isAddUserToGroupDialogOpen}
-              onOpenChange={setIsAddUserToGroupDialogOpen}
-              onAddUser={handleAddNewUserToGroup}
-              currentUserObj={currentUser}
-              chats={chats}
-              chatIdToAddTo={chatIdToAddTo}
-              registeredUsers={registeredUsers}
-            />}
-            <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tindakan ini akan menghapus grup secara permanen. Semua pesan dalam grup ini juga akan dihapus. Tindakan ini tidak dapat dibatalkan.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel onClick={handleCancelDeleteGroup}>Batal</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleConfirmDeleteGroup}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Hapus grup
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-             <AlertDialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
-                     <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
-                      Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
-                      Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
-                    </AlertDialogDescription>
-                     <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
-                      Tech: Next.js, React, ShadCN UI, Tailwind CSS dan Genkit.
-                    </AlertDialogDescription>
-                    <AlertDialogDescription className="text-sm text-muted-foreground font-semibold pt-4 pb-6">
-                      Jika ada bug atau ui error, mon map masih tahap pengembangan!
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <div className="flex items-center justify-center mt-4">
-                    <AppLogo className="h-10 w-10" />
-                  </div>
-                  <AlertDialogFooter>
-                    <AlertDialogAction onClick={() => setIsAboutDialogOpen(false)}>OK</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-            <AlertDialog open={isDeleteAllMessagesConfirmOpen} onOpenChange={setIsDeleteAllMessagesConfirmOpen}>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Hapus Semua Pesan?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Apakah Anda yakin ingin menghapus semua pesan dalam chat ini? Tindakan ini hanya akan menghapus pesan dari tampilan Anda dan tidak dapat dibatalkan.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel onClick={handleCancelDeleteAllMessages}>Batal</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeleteAllMessagesInChat}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Hapus
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-            </div>
-        </SidebarProvider>
-      );
-    } else {
-      return (
-        <SidebarProvider defaultOpen>
-          <div className="h-screen w-full flex flex-col bg-sidebar text-sidebar-foreground">
-            <SidebarHeader className="p-0">
-              <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
-                <div className="flex items-center gap-2 shrink-0 mr-2">
-                  <AppLogo className="h-7 w-7" />
-                  <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">Ngecet</h1>
-                </div>
-                <div className="flex items-center gap-2">
-                    <UserProfileForm
-                        currentUser={currentUser}
-                        onSaveProfile={handleSaveProfile}
-                        displayMode="compact"
-                        userEmail={currentUserEmailForProfile}
-                    />
-                </div>
-              </div>
-            </SidebarHeader>
-            <SidebarContent className="p-0 flex-1">
-              <ChatList
-                chats={chats}
-                currentUser={currentUser}
-                allMessages={allMessages}
-                onSelectChat={handleSelectChatMobile}
-                selectedChatId={selectedChat?.id}
-                onNewDirectChat={() => setIsNewDirectChatDialogOpen(true)}
-                onNewGroupChat={() => {
-                  setGroupDialogInitialMemberName(null);
-                  setIsNewGroupChatDialogOpen(true);
-                }}
-                onAcceptChat={handleAcceptChatRequest}
-                onRejectChat={handleRejectChatRequest}
-                onDeleteChatPermanently={handleDeleteChatPermanently}
-                onUnblockUser={handleUnblockUser}
-                isMobileView={isMobileView}
               />
-            </SidebarContent>
-            <SidebarFooter className="p-2 border-t border-sidebar-border">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground">
-                    <Settings className="h-4 w-4" />
-                    Pengaturan & Akun
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" sideOffset={8} side={isMobileView ? "top" : "right"}>
-                  <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
-                    <InfoIcon className="mr-2 h-4 w-4" />
-                    <span>Tentang aplikasi</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <Palette className="mr-2 h-4 w-4" />
-                      <span>Tema</span>
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuItem onClick={() => setTheme('light')}>
-                        <Sun className="mr-2 h-4 w-4" />
-                        <span>Light</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setTheme('dark')}>
-                        <Moon className="mr-2 h-4 w-4" />
-                        <span>Dark</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setTheme('system')}>
-                        <Laptop className="mr-2 h-4 w-4" />
-                        <span>System</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleLogout(false)}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Keluar (Simpan Data)</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    <span>Keluar & Hapus Data</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </SidebarFooter>
-            {isNewDirectChatDialogOpen && <NewDirectChatDialog
-                isOpen={isNewDirectChatDialogOpen}
-                onOpenChange={setIsNewDirectChatDialogOpen}
-                onCreateChat={handleCreateDirectChat}
-                currentUserId={currentUser?.id}
-                registeredUsers={registeredUsers}
-              />}
-              {isNewGroupChatDialogOpen && <NewGroupChatDialog
-                isOpen={isNewGroupChatDialogOpen}
-                onOpenChange={(isOpen) => {
-                    setIsNewGroupChatDialogOpen(isOpen);
-                    if (!isOpen) {
-                        setGroupDialogInitialMemberName(null);
-                    }
-                }}
-                onCreateChat={handleCreateGroupChat}
-                currentUserObj={currentUser}
-                initialMemberName={groupDialogInitialMemberName}
-                chats={chats}
-              />}
-              <AlertDialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
-                      <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
-                        Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
-                        Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
-                      </AlertDialogDescription>
-                      <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
-                        Tech: Next.js, React, ShadCN UI, Tailwind CSS dan Genkit.
-                      </AlertDialogDescription>
-                      <AlertDialogDescription className="text-sm text-muted-foreground font-semibold pt-4 pb-6">
-                        Jika ada bug atau ui error, mon map masih tahap pengembangan!
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="flex items-center justify-center mt-4">
-                      <AppLogo className="h-10 w-10" />
+            ) : (
+              <SidebarProvider defaultOpen>
+                <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+                  <SidebarHeader className="p-0">
+                    <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
+                      <div className="flex items-center gap-2 shrink-0 mr-2">
+                        <AppLogo className="h-7 w-7" />
+                        <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">Ngecet</h1>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <UserProfileForm
+                          currentUser={currentUser}
+                          onSaveProfile={handleSaveProfile}
+                          displayMode="compact"
+                          userEmail={currentUserEmailForProfile}
+                        />
+                      </div>
                     </div>
-                    <AlertDialogFooter>
-                      <AlertDialogAction onClick={() => setIsAboutDialogOpen(false)}>OK</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-              </AlertDialog>
-          </div>
-        </SidebarProvider>
-      );
-    }
+                  </SidebarHeader>
+                  <SidebarContent className="p-0 flex-1">
+                    <ChatList
+                      chats={chats}
+                      currentUser={currentUser}
+                      allMessages={allMessages}
+                      onSelectChat={handleSelectChatMobile}
+                      selectedChatId={selectedChat?.id}
+                      onNewDirectChat={() => setIsNewDirectChatDialogOpen(true)}
+                      onNewGroupChat={() => {
+                        setGroupDialogInitialMemberName(null);
+                        setIsNewGroupChatDialogOpen(true);
+                      }}
+                      onAcceptChat={handleAcceptChatRequest}
+                      onRejectChat={handleRejectChatRequest}
+                      onDeleteChatPermanently={handleDeleteChatPermanently}
+                      onUnblockUser={handleUnblockUser}
+                      isMobileView={isMobileView}
+                    />
+                  </SidebarContent>
+                  <SidebarFooter className="p-2 border-t border-sidebar-border">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground">
+                          <Settings className="h-4 w-4" />
+                          Pengaturan & Akun
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-56" align="end" sideOffset={8} side="top">
+                        <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
+                          <InfoIcon className="mr-2 h-4 w-4" />
+                          <span>Tentang aplikasi</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            <Palette className="mr-2 h-4 w-4" />
+                            <span>Tema</span>
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => setTheme('light')}>
+                              <Sun className="mr-2 h-4 w-4" />
+                              <span>Light</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme('dark')}>
+                              <Moon className="mr-2 h-4 w-4" />
+                              <span>Dark</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme('system')}>
+                              <Laptop className="mr-2 h-4 w-4" />
+                              <span>System</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleLogout(false)}>
+                          <LogOut className="mr-2 h-4 w-4" />
+                          <span>Keluar (Simpan Data)</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          <span>Keluar & Hapus Data</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </SidebarFooter>
+                </div>
+              </SidebarProvider>
+            )
+          ) : activeMobileTab === 'status' ? (
+            <StatusPage currentUser={currentUser} />
+          ) : null}
+        </div>
+
+        <BottomNavigationBar
+            activeTab={activeMobileTab}
+            onTabChange={(tab) => {
+                setActiveMobileTab(tab);
+                // If switching away from a selected chat to status tab, clear selected chat
+                // if (tab === 'status' && selectedChat) {
+                //   setSelectedChat(null); // Keep chat selected, user can switch back
+                // }
+            }}
+        />
+
+        {/* Dialogs: Render them here so they can overlay anything */}
+        {isNewDirectChatDialogOpen && <NewDirectChatDialog
+            isOpen={isNewDirectChatDialogOpen}
+            onOpenChange={setIsNewDirectChatDialogOpen}
+            onCreateChat={handleCreateDirectChat}
+            currentUserId={currentUser?.id}
+            registeredUsers={registeredUsers}
+        />}
+        {isNewGroupChatDialogOpen && <NewGroupChatDialog
+            isOpen={isNewGroupChatDialogOpen}
+            onOpenChange={(isOpen) => {
+                setIsNewGroupChatDialogOpen(isOpen);
+                if (!isOpen) setGroupDialogInitialMemberName(null);
+            }}
+            onCreateChat={handleCreateGroupChat}
+            currentUserObj={currentUser}
+            initialMemberName={groupDialogInitialMemberName}
+            chats={chats}
+        />}
+        {isAddUserToGroupDialogOpen && selectedChat && ( // Only if chat is selected
+            <AddUserToGroupDialog
+            isOpen={isAddUserToGroupDialogOpen}
+            onOpenChange={setIsAddUserToGroupDialogOpen}
+            onAddUser={handleAddNewUserToGroup}
+            currentUserObj={currentUser}
+            chats={chats}
+            chatIdToAddTo={chatIdToAddTo}
+            registeredUsers={registeredUsers}
+            />
+        )}
+        <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
+            <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+                <AlertDialogDescription>
+                Tindakan ini akan menghapus grup secara permanen. Semua pesan dalam grup ini juga akan dihapus. Tindakan ini tidak dapat dibatalkan.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={handleCancelDeleteGroup}>Batal</AlertDialogCancel>
+                <AlertDialogAction
+                onClick={handleConfirmDeleteGroup}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                Hapus grup
+                </AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
+            <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
+                <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
+                Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
+                Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
+                </AlertDialogDescription>
+                <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
+                Tech: Next.js, React, ShadCN UI, Tailwind CSS dan Genkit.
+                </AlertDialogDescription>
+                <AlertDialogDescription className="text-sm text-muted-foreground font-semibold pt-4 pb-6">
+                Jika ada bug atau ui error, mon map masih tahap pengembangan!
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="flex items-center justify-center mt-4">
+                <AppLogo className="h-10 w-10" />
+            </div>
+            <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setIsAboutDialogOpen(false)}>OK</AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={isDeleteAllMessagesConfirmOpen} onOpenChange={setIsDeleteAllMessagesConfirmOpen}>
+            <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Hapus Semua Pesan?</AlertDialogTitle>
+                <AlertDialogDescription>
+                Apakah Anda yakin ingin menghapus semua pesan dalam chat ini? Tindakan ini hanya akan menghapus pesan dari tampilan Anda dan tidak dapat dibatalkan.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={handleCancelDeleteAllMessages}>Batal</AlertDialogCancel>
+                <AlertDialogAction
+                onClick={handleDeleteAllMessagesInChat}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                Hapus
+                </AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
   }
 
+  // Desktop View
   return (
     <SidebarProvider defaultOpen>
       <div className="flex h-screen w-full">
