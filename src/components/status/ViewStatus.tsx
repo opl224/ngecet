@@ -46,8 +46,6 @@ export function ViewStatus({
 
   const themeClasses = useMemo(() => getStatusThemeClasses(currentStatus?.backgroundColorName), [currentStatus]);
   
-  // Update prevCurrentStatusRef whenever currentStatus changes.
-  // onMarkAsRead is NOT called here anymore.
   useEffect(() => {
     prevCurrentStatusRef.current = currentStatus;
   }, [currentStatus]);
@@ -69,9 +67,9 @@ export function ViewStatus({
       const diffMinutes = Math.round(diffSeconds / 60);
       const diffHours = Math.round(diffMinutes / 60);
 
-      if (diffSeconds < 60) return `${diffSeconds} dtk lalu`; // localized
-      if (diffMinutes < 60) return `${diffMinutes} mnt lalu`; // localized
-      if (diffHours < 24) return `${diffHours} jam lalu`;    // localized
+      if (diffSeconds < 60) return `${diffSeconds} dtk lalu`;
+      if (diffMinutes < 60) return `${diffMinutes} mnt lalu`;
+      if (diffHours < 24) return `${diffHours} jam lalu`;   
       if (isYesterday(date)) return `Kemarin, ${format(date, "HH:mm", { locale: idLocale })}`;
       return format(date, "d MMM, HH:mm", { locale: idLocale });
     } catch (e) {
@@ -80,35 +78,29 @@ export function ViewStatus({
   };
   
   const performCloseActions = useCallback(() => {
-    // If there's a status being displayed when we close, mark it as read.
-    const statusAtClose = statuses[currentIndex]; // Use currentIndex directly as currentStatus might be stale in closure
-    if (statusAtClose) {
-      onMarkAsRead(statusAtClose.timestamp);
-    }
+    // NOTE: onMarkAsRead is NOT called here anymore.
+    // It's called when a timer finishes or when manually navigating NEXT.
     queueMicrotask(() => onClose());
-  }, [currentIndex, statuses, onMarkAsRead, onClose]);
+  }, [onClose]);
 
 
   const advanceToStatus = useCallback((newIndex: number) => {
     if (newIndex >= 0 && newIndex < statuses.length) {
       setCurrentIndex(newIndex);
-    } else if (newIndex >= statuses.length) { // Tried to go past the last one
+    } else if (newIndex >= statuses.length) { 
       performCloseActions();
     }
-    // If newIndex < 0, do nothing (already at the first one)
   }, [statuses.length, performCloseActions]);
 
 
-  // Main timer effect for auto-advancing and marking read on completion
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
 
     if (!currentStatus) {
-      // This might happen if statuses array becomes empty while viewer is open
-      if (statuses.length > 0) { // If it was non-empty before, try to adjust index
+      if (statuses.length > 0) {
           setCurrentIndex(Math.max(0, statuses.length - 1));
-      } else { // If truly empty, close
+      } else { 
           performCloseActions();
       }
       return;
@@ -127,9 +119,10 @@ export function ViewStatus({
     }, 100);
 
     timerRef.current = setTimeout(() => {
-      // Timer completed for currentStatus
-      onMarkAsRead(currentStatus.timestamp); // Mark as read as its timer finished
-      advanceToStatus(currentIndex + 1);     // Then advance
+      if (currentStatus) {
+         onMarkAsRead(currentStatus.timestamp); 
+      }
+      advanceToStatus(currentIndex + 1);    
     }, STATUS_VIEW_DURATION);
 
     return () => {
@@ -139,28 +132,24 @@ export function ViewStatus({
   }, [currentIndex, currentStatus, statuses, onMarkAsRead, advanceToStatus, performCloseActions]);
 
 
-  // Manual navigation (pointer clicks or keyboard)
   const handleManualNavigation = useCallback((direction: 'next' | 'prev') => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
-    setProgressValue(0); // Reset progress for the new/old status
+    setProgressValue(0); 
 
     const statusBeingLeft = statuses[currentIndex];
 
     if (direction === 'next') {
       if (statusBeingLeft) {
-        onMarkAsRead(statusBeingLeft.timestamp); // Mark the one we are skipping from as read
+        onMarkAsRead(statusBeingLeft.timestamp); 
       }
       advanceToStatus(currentIndex + 1);
-    } else { // prev
-      // When going previous, we don't mark the one we are leaving as "fully read by timer".
-      // Its read status will be updated if its timer eventually completes or if user closes.
+    } else { 
       advanceToStatus(currentIndex - 1);
     }
   }, [currentIndex, statuses, onMarkAsRead, advanceToStatus]);
 
 
-  // Keyboard navigation and Esc
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -178,13 +167,12 @@ export function ViewStatus({
   }, [performCloseActions, handleManualNavigation]);
 
 
-  // Effect to handle external changes to the statuses prop (e.g., deletion)
   useEffect(() => {
-    if (statuses.length === 0 && prevCurrentStatusRef.current !== null) {
+    if (statuses.length === 0 && prevCurrentStatusRef.current !== null) { 
       performCloseActions();
     } else if (currentIndex >= statuses.length && statuses.length > 0) {
       setCurrentIndex(statuses.length - 1);
-    } else if (currentIndex < 0 && statuses.length > 0) {
+    } else if (currentIndex < 0 && statuses.length > 0) { 
       setCurrentIndex(0);
     }
   }, [statuses, currentIndex, performCloseActions]);
@@ -197,7 +185,6 @@ export function ViewStatus({
   const handleDeleteClick = () => {
     if (currentUser && currentStatus.userId === currentUser.id && onDeleteStatus) {
       onDeleteStatus(currentStatus.id);
-      // The useEffect watching `statuses` prop change will handle index adjustment or closing.
     }
   };
 
@@ -254,7 +241,7 @@ export function ViewStatus({
                 <Trash2 className="h-5 w-5" />
               </Button>
             )}
-            <Button variant="ghost" size="icon" onClick={performCloseActions} className="text-white rounded-full hover:bg-white/20">
+            <Button variant="ghost" size="icon" onClick={() => queueMicrotask(performCloseActions)} className="text-white rounded-full hover:bg-white/20">
               <X className="h-6 w-6" />
               <span className="sr-only">Tutup</span>
             </Button>
