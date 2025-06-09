@@ -265,7 +265,7 @@ export default function ChatPage() {
     setSelectedChat(newChat);
     setActiveMobileTab('chat'); // Switch to chat tab if on mobile
     toast({ title: "Permintaan Terkirim", description: `Permintaan chat telah dikirim ke ${recipientUser.name}.` });
-  }, [currentUser, chats, setChats, toast, registeredUsers, isMobileView]);
+  }, [currentUser, chats, setChats, toast, registeredUsers]);
 
 
   const handleAcceptChatRequest = useCallback((chatId: string) => {
@@ -304,7 +304,7 @@ export default function ChatPage() {
     setActiveMobileTab('chat');
     toast({ title: "Permintaan Diterima", description: `Anda sekarang dapat mengirim pesan dengan ${acceptedChatName}.` });
 
-  }, [currentUser, setChats, toast, setAllMessages, isMobileView]);
+  }, [currentUser, setChats, toast, setAllMessages]);
 
   const handleRejectChatRequest = useCallback((chatId: string) => {
     if (!currentUser) return;
@@ -441,7 +441,7 @@ export default function ChatPage() {
     setAllMessages(prev => ({ ...prev, [chatId]: [] }));
     setActiveMobileTab('chat');
     toast({ title: "Grup Dibuat", description: `Grup "${groupName}" telah siap.` });
-  }, [currentUser, chats, setChats, setAllMessages, toast, registeredUsers, isMobileView]);
+  }, [currentUser, chats, setChats, setAllMessages, toast, registeredUsers]);
 
   const handleSelectChat = useCallback((chat: Chat) => {
     if (currentUser && chat.id) {
@@ -468,7 +468,7 @@ export default function ChatPage() {
     if (editingMessageDetails && editingMessageDetails.chatId !== chat.id) {
         setEditingMessageDetails(null);
     }
-  }, [currentUser, setChats, editingMessageDetails, isMobileView]);
+  }, [currentUser, setChats, editingMessageDetails]);
 
 
   const handleSelectChatMobile = useCallback((chat: Chat) => {
@@ -1113,6 +1113,49 @@ export default function ChatPage() {
                           displayMode="compact"
                           userEmail={currentUserEmailForProfile}
                         />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-sidebar-foreground h-9 w-9">
+                              <Settings className="h-5 w-5" />
+                              <span className="sr-only">Pengaturan</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
+                            <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
+                              <InfoIcon className="mr-2 h-4 w-4" />
+                              <span>Tentang aplikasi</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger>
+                                <Palette className="mr-2 h-4 w-4" />
+                                <span>Tema</span>
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent>
+                                <DropdownMenuItem onClick={() => setTheme('light')}>
+                                  <Sun className="mr-2 h-4 w-4" />
+                                  <span>Light</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setTheme('dark')}>
+                                  <Moon className="mr-2 h-4 w-4" />
+                                  <span>Dark</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setTheme('system')}>
+                                  <Laptop className="mr-2 h-4 w-4" />
+                                  <span>System</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleLogout(false)}>
+                              <LogOut className="mr-2 h-4 w-4" />
+                              <span>Keluar (Simpan Data)</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              <span>Keluar & Hapus Data</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   </SidebarHeader>
@@ -1135,51 +1178,7 @@ export default function ChatPage() {
                       isMobileView={isMobileView}
                     />
                   </SidebarContent>
-                  <SidebarFooter className="p-2 border-t border-sidebar-border">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground">
-                          <Settings className="h-4 w-4" />
-                          Pengaturan & Akun
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-56" align="end" sideOffset={8} side="top">
-                        <DropdownMenuItem onClick={() => setIsAboutDialogOpen(true)}>
-                          <InfoIcon className="mr-2 h-4 w-4" />
-                          <span>Tentang aplikasi</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>
-                            <Palette className="mr-2 h-4 w-4" />
-                            <span>Tema</span>
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem onClick={() => setTheme('light')}>
-                              <Sun className="mr-2 h-4 w-4" />
-                              <span>Light</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setTheme('dark')}>
-                              <Moon className="mr-2 h-4 w-4" />
-                              <span>Dark</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setTheme('system')}>
-                              <Laptop className="mr-2 h-4 w-4" />
-                              <span>System</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleLogout(false)}>
-                          <LogOut className="mr-2 h-4 w-4" />
-                          <span>Keluar (Simpan Data)</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleLogout(true)} className="text-destructive hover:!text-destructive focus:!text-destructive focus:!bg-destructive/10 hover:!bg-destructive/10">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          <span>Keluar & Hapus Data</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </SidebarFooter>
+                  {/* SidebarFooter is removed for mobile chat list view */}
                 </div>
               </SidebarProvider>
             )
@@ -1192,14 +1191,9 @@ export default function ChatPage() {
             activeTab={activeMobileTab}
             onTabChange={(tab) => {
                 setActiveMobileTab(tab);
-                // If switching away from a selected chat to status tab, clear selected chat
-                // if (tab === 'status' && selectedChat) {
-                //   setSelectedChat(null); // Keep chat selected, user can switch back
-                // }
             }}
         />
 
-        {/* Dialogs: Render them here so they can overlay anything */}
         {isNewDirectChatDialogOpen && <NewDirectChatDialog
             isOpen={isNewDirectChatDialogOpen}
             onOpenChange={setIsNewDirectChatDialogOpen}
@@ -1218,7 +1212,7 @@ export default function ChatPage() {
             initialMemberName={groupDialogInitialMemberName}
             chats={chats}
         />}
-        {isAddUserToGroupDialogOpen && selectedChat && ( // Only if chat is selected
+        {isAddUserToGroupDialogOpen && selectedChat && (
             <AddUserToGroupDialog
             isOpen={isAddUserToGroupDialogOpen}
             onOpenChange={setIsAddUserToGroupDialogOpen}
