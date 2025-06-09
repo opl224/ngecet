@@ -91,7 +91,7 @@ export function ChatList({
 
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col flex-1 relative"> {/* Changed h-full to flex-1 */}
       <div className="p-4 border-b border-sidebar-border flex items-center space-x-2">
         <Button
           variant={activeFilter === 'direct' ? 'secondary' : 'ghost'}
@@ -161,4 +161,3 @@ export function ChatList({
     </div>
   );
 }
-
