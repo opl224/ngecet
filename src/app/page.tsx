@@ -106,13 +106,15 @@ export default function ChatPage() {
   
   const handleAddUserStatus = useCallback((newStatus: UserStatus) => {
     setUserStatuses(prevStatuses => {
-      // Remove any existing status from the same user to ensure only one "latest" active status is prominent
-      // Or, if you want multiple statuses per user, just add: [...prevStatuses, newStatus]
-      // For now, let's allow multiple and sort by timestamp for "latest" in StatusPage
       const updatedStatuses = [...prevStatuses, newStatus].sort((a,b) => b.timestamp - a.timestamp);
       return updatedStatuses;
     });
     toast({ title: "Status Terkirim", description: "Status teks Anda telah diposting." });
+  }, [setUserStatuses, toast]);
+
+  const handleDeleteUserStatus = useCallback((statusId: string) => {
+    setUserStatuses(prevStatuses => prevStatuses.filter(status => status.id !== statusId));
+    toast({ title: "Status Dihapus" });
   }, [setUserStatuses, toast]);
 
 
@@ -1212,6 +1214,7 @@ export default function ChatPage() {
                 currentUser={currentUser} 
                 userStatuses={userStatuses}
                 onAddUserStatus={handleAddUserStatus}
+                onDeleteUserStatus={handleDeleteUserStatus}
              />
           ) : null}
         </div>

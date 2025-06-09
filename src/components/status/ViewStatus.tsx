@@ -5,8 +5,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { User, UserStatus } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress'; // Using ShadCN Progress
-import { X } from 'lucide-react';
+import { Progress } from '@/components/ui/progress'; 
+import { X, Trash2 } from 'lucide-react'; // Added Trash2
 import { cn } from '@/lib/utils';
 import { getStatusThemeClasses } from '@/config/statusThemes';
 import { formatDistanceToNowStrict, isToday, isYesterday, format } from 'date-fns';
@@ -15,21 +15,30 @@ import { id as idLocale } from 'date-fns/locale/id';
 const STATUS_VIEW_DURATION = 5000; // 5 seconds
 
 interface ViewStatusProps {
-  statuses: UserStatus[]; // All statuses for the viewed user, sorted newest to oldest
-  initialStatusIndex?: number; // Index of the status to show first
+  statuses: UserStatus[]; 
+  initialStatusIndex?: number; 
   onClose: () => void;
-  // currentUser: User; // For potential future reply functionality
+  currentUser: User | null; // Added currentUser
+  onDeleteStatus?: (statusId: string) => void; // Added onDeleteStatus
 }
 
 export function ViewStatus({
   statuses,
   initialStatusIndex = 0,
   onClose,
+  currentUser,
+  onDeleteStatus,
 }: ViewStatusProps) {
   const [currentIndex, setCurrentIndex] = useState(initialStatusIndex);
   const [progressValue, setProgressValue] = useState(0);
 
-  const currentStatus = useMemo(() => statuses[currentIndex], [statuses, currentIndex]);
+  const currentStatus = useMemo(() => {
+    if (currentIndex >= 0 && currentIndex < statuses.length) {
+      return statuses[currentIndex];
+    }
+    return null;
+  }, [statuses, currentIndex]);
+
   const themeClasses = useMemo(() => getStatusThemeClasses(currentStatus?.backgroundColorName), [currentStatus]);
 
   const getInitials = (name: string | undefined, length: number = 1) => {
@@ -63,8 +72,8 @@ export function ViewStatus({
       if (prevIndex < statuses.length - 1) {
         return prevIndex + 1;
       }
-      onClose(); // Close if it's the last status
-      return prevIndex; // Keep current index if closing, or it might error before unmount
+      onClose(); 
+      return prevIndex; 
     });
   }, [statuses.length, onClose]);
 
@@ -73,21 +82,25 @@ export function ViewStatus({
       if (prevIndex > 0) {
         return prevIndex - 1;
       }
-      return prevIndex; // Stay at the first status
+      return prevIndex; 
     });
   }, []);
 
   useEffect(() => {
-    setProgressValue(0); // Reset progress when status changes
+    if (!currentStatus) {
+      onClose();
+      return;
+    }
+    setProgressValue(0); 
     const interval = setInterval(() => {
       setProgressValue((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
           return 100;
         }
-        return prev + (100 / (STATUS_VIEW_DURATION / 100)); // Increment to fill in STATUS_VIEW_DURATION
+        return prev + (100 / (STATUS_VIEW_DURATION / 100)); 
       });
-    }, 100); // Update progress every 100ms
+    }, 100); 
 
     const timer = setTimeout(() => {
       goToNextStatus();
@@ -97,7 +110,7 @@ export function ViewStatus({
       clearInterval(interval);
       clearTimeout(timer);
     };
-  }, [currentIndex, goToNextStatus]);
+  }, [currentIndex, goToNextStatus, currentStatus, onClose]);
   
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -115,19 +128,41 @@ export function ViewStatus({
     };
   }, [onClose, goToNextStatus, goToPrevStatus]);
 
+  // Effect to adjust currentIndex if statuses prop changes (e.g., item deleted)
+  useEffect(() => {
+    if (statuses.length === 0) {
+      onClose(); // Close if no statuses left
+    } else if (currentIndex >= statuses.length) {
+      // If current index is out of bounds (e.g. current item was last and deleted)
+      setCurrentIndex(Math.max(0, statuses.length - 1)); // Go to the new last item or 0
+    }
+    // If the specific status at statuses[currentIndex] changed (e.g. content edit, not just list order),
+    // `currentStatus` useMemo will pick it up.
+  }, [statuses, currentIndex, onClose]);
+
 
   if (!currentStatus) {
-    return null; // Should not happen if statuses array is not empty
+    // This can happen briefly if statuses list is updated and becomes empty
+    // The useEffect above should call onClose, but this is a safeguard.
+    return null;
   }
+
+  const handleDeleteClick = () => {
+    if (currentUser && currentStatus.userId === currentUser.id && onDeleteStatus) {
+      onDeleteStatus(currentStatus.id);
+      // The parent (StatusPage) will handle updating `viewingUserAllStatuses`
+      // which will cause this component to re-render with new `statuses`.
+      // The useEffect for `statuses` change will then handle closing or index adjustment.
+    }
+  };
 
   return (
     <div
       className={cn(
         "fixed inset-0 z-[70] flex flex-col items-center justify-center transition-colors duration-300",
-        themeClasses.bg // Background of the entire view takes the status theme
+        themeClasses.bg 
       )}
     >
-      {/* Navigation Areas */}
       <div
         className="absolute top-0 left-0 h-full w-1/3 z-10"
         onClick={goToPrevStatus}
@@ -137,7 +172,6 @@ export function ViewStatus({
         onClick={goToNextStatus}
       />
 
-      {/* Top Bar: Progress, User Info, Close */}
       <div className="absolute top-0 left-0 right-0 p-3 md:p-4 z-20 bg-gradient-to-b from-black/50 via-black/30 to-transparent">
         <div className="flex items-center gap-2 mb-2">
           {statuses.map((_, index) => (
@@ -161,14 +195,26 @@ export function ViewStatus({
               <p className="text-xs text-white/80 leading-tight">{formatTimestampForView(currentStatus.timestamp)}</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="text-white rounded-full hover:bg-white/20">
-            <X className="h-6 w-6" />
-            <span className="sr-only">Tutup</span>
-          </Button>
+          <div className="flex items-center space-x-1">
+            {currentUser && currentStatus.userId === currentUser.id && onDeleteStatus && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleDeleteClick}
+                className="text-white rounded-full hover:bg-white/20"
+                aria-label="Hapus Status"
+              >
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={onClose} className="text-white rounded-full hover:bg-white/20">
+              <X className="h-6 w-6" />
+              <span className="sr-only">Tutup</span>
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Content Area */}
       <div className="flex-1 flex w-full items-center justify-center overflow-hidden px-4 pb-10 pt-20 md:pt-24">
         <p
           className={cn(
@@ -180,13 +226,7 @@ export function ViewStatus({
           {currentStatus.content}
         </p>
       </div>
-       {/* Optional: Reply button placeholder - not functional yet
-       <div className="absolute bottom-0 left-0 right-0 p-4 z-20 flex justify-center">
-        <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10 text-xs">
-          <MessageCircle className="mr-2 h-4 w-4" /> Balas
-        </Button>
-      </div>
-      */}
     </div>
   );
 }
+

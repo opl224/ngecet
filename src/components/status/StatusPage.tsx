@@ -24,11 +24,12 @@ interface StatusPageProps {
   currentUser: User | null;
   userStatuses: UserStatus[];
   onAddUserStatus: (newStatus: UserStatus) => void;
+  onDeleteUserStatus: (statusId: string) => void; // New prop
 }
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
-export function StatusPage({ currentUser, userStatuses, onAddUserStatus }: StatusPageProps) {
+export function StatusPage({ currentUser, userStatuses, onAddUserStatus, onDeleteUserStatus }: StatusPageProps) {
   const [isCreatingTextStatus, setIsCreatingTextStatus] = useState(false);
   const [viewingUserAllStatuses, setViewingUserAllStatuses] = useState<UserStatus[] | null>(null);
   const [viewingUserInitialStatusIndex, setViewingUserInitialStatusIndex] = useState<number>(0);
@@ -77,13 +78,12 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus }: Statu
     const now = Date.now();
     return userStatuses
             .filter(status => (now - status.timestamp) < TWENTY_FOUR_HOURS_MS)
-            .sort((a,b) => b.timestamp - a.timestamp); // Sort all active statuses newest first
+            .sort((a,b) => b.timestamp - a.timestamp); 
   }, [userStatuses]);
 
   const currentUserActiveStatuses = useMemo(() => {
     if (!currentUser) return [];
     return activeUserStatuses.filter(status => status.userId === currentUser.id);
-    // Already sorted by activeUserStatuses memo
   }, [activeUserStatuses, currentUser]);
 
   const otherUsersGroupedStatuses = useMemo(() => {
@@ -94,39 +94,50 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus }: Statu
         if (!grouped[status.userId]) {
           grouped[status.userId] = [];
         }
-        grouped[status.userId].push(status); // Will be sorted newest first due to activeUserStatuses sorting
+        grouped[status.userId].push(status); 
       }
     });
     return grouped;
   }, [activeUserStatuses, currentUser]);
 
   const otherUsersLatestStatus = useMemo(() => {
-    return Object.values(otherUsersGroupedStatuses).map(statuses => statuses[0]) // Get the latest (first) status for each user
-           .sort((a,b) => b.timestamp - a.timestamp); // Sort users by their latest status time
+    return Object.values(otherUsersGroupedStatuses).map(statuses => statuses[0]) 
+           .sort((a,b) => b.timestamp - a.timestamp); 
   }, [otherUsersGroupedStatuses]);
 
 
   const hasMyStatus = currentUserActiveStatuses.length > 0;
   const myLatestStatus = hasMyStatus ? currentUserActiveStatuses[0] : null;
-  const myLatestStatusTheme = myLatestStatus ? getStatusThemeClasses(myLatestStatus.backgroundColorName) : null;
+  const myLatestStatusThemeClasses = myLatestStatus ? getStatusThemeClasses(myLatestStatus.backgroundColorName) : null;
 
   const handleViewUserStatuses = useCallback((userId: string) => {
-    const userStatusesToView = otherUsersGroupedStatuses[userId];
-    if (userStatusesToView && userStatusesToView.length > 0) {
-      // Pass statuses sorted newest to oldest, ViewStatus will handle display order.
-      setViewingUserAllStatuses([...userStatusesToView]); // Create new array ref
-      setViewingUserInitialStatusIndex(0); // Start with the newest
+    const userStatusesToView = otherUsersGroupedStatuses[userId] || [];
+    if (userStatusesToView.length > 0) {
+      setViewingUserAllStatuses([...userStatusesToView]); // Pass sorted (newest first)
+      setViewingUserInitialStatusIndex(0); 
     }
   }, [otherUsersGroupedStatuses]);
 
   const handleViewMyStatuses = useCallback(() => {
     if (currentUserActiveStatuses.length > 0) {
-      setViewingUserAllStatuses([...currentUserActiveStatuses]);
+      setViewingUserAllStatuses([...currentUserActiveStatuses]); // Pass sorted (newest first)
       setViewingUserInitialStatusIndex(0);
     } else {
-      setIsCreatingTextStatus(true); // If no status, open create status
+      setIsCreatingTextStatus(true); 
     }
   }, [currentUserActiveStatuses]);
+
+  const handleDeleteStatusInView = useCallback((statusIdToDelete: string) => {
+    onDeleteUserStatus(statusIdToDelete); 
+    setViewingUserAllStatuses(prev => {
+        if (!prev) return null;
+        const updated = prev.filter(s => s.id !== statusIdToDelete);
+        if (updated.length === 0) {
+             return null; // This will close ViewStatus via its own effect
+        }
+        return updated; // ViewStatus will adjust its internal currentIndex
+    });
+  }, [onDeleteUserStatus, setViewingUserAllStatuses]);
 
 
   if (!currentUser) {
@@ -171,18 +182,21 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus }: Statu
                         <Plus className="h-3 w-3 text-white" />
                     </div>
                 ) : (
-                   myLatestStatusTheme && (
+                   myLatestStatusThemeClasses && (
                     <div className={cn(
-                      "absolute -bottom-1 -right-1 rounded-full p-0 flex items-center justify-center border-2 border-background",
-                      myLatestStatusTheme.bg
+                      "absolute -bottom-1 -right-1 rounded-full p-0.5 flex items-center justify-center border-2 border-background",
+                       myLatestStatusThemeClasses.bg // Use the theme background for the dot itself
                     )}>
-                      <div className={cn("h-4 w-4 rounded-full border-2 border-background", myLatestStatusTheme.bg)} />
+                      {/* The inner div is purely for sizing if needed, or can be removed if p-0.5 on parent is enough */}
+                       <div className={cn("h-3 w-3 rounded-full")} />
                     </div>
                    )
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground truncate">{hasMyStatus ? "Status Saya" : "Tambah Status"}</p>
+                <p className="font-medium text-foreground truncate">
+                    {hasMyStatus ? "Status Saya" : "Tambah Status"}
+                </p>
                 <p className="text-xs text-muted-foreground truncate">
                   {hasMyStatus && myLatestStatus
                     ? `${currentUserActiveStatuses.length} pembaruan • ${formatTimestamp(myLatestStatus.timestamp)}`
@@ -198,7 +212,7 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus }: Statu
               <div className="space-y-0.5">
                 {otherUsersLatestStatus.map(status => {
                     const allStatusesForThisUser = otherUsersGroupedStatuses[status.userId] || [];
-                    const unreadCount = allStatusesForThisUser.length; // Placeholder logic, real unread would be more complex
+                    const unreadCount = allStatusesForThisUser.length; 
 
                     return (
                         <div 
@@ -208,7 +222,6 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus }: Statu
                         >
                             <div className={cn(
                                 "relative p-0.5 rounded-full",
-                                // TODO: Add logic for seen/unseen border (e.g., gray if all seen)
                                 "bg-gradient-to-tr from-green-400 to-emerald-600"
                             )}>
                                 <Avatar className="h-12 w-12 border-2 border-background">
@@ -231,11 +244,18 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus }: Statu
               </div>
             </div>
           )}
-           {otherUsersLatestStatus.length === 0 && (
+           {otherUsersLatestStatus.length === 0 && activeUserStatuses.length > 0 && currentUserActiveStatuses.length === activeUserStatuses.length && (
              <div className="pt-8 text-center">
                 <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground/50" />
                 <p className="mt-2 text-sm text-muted-foreground">Belum ada pembaruan dari pengguna lain.</p>
                 <p className="mt-1 text-xs text-muted-foreground/80">Mulai chat dengan teman untuk melihat status mereka.</p>
+            </div>
+           )}
+           {activeUserStatuses.length === 0 && (
+             <div className="pt-8 text-center">
+                <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                <p className="mt-2 text-sm text-muted-foreground">Belum ada pembaruan status.</p>
+                <p className="mt-1 text-xs text-muted-foreground/80">Buat status untuk dibagikan ke teman Anda.</p>
             </div>
            )}
         </div>
@@ -278,7 +298,8 @@ export function StatusPage({ currentUser, userStatuses, onAddUserStatus }: Statu
             setViewingUserAllStatuses(null);
             setViewingUserInitialStatusIndex(0);
           }}
-          // currentUser={currentUser} // Pass if needed by ViewStatus for replies etc.
+          currentUser={currentUser}
+          onDeleteStatus={handleDeleteStatusInView}
         />
       )}
     </div>
