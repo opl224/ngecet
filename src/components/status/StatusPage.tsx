@@ -105,7 +105,7 @@ export function StatusPage({ currentUser }: StatusPageProps) {
       </ScrollArea>
 
       {/* Floating Action Buttons */}
-      <div className="absolute bottom-6 right-4 space-y-3 z-20">
+      <div className="absolute bottom-6 right-4 flex flex-col items-end space-y-3 z-20">
          <Button variant="secondary" size="icon" className="rounded-2xl h-12 w-12 shadow-lg bg-card md:hover:bg-muted focus-visible:ring-gray-400">
             <Pencil className="h-5 w-5 text-foreground/90" />
             <span className="sr-only">Buat status teks</span>
