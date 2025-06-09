@@ -46,11 +46,11 @@ export function StatusPage({ currentUser }: StatusPageProps) {
       <header className="flex items-center justify-between p-4 py-3 sticky top-0 bg-background z-10 border-b">
         <h1 className="text-2xl font-semibold text-foreground">Pembaruan</h1>
         <div className="flex items-center space-x-1">
-          <Button variant="ghost" size="icon" className="text-foreground/70 hover:text-foreground">
+          <Button variant="ghost" size="icon" className="text-foreground/70 md:hover:text-foreground">
             <Search className="h-5 w-5" />
             <span className="sr-only">Cari</span>
           </Button>
-          <Button variant="ghost" size="icon" className="text-foreground/70 hover:text-foreground">
+          <Button variant="ghost" size="icon" className="text-foreground/70 md:hover:text-foreground">
             <MoreVertical className="h-5 w-5" />
             <span className="sr-only">Opsi lainnya</span>
           </Button>
@@ -62,7 +62,7 @@ export function StatusPage({ currentUser }: StatusPageProps) {
           {/* My Status Section */}
           <div>
             <h2 className="text-md font-semibold mb-1.5 text-foreground">Status</h2>
-            <div className="flex items-center space-x-3 cursor-pointer hover:bg-muted/30 p-1.5 -ml-1.5 rounded-lg">
+            <div className="flex items-center space-x-3 cursor-pointer md:hover:bg-muted/30 p-1.5 -ml-1.5 rounded-lg">
               <div className="relative">
                 <Avatar className="h-12 w-12">
                   <AvatarImage src={currentUser.avatarUrl} alt="My Status Avatar" data-ai-hint="person abstract"/>
@@ -85,7 +85,7 @@ export function StatusPage({ currentUser }: StatusPageProps) {
               <h2 className="text-xs font-semibold text-muted-foreground mb-2 tracking-wide">PEMBARUAN TERKINI</h2>
               <div className="space-y-0.5">
                 {mockRecentUpdates.map(update => (
-                  <div key={update.id} className="flex items-center space-x-3 cursor-pointer hover:bg-muted/30 p-1.5 -ml-1.5 rounded-lg">
+                  <div key={update.id} className="flex items-center space-x-3 cursor-pointer md:hover:bg-muted/30 p-1.5 -ml-1.5 rounded-lg">
                     <div className={`relative p-0.5 rounded-full ${update.isUnread ? 'bg-gradient-to-tr from-green-400 to-emerald-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
                         <Avatar className={`h-12 w-12 border-2 border-background`}>
                         <AvatarImage src={update.avatarUrl} alt={update.userName} data-ai-hint={update.dataAiHint} />
@@ -106,11 +106,11 @@ export function StatusPage({ currentUser }: StatusPageProps) {
 
       {/* Floating Action Buttons */}
       <div className="absolute bottom-6 right-4 space-y-3 z-20">
-         <Button variant="secondary" size="icon" className="rounded-2xl h-12 w-12 shadow-lg bg-card hover:bg-muted focus-visible:ring-gray-400">
+         <Button variant="secondary" size="icon" className="rounded-2xl h-12 w-12 shadow-lg bg-card md:hover:bg-muted focus-visible:ring-gray-400">
             <Pencil className="h-5 w-5 text-foreground/90" />
             <span className="sr-only">Buat status teks</span>
          </Button>
-         <Button variant="default" size="icon" className="rounded-2xl h-14 w-14 shadow-lg bg-green-500 hover:bg-green-600 text-white focus-visible:ring-green-300">
+         <Button variant="default" size="icon" className="rounded-2xl h-14 w-14 shadow-lg bg-green-500 md:hover:bg-green-600 text-white focus-visible:ring-green-300">
             <Camera className="h-6 w-6" />
             <span className="sr-only">Buat status foto</span>
          </Button>
@@ -118,4 +118,3 @@ export function StatusPage({ currentUser }: StatusPageProps) {
     </div>
   );
 }
-
