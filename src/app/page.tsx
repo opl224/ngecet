@@ -132,8 +132,8 @@ export default function ChatPage() {
     if (!currentUser) return;
     setStatusReadTimestamps(prev => {
         const currentUserReads = prev[currentUser.id] || {};
-        // Use Math.max to ensure we only store the latest timestamp seen for that user
-        const newTimestampForUser = Math.max(currentUserReads[viewedUserId] || 0, latestTimestampViewed);
+        // Directly set the latestTimestampViewed, do not use Math.max
+        const newTimestampForUser = latestTimestampViewed;
 
         if (newTimestampForUser !== (currentUserReads[viewedUserId] || 0)) {
             return {
@@ -1178,38 +1178,38 @@ export default function ChatPage() {
 
   if (isMobileView) {
     return (
-      <div className="flex h-screen w-full flex-col">
-        <div
-          className="flex flex-1 flex-col overflow-hidden" 
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        > 
-          {activeMobileTab === 'chat' ? (
-            selectedChat ? (
-              <ChatView
-                chat={selectedChat}
-                messages={allMessages[selectedChat.id] || []}
-                currentUser={currentUser}
-                onSendMessage={handleSendMessage}
-                editingMessageDetails={editingMessageDetails}
-                onSaveEditedMessage={handleSaveEditedMessage}
-                onRequestEditMessage={handleRequestEditMessageInInput}
-                onCancelEditMessage={handleCancelEditInInput}
-                onDeleteMessage={handleDeleteMessage}
-                onGoBack={handleGoBack}
-                onTriggerDeleteAllMessages={handleTriggerDeleteAllMessages}
-                onTriggerAddUserToGroup={() => handleOpenAddUserToGroupDialog(selectedChat.id)}
-                onTriggerDeleteGroup={handleTriggerDeleteGroup}
-                onRemoveParticipant={handleRemoveParticipantFromGroup}
-                onStartGroupWithUser={handleStartGroupWithUser}
-                onBlockUser={handleBlockUser}
-                onUnblockUser={handleUnblockUser}
-                onLeaveGroup={handleLeaveGroup}
-                isMobileView={isMobileView}
-              />
-            ) : (
-              <SidebarProvider defaultOpen className="flex-1">
+      <SidebarProvider defaultOpen>
+        <div className="flex h-screen w-full flex-col">
+          <div
+            className="flex flex-1 flex-col overflow-hidden" 
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          > 
+            {activeMobileTab === 'chat' ? (
+              selectedChat ? (
+                <ChatView
+                  chat={selectedChat}
+                  messages={allMessages[selectedChat.id] || []}
+                  currentUser={currentUser}
+                  onSendMessage={handleSendMessage}
+                  editingMessageDetails={editingMessageDetails}
+                  onSaveEditedMessage={handleSaveEditedMessage}
+                  onRequestEditMessage={handleRequestEditMessageInInput}
+                  onCancelEditMessage={handleCancelEditInInput}
+                  onDeleteMessage={handleDeleteMessage}
+                  onGoBack={handleGoBack}
+                  onTriggerDeleteAllMessages={handleTriggerDeleteAllMessages}
+                  onTriggerAddUserToGroup={() => handleOpenAddUserToGroupDialog(selectedChat.id)}
+                  onTriggerDeleteGroup={handleTriggerDeleteGroup}
+                  onRemoveParticipant={handleRemoveParticipantFromGroup}
+                  onStartGroupWithUser={handleStartGroupWithUser}
+                  onBlockUser={handleBlockUser}
+                  onUnblockUser={handleUnblockUser}
+                  onLeaveGroup={handleLeaveGroup}
+                  isMobileView={isMobileView}
+                />
+              ) : (
                 <div className="flex flex-1 flex-col bg-sidebar text-sidebar-foreground">
                   <SidebarHeader className="p-0">
                     <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
@@ -1290,118 +1290,118 @@ export default function ChatPage() {
                     />
                   </SidebarContent>
                 </div>
-              </SidebarProvider>
-            )
-          ) : activeMobileTab === 'status' ? (
-             <StatusPage 
-                currentUser={currentUser} 
-                userStatuses={userStatuses}
-                onAddUserStatus={handleAddUserStatus}
-                onDeleteUserStatus={handleDeleteUserStatus}
-                statusReadTimestamps={statusReadTimestamps}
-                onMarkUserStatusesAsRead={handleMarkUserStatusesAsRead}
-             />
-          ) : null}
+              )
+            ) : activeMobileTab === 'status' ? (
+               <StatusPage 
+                  currentUser={currentUser} 
+                  userStatuses={userStatuses}
+                  onAddUserStatus={handleAddUserStatus}
+                  onDeleteUserStatus={handleDeleteUserStatus}
+                  statusReadTimestamps={statusReadTimestamps}
+                  onMarkUserStatusesAsRead={handleMarkUserStatusesAsRead}
+               />
+            ) : null}
+          </div>
+
+          <BottomNavigationBar
+              activeTab={activeMobileTab}
+              onTabChange={(tab) => {
+                  setActiveMobileTab(tab);
+              }}
+          />
+
+          {isNewDirectChatDialogOpen && <NewDirectChatDialog
+              isOpen={isNewDirectChatDialogOpen}
+              onOpenChange={setIsNewDirectChatDialogOpen}
+              onCreateChat={handleCreateDirectChat}
+              currentUserId={currentUser?.id}
+              registeredUsers={registeredUsers}
+          />}
+          {isNewGroupChatDialogOpen && <NewGroupChatDialog
+              isOpen={isNewGroupChatDialogOpen}
+              onOpenChange={(isOpen) => {
+                  setIsNewGroupChatDialogOpen(isOpen);
+                  if (!isOpen) setGroupDialogInitialMemberName(null);
+              }}
+              onCreateChat={handleCreateGroupChat}
+              currentUserObj={currentUser}
+              initialMemberName={groupDialogInitialMemberName}
+              chats={chats}
+          />}
+          {isAddUserToGroupDialogOpen && selectedChat && (
+              <AddUserToGroupDialog
+              isOpen={isAddUserToGroupDialogOpen}
+              onOpenChange={setIsAddUserToGroupDialogOpen}
+              onAddUser={handleAddNewUserToGroup}
+              currentUserObj={currentUser}
+              chats={chats}
+              chatIdToAddTo={chatIdToAddTo}
+              registeredUsers={registeredUsers}
+              />
+          )}
+          <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
+              <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                  Tindakan ini akan menghapus grup secara permanen. Semua pesan dalam grup ini juga akan dihapus. Tindakan ini tidak dapat dibatalkan.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel onClick={handleCancelDeleteGroup}>Batal</AlertDialogCancel>
+                  <AlertDialogAction
+                  onClick={handleConfirmDeleteGroup}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                  Hapus grup
+                  </AlertDialogAction>
+              </AlertDialogFooter>
+              </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
+              <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
+                  <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
+                  Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
+                  Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
+                  </AlertDialogDescription>
+                  <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
+                  Tech: Next.js, React, ShadCN UI, Tailwind CSS dan Genkit.
+                  </AlertDialogDescription>
+                  <AlertDialogDescription className="text-sm text-muted-foreground font-semibold pt-4 pb-6">
+                  Jika ada bug atau ui error, mon map masih tahap pengembangan!
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="flex items-center justify-center mt-4">
+                  <AppLogo className="h-10 w-10" />
+              </div>
+              <AlertDialogFooter>
+                  <AlertDialogAction onClick={() => setIsAboutDialogOpen(false)}>OK</AlertDialogAction>
+              </AlertDialogFooter>
+              </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog open={isDeleteAllMessagesConfirmOpen} onOpenChange={setIsDeleteAllMessagesConfirmOpen}>
+              <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Hapus Semua Pesan?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                  Apakah Anda yakin ingin menghapus semua pesan dalam chat ini? Tindakan ini hanya akan menghapus pesan dari tampilan Anda dan tidak dapat dibatalkan.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel onClick={handleCancelDeleteAllMessages}>Batal</AlertDialogCancel>
+                  <AlertDialogAction
+                  onClick={handleDeleteAllMessagesInChat}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                  Hapus
+                  </AlertDialogAction>
+              </AlertDialogFooter>
+              </AlertDialogContent>
+          </AlertDialog>
         </div>
-
-        <BottomNavigationBar
-            activeTab={activeMobileTab}
-            onTabChange={(tab) => {
-                setActiveMobileTab(tab);
-            }}
-        />
-
-        {isNewDirectChatDialogOpen && <NewDirectChatDialog
-            isOpen={isNewDirectChatDialogOpen}
-            onOpenChange={setIsNewDirectChatDialogOpen}
-            onCreateChat={handleCreateDirectChat}
-            currentUserId={currentUser?.id}
-            registeredUsers={registeredUsers}
-        />}
-        {isNewGroupChatDialogOpen && <NewGroupChatDialog
-            isOpen={isNewGroupChatDialogOpen}
-            onOpenChange={(isOpen) => {
-                setIsNewGroupChatDialogOpen(isOpen);
-                if (!isOpen) setGroupDialogInitialMemberName(null);
-            }}
-            onCreateChat={handleCreateGroupChat}
-            currentUserObj={currentUser}
-            initialMemberName={groupDialogInitialMemberName}
-            chats={chats}
-        />}
-        {isAddUserToGroupDialogOpen && selectedChat && (
-            <AddUserToGroupDialog
-            isOpen={isAddUserToGroupDialogOpen}
-            onOpenChange={setIsAddUserToGroupDialogOpen}
-            onAddUser={handleAddNewUserToGroup}
-            currentUserObj={currentUser}
-            chats={chats}
-            chatIdToAddTo={chatIdToAddTo}
-            registeredUsers={registeredUsers}
-            />
-        )}
-        <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
-            <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
-                <AlertDialogDescription>
-                Tindakan ini akan menghapus grup secara permanen. Semua pesan dalam grup ini juga akan dihapus. Tindakan ini tidak dapat dibatalkan.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel onClick={handleCancelDeleteGroup}>Batal</AlertDialogCancel>
-                <AlertDialogAction
-                onClick={handleConfirmDeleteGroup}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                Hapus grup
-                </AlertDialogAction>
-            </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-        <AlertDialog open={isAboutDialogOpen} onOpenChange={setIsAboutDialogOpen}>
-            <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
-                <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
-                Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
-                Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
-                </AlertDialogDescription>
-                <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
-                Tech: Next.js, React, ShadCN UI, Tailwind CSS dan Genkit.
-                </AlertDialogDescription>
-                <AlertDialogDescription className="text-sm text-muted-foreground font-semibold pt-4 pb-6">
-                Jika ada bug atau ui error, mon map masih tahap pengembangan!
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="flex items-center justify-center mt-4">
-                <AppLogo className="h-10 w-10" />
-            </div>
-            <AlertDialogFooter>
-                <AlertDialogAction onClick={() => setIsAboutDialogOpen(false)}>OK</AlertDialogAction>
-            </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-        <AlertDialog open={isDeleteAllMessagesConfirmOpen} onOpenChange={setIsDeleteAllMessagesConfirmOpen}>
-            <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Hapus Semua Pesan?</AlertDialogTitle>
-                <AlertDialogDescription>
-                Apakah Anda yakin ingin menghapus semua pesan dalam chat ini? Tindakan ini hanya akan menghapus pesan dari tampilan Anda dan tidak dapat dibatalkan.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel onClick={handleCancelDeleteAllMessages}>Batal</AlertDialogCancel>
-                <AlertDialogAction
-                onClick={handleDeleteAllMessagesInChat}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                Hapus
-                </AlertDialogAction>
-            </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-      </div>
+      </SidebarProvider>
     );
   }
 
