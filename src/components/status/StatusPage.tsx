@@ -11,16 +11,8 @@ interface StatusPageProps {
   currentUser: User | null;
 }
 
-// Mock data for recent updates
-const mockRecentUpdates = [
-  { id: '1', userName: 'Nis', avatarUrl: 'https://placehold.co/128x128.png', timestamp: '13.49', isUnread: true, dataAiHint: "woman smiling" },
-  { id: '2', userName: 'Dewi', avatarUrl: 'https://placehold.co/128x128.png', timestamp: '20 menit yang lalu', isUnread: true, dataAiHint: "abstract dark" },
-  { id: '3', userName: 'Denz', avatarUrl: 'https://placehold.co/128x128.png', timestamp: '17.37', isUnread: true, dataAiHint: "car wheel" },
-  { id: '4', userName: 'Suci', avatarUrl: 'https://placehold.co/128x128.png', timestamp: 'Kemarin', isUnread: true, dataAiHint: "makeup products" },
-  { id: '5', userName: 'Barnas', avatarUrl: 'https://placehold.co/128x128.png', timestamp: 'Kemarin', isUnread: true, dataAiHint: "man profile" },
-  { id: '6', userName: 'Miss Yuli', avatarUrl: 'https://placehold.co/128x128.png', timestamp: '06.38', isUnread: true, dataAiHint: "text document" },
-  { id: '7', userName: 'Mawo', avatarUrl: 'https://placehold.co/128x128.png', timestamp: 'Kemarin', isUnread: false, dataAiHint: "group photo" },
-];
+// Mock data for recent updates - now empty
+const mockRecentUpdates: { id: string, userName: string, avatarUrl: string, timestamp: string, isUnread: boolean, dataAiHint: string }[] = [];
 
 
 export function StatusPage({ currentUser }: StatusPageProps) {
@@ -118,3 +110,4 @@ export function StatusPage({ currentUser }: StatusPageProps) {
     </div>
   );
 }
+
