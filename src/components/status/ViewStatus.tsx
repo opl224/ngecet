@@ -15,7 +15,7 @@ import { id as idLocale } from 'date-fns/locale/id';
 import { useToast } from '@/hooks/use-toast';
 
 const STATUS_VIEW_DURATION = 5000; // 5 seconds
-const MIN_SWIPE_UP_DISTANCE_REPLY_AREA = 50; // Min swipe distance for reply area
+const MIN_SWIPE_UP_DISTANCE_REPLY_AREA = 50; 
 
 
 interface ViewStatusProps {
@@ -56,6 +56,28 @@ export function ViewStatus({
   const replyAreaTouchStartYRef = useRef<number | null>(null);
   const isSwipingOnReplyAreaRef = useRef<boolean>(false);
 
+  const handleCancelReply = useCallback(() => {
+    setIsReplyingMode(false);
+    setReplyText('');
+    setIsReplyInputFocused(false);
+    if (isPaused) { 
+      setIsPaused(false); 
+    }
+  }, [isPaused]);
+
+  const handleSendReply = useCallback(() => {
+    if (!replyText.trim() || !currentStatus) return;
+    toast({
+      title: `Balasan terkirim ke ${currentStatus.userName}`,
+      description: replyText,
+    });
+    const statusBeingRepliedTo = currentStatus;
+    handleCancelReply(); 
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    onMarkAsRead(statusBeingRepliedTo.timestamp); 
+    onClose(); 
+  }, [replyText, currentStatus, toast, handleCancelReply, onClose, onMarkAsRead]);
 
   const currentStatus = useMemo(() => {
     if (currentIndex >= 0 && currentIndex < statuses.length) {
@@ -96,30 +118,6 @@ export function ViewStatus({
     }
   };
   
-  const handleCancelReply = useCallback(() => {
-    setIsReplyingMode(false);
-    setReplyText('');
-    setIsReplyInputFocused(false);
-    if (isPaused) { 
-      setIsPaused(false); 
-    }
-  }, [isPaused]);
-
-  const handleSendReply = useCallback(() => {
-    if (!replyText.trim() || !currentStatus) return;
-    toast({
-      title: `Balasan terkirim ke ${currentStatus.userName}`,
-      description: replyText,
-    });
-    const statusBeingRepliedTo = currentStatus;
-    handleCancelReply(); 
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    onMarkAsRead(statusBeingRepliedTo.timestamp); // Mark as read since interaction occurred
-    onClose(); // Close status viewer after sending
-  }, [replyText, currentStatus, toast, handleCancelReply, onClose, onMarkAsRead]);
-
-
   const performCloseActions = useCallback(() => {
     if (isReplyingMode) {
       handleCancelReply(); 
@@ -180,8 +178,8 @@ export function ViewStatus({
     }, 100);
 
     timerRef.current = setTimeout(() => {
-      if (intervalRef.current) clearInterval(intervalRef.current); // Ensure interval is cleared
-      setProgressValue(100); // Explicitly set to 100 before advancing
+      if (intervalRef.current) clearInterval(intervalRef.current); 
+      setProgressValue(100); 
       onMarkAsRead(currentStatus.timestamp);
       advanceToStatus(currentIndex + 1);
     }, remainingDuration);
@@ -236,7 +234,7 @@ export function ViewStatus({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        performCloseActions(); // performCloseActions now handles reply mode cancellation first
+        performCloseActions(); 
       } else if (!isReplyingMode && !isReplyInputFocused) { 
         if (event.key === 'ArrowRight') {
           handleManualNavigation('next');
@@ -317,7 +315,7 @@ export function ViewStatus({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[70] flex flex-col items-center justify-center transition-colors duration-300 select-none",
+        "fixed inset-0 z-[70] flex flex-col items-center justify-center transition-colors duration-300 select-none bg-background", // Added bg-background as a base
         themeClasses.bg
       )}
       onPointerDown={handlePointerDown}
@@ -369,7 +367,7 @@ export function ViewStatus({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={handleDeleteClick}
+                onClickCapture={(e) => { handleDeleteClick(); e.stopPropagation(); }}
                 className="text-white rounded-full hover:bg-white/20"
                 aria-label="Hapus Status"
               >
@@ -404,10 +402,9 @@ export function ViewStatus({
         ref={replyAreaRef}
         className={cn(
           "absolute bottom-0 left-0 right-0 bg-black/90 z-30 transition-transform duration-300 ease-out",
-          "flex flex-col items-center", 
-          isReplyingMode ? "h-auto" : "h-[70px] translate-y-[30px] sm:translate-y-[20px]" 
+          "flex flex-col items-center"
         )}
-        style={{ transform: isReplyingMode ? 'translateY(0%)' : `translateY(calc(100% - 40px - env(safe-area-inset-bottom)))` }} 
+        style={{ transform: isReplyingMode ? 'translateY(0%)' : `translateY(calc(100% - 40px - env(safe-area-inset-bottom)))`, height: isReplyingMode ? 'auto' : '70px' }} 
         onTouchStart={handleReplyAreaTouchStart}
         onTouchEnd={handleReplyAreaTouchEnd}
         onClick={(e) => {
@@ -458,17 +455,17 @@ export function ViewStatus({
                 onChange={(e) => setReplyText(e.target.value)}
                 placeholder={`Balas ke ${currentStatus.userName}...`}
                 onFocus={() => setIsReplyInputFocused(true)}
-                onBlur={() => { if(!replyText.trim()) setIsReplyInputFocused(false); }}
+                onBlur={() => { if(!replyText.trim() && !isSwipingOnReplyAreaRef.current) setIsReplyInputFocused(false); }}
                 className="flex-1 bg-neutral-700 border-neutral-600 text-white placeholder-neutral-400 rounded-2xl py-2.5 px-4 resize-none min-h-[40px] max-h-[100px] focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-neutral-500 text-sm"
                 rows={1}
-                 onClick={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
               />
               {isReplyInputFocused || replyText.trim() ? (
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   className="bg-sky-600 hover:bg-sky-500 rounded-full h-10 w-10 p-0 shrink-0" 
-                  onClick={handleSendReply}
+                  onClick={(e) => { e.stopPropagation(); handleSendReply(); }}
                   disabled={!replyText.trim()}
                   aria-label="Kirim balasan"
                 >
@@ -479,9 +476,9 @@ export function ViewStatus({
                   variant="ghost" 
                   size="icon" 
                   className="bg-neutral-700 hover:bg-neutral-600 rounded-full h-10 w-10 p-0 shrink-0"
-                  onClick={() => {
+                  onClick={(e) => {
+                      e.stopPropagation();
                       toast({ title: `Status ${currentStatus.userName} disukai!`});
-                       e.stopPropagation();
                   }}
                   aria-label="Sukai status"
                 >
@@ -495,4 +492,3 @@ export function ViewStatus({
     </div>
   );
 }
-

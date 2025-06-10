@@ -22,23 +22,20 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
   const [currentThemeIndex, setCurrentThemeIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Get the full theme object using the current index
   const currentThemeObject = statusColorThemes[currentThemeIndex];
-  // Then, ensure we get a consistently structured theme object for applying classes
   const appliedTheme = getStatusThemeClasses(currentThemeObject.name);
 
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.focus();
       textareaRef.current.style.height = 'auto';
-      // Ensure scrollHeight is calculated after potential placeholder/text changes due to theme
       requestAnimationFrame(() => {
         if (textareaRef.current) {
           textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
         }
       });
     }
-  }, [statusText, currentThemeIndex]); // Re-adjust on theme change too
+  }, [statusText, currentThemeIndex]);
 
   const handleCycleTheme = () => {
     setCurrentThemeIndex((prevIndex) => (prevIndex + 1) % statusColorThemes.length);
@@ -53,9 +50,7 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
       });
       return;
     }
-    // Pass the name from the appliedTheme object which is guaranteed to be a StatusColorThemeName
     onPostStatus(statusText.trim(), appliedTheme.name);
-    // Toast for success is handled by the onAddUserStatus callback in page.tsx
   };
   
   useEffect(() => {
@@ -73,8 +68,8 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[60] flex flex-col items-center justify-center p-4 transition-colors duration-300",
-        appliedTheme.bg // Use bg from the consistently resolved theme object
+        "fixed inset-0 z-[60] flex flex-col items-center justify-center p-4 transition-colors duration-300 bg-background", // Added bg-background as a base
+        appliedTheme.bg 
       )}
     >
       <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-4">
@@ -102,8 +97,8 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
           placeholder="Ketik status"
           className={cn(
             "bg-transparent border-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-center text-3xl md:text-4xl lg:text-5xl font-medium resize-none w-full max-w-2xl overflow-y-auto hide-scrollbar p-2",
-            appliedTheme.text, // Use text class from resolved theme
-            appliedTheme.placeholder, // Use placeholder class from resolved theme
+            appliedTheme.text, 
+            appliedTheme.placeholder, 
             "h-auto min-h-[100px] max-h-[70vh]"
           )}
           style={{ lineHeight: '1.4' }}
