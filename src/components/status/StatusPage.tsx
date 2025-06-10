@@ -14,7 +14,7 @@ import { id as idLocale } from 'date-fns/locale/id';
 import { getStatusThemeClasses, type StatusColorThemeName } from '@/config/statusThemes';
 
 const CreateTextStatus = dynamic(() => import('./CreateTextStatus').then(mod => mod.CreateTextStatus), { ssr: false });
-const ViewStatus = dynamic(() => import('./ViewStatus').then(mod => mod.ViewStatus), { 
+const ViewStatus = dynamic(() => import('./ViewStatus').then(mod => mod.ViewStatus), {
   ssr: false,
   loading: () => <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50"><MessageCircle className="h-10 w-10 text-white animate-pulse" /></div>
 });
@@ -43,15 +43,21 @@ const createSegmentedRingSVGSimple = (
 
   const radius = avatarSize / 2 - strokeWidth / 2;
   const circumference = 2 * Math.PI * radius;
-  
+
   // Use HSL variables from globals.css for colors
   const color = isAllRead ? 'hsl(var(--border))' : 'hsl(var(--primary))';
 
-  if (segmentCount === 1) { // Full ring for a single status
+  if (segmentCount === 1 && !isAllRead) { // Full ring for a single unread status
     return `<svg viewBox="0 0 ${avatarSize} ${avatarSize}" class="absolute inset-0 h-full w-full overflow-visible">
               <circle cx="${avatarSize / 2}" cy="${avatarSize / 2}" r="${radius}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" />
             </svg>`;
   }
+   if (segmentCount === 1 && isAllRead) { // Full gray ring for a single read status
+    return `<svg viewBox="0 0 ${avatarSize} ${avatarSize}" class="absolute inset-0 h-full w-full overflow-visible">
+              <circle cx="${avatarSize / 2}" cy="${avatarSize / 2}" r="${radius}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" />
+            </svg>`;
+  }
+
 
   // For multiple segments
   const totalSegmentLength = circumference / segmentCount;
@@ -59,12 +65,12 @@ const createSegmentedRingSVGSimple = (
   const gapLength = totalSegmentLength * gapPercentage;
 
   return `<svg viewBox="0 0 ${avatarSize} ${avatarSize}" class="absolute inset-0 h-full w-full overflow-visible">
-            <circle 
-              cx="${avatarSize / 2}" 
-              cy="${avatarSize / 2}" 
-              r="${radius}" 
-              fill="none" 
-              stroke="${color}" 
+            <circle
+              cx="${avatarSize / 2}"
+              cy="${avatarSize / 2}"
+              r="${radius}"
+              fill="none"
+              stroke="${color}"
               stroke-width="${strokeWidth}"
               stroke-dasharray="${dashLength} ${gapLength}"
               transform="rotate(-90 ${avatarSize / 2} ${avatarSize / 2})" />
@@ -72,10 +78,10 @@ const createSegmentedRingSVGSimple = (
 };
 
 
-export function StatusPage({ 
-  currentUser, 
-  userStatuses, 
-  onAddUserStatus, 
+export function StatusPage({
+  currentUser,
+  userStatuses,
+  onAddUserStatus,
   onDeleteUserStatus,
   statusReadTimestamps,
   onMarkUserStatusesAsRead,
@@ -128,7 +134,7 @@ export function StatusPage({
     const now = Date.now();
     return userStatuses
             .filter(status => (now - status.timestamp) < TWENTY_FOUR_HOURS_MS)
-            .sort((a,b) => b.timestamp - a.timestamp); 
+            .sort((a,b) => b.timestamp - a.timestamp);
   }, [userStatuses]);
 
   const currentUserActiveStatuses = useMemo(() => {
@@ -163,9 +169,9 @@ export function StatusPage({
   const handleViewUserStatuses = useCallback((userIdToView: string) => {
     let statusesToDisplay: UserStatus[] = [];
     if (currentUser && userIdToView === currentUser.id) {
-      statusesToDisplay = [...currentUserActiveStatuses].sort((a, b) => b.timestamp - a.timestamp); 
+      statusesToDisplay = [...currentUserActiveStatuses].sort((a, b) => b.timestamp - a.timestamp);
     } else {
-      statusesToDisplay = [...(otherUsersGroupedStatuses[userIdToView] || [])].sort((a, b) => b.timestamp - a.timestamp); 
+      statusesToDisplay = [...(otherUsersGroupedStatuses[userIdToView] || [])].sort((a, b) => b.timestamp - a.timestamp);
     }
 
     if (statusesToDisplay.length > 0) {
@@ -179,14 +185,14 @@ export function StatusPage({
 
 
   const handleDeleteStatusInView = useCallback((statusIdToDelete: string) => {
-    onDeleteUserStatus(statusIdToDelete); 
+    onDeleteUserStatus(statusIdToDelete);
     setViewingUserAllStatuses(prev => {
         if (!prev) return null;
         const updated = prev.filter(s => s.id !== statusIdToDelete);
         if (updated.length === 0) {
-             return null; 
+             return null;
         }
-        return updated; 
+        return updated;
     });
   }, [onDeleteUserStatus, setViewingUserAllStatuses]);
 
@@ -201,7 +207,7 @@ export function StatusPage({
 
   return (
     <div className="flex flex-1 flex-col bg-background h-full relative">
-      <header className="flex items-center justify-between p-4 py-3 sticky top-0 bg-background z-10 border-b">
+      <header className="flex items-center justify-between px-4 py-3 sticky top-0 bg-background z-10 border-b">
         <h1 className="text-2xl font-semibold text-foreground">Pembaruan</h1>
         <div className="flex items-center space-x-1">
           <Button variant="ghost" size="icon" className="text-foreground/70 md:hover:text-foreground">
@@ -216,11 +222,11 @@ export function StatusPage({
       </header>
 
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-5">
+        <div className="px-2 py-4 space-y-5 md:px-4"> {/* Adjusted padding here */}
           <div>
-            <h2 className="text-md font-semibold mb-1.5 text-foreground">Status</h2>
+            <h2 className="text-md font-semibold mb-1.5 text-foreground px-2">Status</h2> {/* Added px-2 for consistency with list items */}
             <div
-              className="flex items-center space-x-3 cursor-pointer md:hover:bg-muted/30 p-1.5 -ml-1.5 rounded-lg"
+              className="flex items-center space-x-3 cursor-pointer md:hover:bg-muted/30 p-2 rounded-lg" // Item padding adjusted
               onClick={() => handleViewUserStatuses(currentUser.id)}
             >
               <div className="relative">
@@ -228,7 +234,6 @@ export function StatusPage({
                   <AvatarImage src={currentUser.avatarUrl} alt="My Status Avatar" data-ai-hint="person abstract"/>
                   <AvatarFallback>{getInitials(currentUser.name, 2)}</AvatarFallback>
                 </Avatar>
-                {/* Always show the green plus icon indicator */}
                 <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-background flex items-center justify-center">
                     <Plus className="h-3 w-3 text-white" />
                 </div>
@@ -256,27 +261,27 @@ export function StatusPage({
 
           {otherUsersLatestStatus.length > 0 && (
             <div>
-              <h2 className="text-xs font-semibold text-muted-foreground mb-2 tracking-wide">PEMBARUAN TERKINI</h2>
+              <h2 className="text-xs font-semibold text-muted-foreground mb-2 tracking-wide px-2">PEMBARUAN TERKINI</h2> {/* Added px-2 */}
               <div className="space-y-0.5">
                 {otherUsersLatestStatus.map(latestStatusOfUser => {
                     const allStatusesForThisUser = otherUsersGroupedStatuses[latestStatusOfUser.userId] || [];
                     const segmentCount = allStatusesForThisUser.length;
-                    
+
                     const lastReadTimestampByCurrentUser = currentUser?.id && statusReadTimestamps?.[currentUser.id]?.[latestStatusOfUser.userId] || 0;
                     const isAllRead = allStatusesForThisUser.length > 0 && allStatusesForThisUser[0].timestamp <= lastReadTimestampByCurrentUser;
 
                     return (
-                        <div 
-                          key={latestStatusOfUser.id} 
-                          className="flex items-center space-x-3 cursor-pointer md:hover:bg-muted/30 p-1.5 -ml-1.5 rounded-lg"
+                        <div
+                          key={latestStatusOfUser.id}
+                          className="flex items-center space-x-3 cursor-pointer md:hover:bg-muted/30 p-2 rounded-lg" // Item padding adjusted
                           onClick={() => handleViewUserStatuses(latestStatusOfUser.userId)}
                         >
                             <div className="relative">
                                 <div
-                                    className="absolute inset-0 pointer-events-none" 
+                                    className="absolute inset-0 pointer-events-none"
                                     dangerouslySetInnerHTML={{ __html: createSegmentedRingSVGSimple(segmentCount, isAllRead) }}
                                 />
-                                <Avatar className="h-12 w-12 border-2 border-transparent"> 
+                                <Avatar className="h-12 w-12 border-2 border-transparent">
                                 <AvatarImage src={latestStatusOfUser.userAvatarUrl} alt={latestStatusOfUser.userName} data-ai-hint="person abstract status"/>
                                 <AvatarFallback>{getInitials(latestStatusOfUser.userName, 2)}</AvatarFallback>
                                 </Avatar>
@@ -294,14 +299,14 @@ export function StatusPage({
             </div>
           )}
            {otherUsersLatestStatus.length === 0 && activeUserStatuses.length > 0 && currentUserActiveStatuses.length === activeUserStatuses.length && (
-             <div className="pt-8 text-center">
+             <div className="pt-8 text-center px-2"> {/* Added px-2 */}
                 <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground/50" />
                 <p className="mt-2 text-sm text-muted-foreground">Belum ada pembaruan dari pengguna lain.</p>
                 <p className="mt-1 text-xs text-muted-foreground/80">Mulai chat dengan teman untuk melihat status mereka.</p>
             </div>
            )}
            {activeUserStatuses.length === 0 && (
-             <div className="pt-8 text-center">
+             <div className="pt-8 text-center px-2"> {/* Added px-2 */}
                 <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground/50" />
                 <p className="mt-2 text-sm text-muted-foreground">Belum ada pembaruan status.</p>
                 <p className="mt-1 text-xs text-muted-foreground/80">Buat status untuk dibagikan ke teman Anda.</p>
@@ -314,7 +319,7 @@ export function StatusPage({
          <Button
             variant="secondary"
             size="icon"
-            className="rounded-2xl h-12 w-12 shadow-lg bg-card md:hover:bg-muted focus-visible:ring-gray-400"
+            className="rounded-full h-12 w-12 shadow-lg bg-card md:hover:bg-muted focus-visible:ring-gray-400" /* Changed to rounded-full */
             onClick={() => setIsCreatingTextStatus(true)}
             aria-label="Buat status teks"
           >
@@ -323,7 +328,7 @@ export function StatusPage({
          <Button
             variant="default"
             size="icon"
-            className="rounded-2xl h-14 w-14 shadow-lg bg-green-500 md:hover:bg-green-600 text-white focus-visible:ring-green-300"
+            className="rounded-full h-14 w-14 shadow-lg bg-green-500 md:hover:bg-green-600 text-white focus-visible:ring-green-300" /* Changed to rounded-full */
             aria-label="Buat status foto atau video"
             onClick={() => alert("Fitur status foto/video akan segera hadir!")}
           >
@@ -360,3 +365,4 @@ export function StatusPage({
     </div>
   );
 }
+
