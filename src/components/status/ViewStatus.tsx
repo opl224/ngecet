@@ -15,7 +15,7 @@ import { id as idLocale } from 'date-fns/locale/id';
 import { useToast } from '@/hooks/use-toast';
 
 const STATUS_VIEW_DURATION = 5000; // 5 seconds
-const MIN_SWIPE_UP_DISTANCE_REPLY_AREA = 50; 
+const MIN_SWIPE_UP_DISTANCE_REPLY_AREA = 50;
 
 
 interface ViewStatusProps {
@@ -51,17 +51,25 @@ export function ViewStatus({
   const [replyText, setReplyText] = useState('');
   const [isReplyInputFocused, setIsReplyInputFocused] = useState(false);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
-  
+
   const replyAreaRef = useRef<HTMLDivElement>(null);
   const replyAreaTouchStartYRef = useRef<number | null>(null);
   const isSwipingOnReplyAreaRef = useRef<boolean>(false);
+
+  // Moved currentStatus definition before its usage in useCallback
+  const currentStatus = useMemo(() => {
+    if (currentIndex >= 0 && currentIndex < statuses.length) {
+      return statuses[currentIndex];
+    }
+    return null;
+  }, [statuses, currentIndex]);
 
   const handleCancelReply = useCallback(() => {
     setIsReplyingMode(false);
     setReplyText('');
     setIsReplyInputFocused(false);
-    if (isPaused) { 
-      setIsPaused(false); 
+    if (isPaused) {
+      setIsPaused(false);
     }
   }, [isPaused]);
 
@@ -72,19 +80,13 @@ export function ViewStatus({
       description: replyText,
     });
     const statusBeingRepliedTo = currentStatus;
-    handleCancelReply(); 
+    handleCancelReply();
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
-    onMarkAsRead(statusBeingRepliedTo.timestamp); 
-    onClose(); 
+    onMarkAsRead(statusBeingRepliedTo.timestamp);
+    onClose();
   }, [replyText, currentStatus, toast, handleCancelReply, onClose, onMarkAsRead]);
 
-  const currentStatus = useMemo(() => {
-    if (currentIndex >= 0 && currentIndex < statuses.length) {
-      return statuses[currentIndex];
-    }
-    return null;
-  }, [statuses, currentIndex]);
 
   const themeClasses = useMemo(() => getStatusThemeClasses(currentStatus?.backgroundColorName), [currentStatus]);
 
@@ -117,15 +119,15 @@ export function ViewStatus({
       return format(date, "PPpp", { locale: idLocale });
     }
   };
-  
+
   const performCloseActions = useCallback(() => {
     if (isReplyingMode) {
-      handleCancelReply(); 
-      return; 
+      handleCancelReply();
+      return;
     }
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
-    
+
     if (currentStatus) {
       onMarkAsRead(currentStatus.timestamp);
     }
@@ -136,8 +138,8 @@ export function ViewStatus({
   const advanceToStatus = useCallback((newIndex: number) => {
     if (newIndex >= 0 && newIndex < statuses.length) {
       setCurrentIndex(newIndex);
-      setProgressValue(0); 
-      progressAtPauseRef.current = 0; 
+      setProgressValue(0);
+      progressAtPauseRef.current = 0;
     } else if (newIndex >= statuses.length) {
       performCloseActions();
     }
@@ -157,14 +159,14 @@ export function ViewStatus({
     if (remainingDuration <= 0) {
       onMarkAsRead(currentStatus.timestamp);
       advanceToStatus(currentIndex + 1);
-      if (resumeFromPercent === 0) { 
+      if (resumeFromPercent === 0) {
           progressAtPauseRef.current = 0;
       }
       return;
     }
 
     const progressToDo = 100 - effectiveInitialProgress;
-    const intervalsCount = remainingDuration / 100; 
+    const intervalsCount = remainingDuration / 100;
     const incrementPerInterval = intervalsCount > 0 ? progressToDo / intervalsCount : progressToDo;
 
     intervalRef.current = setInterval(() => {
@@ -178,14 +180,14 @@ export function ViewStatus({
     }, 100);
 
     timerRef.current = setTimeout(() => {
-      if (intervalRef.current) clearInterval(intervalRef.current); 
-      setProgressValue(100); 
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      setProgressValue(100);
       onMarkAsRead(currentStatus.timestamp);
       advanceToStatus(currentIndex + 1);
     }, remainingDuration);
-    
+
     if (resumeFromPercent === 0) {
-        progressAtPauseRef.current = 0; 
+        progressAtPauseRef.current = 0;
     }
 
   }, [currentStatus, onMarkAsRead, advanceToStatus, currentIndex]);
@@ -202,7 +204,7 @@ export function ViewStatus({
       return;
     }
 
-    if (isPaused || isReplyingMode) { 
+    if (isPaused || isReplyingMode) {
       return;
     }
 
@@ -216,8 +218,8 @@ export function ViewStatus({
 
 
   const handleManualNavigation = useCallback((direction: 'next' | 'prev') => {
-    if (isPaused && !isReplyingMode) return; 
-    if (isReplyingMode) return; 
+    if (isPaused && !isReplyingMode) return;
+    if (isReplyingMode) return;
 
     const statusBeingLeft = statuses[currentIndex];
     if (direction === 'next') {
@@ -234,8 +236,8 @@ export function ViewStatus({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        performCloseActions(); 
-      } else if (!isReplyingMode && !isReplyInputFocused) { 
+        performCloseActions();
+      } else if (!isReplyingMode && !isReplyInputFocused) {
         if (event.key === 'ArrowRight') {
           handleManualNavigation('next');
         } else if (event.key === 'ArrowLeft') {
@@ -259,11 +261,12 @@ export function ViewStatus({
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const target = event.target as Node;
-    if (isReplyingMode || 
-        navLeftRef.current?.contains(target) || 
+    if (isReplyingMode ||
+        navLeftRef.current?.contains(target) ||
         navRightRef.current?.contains(target) ||
-        replyAreaRef.current?.contains(target) || 
-        (event.target as HTMLElement).closest('button')) { 
+        replyAreaRef.current?.contains(target) ||
+        (event.target as HTMLElement).closest('button') ||
+        (event.target as HTMLElement).closest('textarea')) {
       return;
     }
 
@@ -276,14 +279,14 @@ export function ViewStatus({
   }, [isPaused, progressValue, isReplyingMode]);
 
   const handlePointerUp = useCallback(() => {
-    if (isPaused && !isReplyingMode) { 
-      setIsPaused(false); 
+    if (isPaused && !isReplyingMode) {
+      setIsPaused(false);
     }
   }, [isPaused, isReplyingMode]);
 
 
   const handleReplyAreaTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 1) {
+    if (e.touches.length === 1 && !(e.target as HTMLElement).closest('textarea, button')) {
       replyAreaTouchStartYRef.current = e.targetTouches[0].clientY;
       isSwipingOnReplyAreaRef.current = true;
     }
@@ -296,7 +299,7 @@ export function ViewStatus({
 
       if (!isReplyingMode && swipeDistance > MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
         setIsReplyingMode(true);
-        setIsPaused(true); 
+        setIsPaused(true);
         setIsReplyInputFocused(true);
         setTimeout(() => replyInputRef.current?.focus(), 50);
       } else if (isReplyingMode && swipeDistance < -MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
@@ -306,7 +309,7 @@ export function ViewStatus({
     replyAreaTouchStartYRef.current = null;
     isSwipingOnReplyAreaRef.current = false;
   };
-  
+
 
   if (!currentStatus) {
     return null;
@@ -315,12 +318,12 @@ export function ViewStatus({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[70] flex flex-col items-center justify-center transition-colors duration-300 select-none bg-background", // Added bg-background as a base
+        "fixed inset-0 z-[70] flex flex-col items-center justify-center transition-colors duration-300 select-none bg-background",
         themeClasses.bg
       )}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp} 
+      onPointerLeave={handlePointerUp}
     >
       <div
         ref={navLeftRef}
@@ -340,10 +343,10 @@ export function ViewStatus({
           {statuses.map((_, index) => (
             <div key={index} className="flex-1 h-0.5 bg-white/40 rounded-full overflow-hidden">
               {index === currentIndex ? (
-                <Progress 
-                  value={isPaused || isReplyingMode ? progressAtPauseRef.current : progressValue} 
-                  className="h-full bg-transparent" 
-                  indicatorClassName="bg-white transition-transform duration-100 ease-linear" 
+                <Progress
+                  value={isPaused || isReplyingMode ? progressAtPauseRef.current : progressValue}
+                  className="h-full bg-transparent"
+                  indicatorClassName="bg-white transition-transform duration-100 ease-linear"
                 />
               ) : index < currentIndex ? (
                 <div className="h-full bg-white rounded-full" />
@@ -351,7 +354,7 @@ export function ViewStatus({
             </div>
           ))}
         </div>
-        <div className="flex items-center justify-between pointer-events-auto"> 
+        <div className="flex items-center justify-between pointer-events-auto">
           <div className="flex items-center space-x-2">
             <Avatar className="h-9 w-9 border-2 border-white/80">
               <AvatarImage src={currentStatus.userAvatarUrl} alt={currentStatus.userName} data-ai-hint="person abstract"/>
@@ -384,7 +387,7 @@ export function ViewStatus({
 
       <div className={cn(
           "flex-1 flex w-full items-center justify-center overflow-hidden px-4 pb-10 pt-20 md:pt-24 z-0 pointer-events-none",
-          isReplyingMode && "opacity-70" 
+          isReplyingMode && "opacity-70"
         )}
       >
         <p
@@ -398,13 +401,13 @@ export function ViewStatus({
         </p>
       </div>
 
-      <div 
+      <div
         ref={replyAreaRef}
         className={cn(
           "absolute bottom-0 left-0 right-0 bg-black/90 z-30 transition-transform duration-300 ease-out",
           "flex flex-col items-center"
         )}
-        style={{ transform: isReplyingMode ? 'translateY(0%)' : `translateY(calc(100% - 40px - env(safe-area-inset-bottom)))`, height: isReplyingMode ? 'auto' : '70px' }} 
+        style={{ transform: isReplyingMode ? 'translateY(0%)' : `translateY(calc(100% - 40px - env(safe-area-inset-bottom)))`, height: isReplyingMode ? 'auto' : '70px' }}
         onTouchStart={handleReplyAreaTouchStart}
         onTouchEnd={handleReplyAreaTouchEnd}
         onClick={(e) => {
@@ -420,10 +423,10 @@ export function ViewStatus({
         <div
           className={cn(
             "flex flex-col items-center justify-center text-center w-full cursor-pointer",
-             isReplyingMode ? "py-2" : "pt-1 pb-0.5 absolute top-0 left-0 right-0 h-[40px]" 
+             isReplyingMode ? "py-2" : "pt-1 pb-0.5 absolute top-0 left-0 right-0 h-[40px]"
           )}
           onClick={(e) => {
-            e.stopPropagation(); 
+            e.stopPropagation();
             if (isReplyingMode) {
               handleCancelReply();
             } else {
@@ -449,7 +452,7 @@ export function ViewStatus({
         {isReplyingMode && (
           <div className="w-full max-w-xl mx-auto px-3 pb-3 pt-1">
             <div className="flex items-center space-x-2">
-              <Textarea 
+              <Textarea
                 ref={replyInputRef}
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
@@ -461,10 +464,10 @@ export function ViewStatus({
                 onClick={(e) => e.stopPropagation()}
               />
               {isReplyInputFocused || replyText.trim() ? (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="bg-sky-600 hover:bg-sky-500 rounded-full h-10 w-10 p-0 shrink-0" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="bg-sky-600 hover:bg-sky-500 rounded-full h-10 w-10 p-0 shrink-0"
                   onClick={(e) => { e.stopPropagation(); handleSendReply(); }}
                   disabled={!replyText.trim()}
                   aria-label="Kirim balasan"
@@ -472,9 +475,9 @@ export function ViewStatus({
                   <SendHorizonal className="h-5 w-5 text-white" />
                 </Button>
               ) : (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="bg-neutral-700 hover:bg-neutral-600 rounded-full h-10 w-10 p-0 shrink-0"
                   onClick={(e) => {
                       e.stopPropagation();
@@ -492,3 +495,5 @@ export function ViewStatus({
     </div>
   );
 }
+
+    
