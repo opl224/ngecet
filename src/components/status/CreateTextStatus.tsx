@@ -2,13 +2,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import type { User } from '@/types';
+import type { User, StatusColorThemeName } from '@/types'; // Added StatusColorThemeName
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { X, Palette, Type, SendHorizonal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { statusColorThemes, getStatusThemeClasses, type StatusColorThemeName } from '@/config/statusThemes';
+import { statusColorThemes, getStatusThemeClasses } from '@/config/statusThemes';
 
 interface CreateTextStatusProps {
   currentUser: User;
@@ -68,7 +68,7 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[60] flex flex-col items-center justify-center p-4 transition-colors duration-300 bg-background", // Added bg-background as a base
+        "fixed inset-0 z-[60] flex flex-col items-center justify-center p-4 transition-colors duration-300",
         appliedTheme.bg 
       )}
     >
