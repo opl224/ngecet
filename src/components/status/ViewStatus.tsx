@@ -63,14 +63,19 @@ export function ViewStatus({
     return null;
   }, [statuses, currentIndex]);
 
+  const themeClasses = useMemo(() => getStatusThemeClasses(currentStatus?.backgroundColorName), [currentStatus]);
+
   const handleCancelReply = useCallback(() => {
+    if (replyInputRef.current && isReplyInputFocused) {
+      replyInputRef.current.blur();
+    }
     setIsReplyingMode(false);
     setReplyText('');
     setIsReplyInputFocused(false);
     if (isPaused) { 
         setIsPaused(false); 
     }
-  }, [isPaused]);
+  }, [isPaused, isReplyInputFocused]);
 
   const handleSendReply = useCallback(() => {
     if (!replyText.trim() || !currentStatus) return;
@@ -78,16 +83,14 @@ export function ViewStatus({
       title: `Balasan terkirim ke ${currentStatus.userName}`,
       description: replyText,
     });
-    const statusBeingRepliedTo = currentStatus;
+    const statusBeingRepliedTo = currentStatus; // Capture currentStatus before it might change
     handleCancelReply(); 
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
-    onMarkAsRead(statusBeingRepliedTo.timestamp);
+    onMarkAsRead(statusBeingRepliedTo.timestamp); // Use captured status
     onClose(); 
   }, [replyText, currentStatus, toast, handleCancelReply, onClose, onMarkAsRead]);
 
-
-  const themeClasses = useMemo(() => getStatusThemeClasses(currentStatus?.backgroundColorName), [currentStatus]);
 
   useEffect(() => {
     prevCurrentStatusRef.current = currentStatus;
@@ -288,24 +291,47 @@ export function ViewStatus({
 
 
   const handleReplyAreaTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 1 && !(e.target as HTMLElement).closest('textarea, button')) {
+    if (e.touches.length === 1) {
       replyAreaTouchStartYRef.current = e.targetTouches[0].clientY;
-      isSwipingOnReplyAreaRef.current = true; 
+      isSwipingOnReplyAreaRef.current = true;
+      e.stopPropagation(); // Important: Stop propagation
+
+      if (!isReplyingMode && !isPaused) {
+          setIsPaused(true);
+          progressAtPauseRef.current = progressValue;
+          if (timerRef.current) clearTimeout(timerRef.current);
+          if (intervalRef.current) clearInterval(intervalRef.current);
+      }
+    }
+  };
+  
+  const handleReplyAreaTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (isSwipingOnReplyAreaRef.current) {
+      e.stopPropagation(); // Important: Stop propagation during move
+      // Future: Add interactive drag logic here if needed
     }
   };
 
   const handleReplyAreaTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
     if (replyAreaTouchStartYRef.current && isSwipingOnReplyAreaRef.current) {
+      e.stopPropagation(); // Important: Stop propagation
       const touchEndY = e.changedTouches[0].clientY;
       const swipeDistance = replyAreaTouchStartYRef.current - touchEndY; 
 
       if (!isReplyingMode && swipeDistance > MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
         setIsReplyingMode(true);
-        setIsPaused(true); 
+        // setIsPaused is already true from onTouchStart
         setIsReplyInputFocused(true); 
         setTimeout(() => replyInputRef.current?.focus(), 50); 
       } else if (isReplyingMode && swipeDistance < -MIN_SWIPE_UP_DISTANCE_REPLY_AREA) { 
         handleCancelReply();
+      } else if (!isReplyingMode && isPaused) {
+        // If swipe wasn't enough to open, but we paused, unpause.
+        // However, if they just tapped, we might want different behavior (e.g. toggle reply mode).
+        // For now, a failed swipe means unpause.
+        // setIsPaused(false); // This might cause a flicker if it was a tap.
+        // Consider what should happen on a tap on the hidden area.
+        // For now, let's assume only swipe matters. If swipe fails, it stays paused until pointer up on main screen.
       }
     }
     replyAreaTouchStartYRef.current = null;
@@ -320,7 +346,7 @@ export function ViewStatus({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[70] flex flex-col items-center justify-center transition-colors duration-300 select-none",
+        "fixed inset-0 z-[70] flex flex-col items-center justify-center bg-background transition-colors duration-300 select-none",
         themeClasses.bg 
       )}
       onPointerDown={handlePointerDown}
@@ -406,75 +432,80 @@ export function ViewStatus({
       <div
         ref={replyAreaRef}
         className={cn(
-          "absolute bottom-0 left-0 right-0 bg-black/90 z-30 transition-transform duration-300 ease-out",
-          "flex flex-col items-center" 
+          "absolute bottom-0 left-0 right-0 z-30 transition-all duration-300 ease-out",
+          "flex flex-col items-center",
+          isReplyingMode ? "bg-black/90" : "bg-red-500/5 pointer-events-auto" // DEBUG: bg-red-500/5 for hidden state
         )}
-        style={{ 
-          transform: isReplyingMode ? 'translateY(0%)' : 'translateY(100%)', // Hide completely when not replying
-          height: isReplyingMode ? 'auto' : '50px' // Reduced height when hidden, just enough for swipe target
+        style={{
+          height: isReplyingMode ? 'auto' : '50px', // Target height when hidden
         }}
         onTouchStart={handleReplyAreaTouchStart}
+        onTouchMove={handleReplyAreaTouchMove}
         onTouchEnd={handleReplyAreaTouchEnd}
       >
         {isReplyingMode && (
-          <div
-            className="flex flex-col items-center justify-center text-center w-full cursor-pointer py-2"
-            onClick={(e) => {
-              e.stopPropagation(); 
-              handleCancelReply();
-            }}
-          >
-            <ChevronDown className="h-5 w-5 text-neutral-400" />
-          </div>
-        )}
-
-        {isReplyingMode && (
-          <div className="w-full max-w-xl mx-auto px-3 pb-3 pt-1"> 
-            <div className="flex items-center space-x-2">
-              <Textarea
-                ref={replyInputRef}
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder={`Balas ke ${currentStatus.userName}...`}
-                onFocus={() => setIsReplyInputFocused(true)}
-                onBlur={() => { if(!replyText.trim() && !isSwipingOnReplyAreaRef.current) setIsReplyInputFocused(false); }}
-                className="flex-1 bg-neutral-700 border-neutral-600 text-white placeholder-neutral-400 rounded-2xl py-2.5 px-4 resize-none min-h-[40px] max-h-[100px] focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-neutral-500 text-sm"
-                rows={1}
-                onClick={(e) => e.stopPropagation()} 
-              />
-              {isReplyInputFocused || replyText.trim() ? (
-                <Button
-                  variant="ghost" 
-                  size="icon"
-                  className="bg-sky-600 hover:bg-sky-500 rounded-full h-10 w-10 p-0 shrink-0"
-                  onClick={(e) => { e.stopPropagation(); handleSendReply(); }}
-                  disabled={!replyText.trim()}
-                  aria-label="Kirim balasan"
-                >
-                  <SendHorizonal className="h-5 w-5 text-white" />
-                </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="bg-neutral-700 hover:bg-neutral-600 rounded-full h-10 w-10 p-0 shrink-0"
-                  onClick={(e) => {
-                      e.stopPropagation(); 
-                      toast({ title: `Status ${currentStatus.userName} disukai!`});
-                  }}
-                  aria-label="Sukai status"
-                >
-                  <Heart className="h-5 w-5 text-white" />
-                </Button>
+          <>
+            <div
+              className={cn(
+                "flex flex-col items-center justify-center text-center w-full cursor-pointer",
+                "py-2"
               )}
+              onClick={(e) => {
+                e.stopPropagation(); 
+                handleCancelReply();
+              }}
+            >
+              <ChevronDown className="h-5 w-5 text-neutral-400" />
             </div>
-          </div>
+
+            <div className="w-full max-w-xl mx-auto px-3 pb-3 pt-1"> 
+              <div className="flex items-center space-x-2">
+                <Textarea
+                  ref={replyInputRef}
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder={`Balas ke ${currentStatus.userName}...`}
+                  onFocus={() => setIsReplyInputFocused(true)}
+                  onBlur={() => { if(!replyText.trim() && !isSwipingOnReplyAreaRef.current) setIsReplyInputFocused(false); }}
+                  className="flex-1 bg-neutral-700 border-neutral-600 text-white placeholder-neutral-400 rounded-2xl py-2.5 px-4 resize-none min-h-[40px] max-h-[100px] focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-neutral-500 text-sm"
+                  rows={1}
+                  onClick={(e) => e.stopPropagation()} 
+                  onTouchStart={(e) => e.stopPropagation()} // Stop touch on textarea from triggering panel swipe
+                />
+                {isReplyInputFocused || replyText.trim() ? (
+                  <Button
+                    variant="ghost" 
+                    size="icon"
+                    className="bg-sky-600 hover:bg-sky-500 rounded-full h-10 w-10 p-0 shrink-0"
+                    onClick={(e) => { e.stopPropagation(); handleSendReply(); }}
+                    disabled={!replyText.trim()}
+                    aria-label="Kirim balasan"
+                    onTouchStart={(e) => e.stopPropagation()}
+                  >
+                    <SendHorizonal className="h-5 w-5 text-white" />
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="bg-neutral-700 hover:bg-neutral-600 rounded-full h-10 w-10 p-0 shrink-0"
+                    onClick={(e) => {
+                        e.stopPropagation(); 
+                        toast({ title: `Status ${currentStatus.userName} disukai!`});
+                    }}
+                    aria-label="Sukai status"
+                    onTouchStart={(e) => e.stopPropagation()}
+                  >
+                    <Heart className="h-5 w-5 text-white" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
   );
 }
-
-    
 
     
