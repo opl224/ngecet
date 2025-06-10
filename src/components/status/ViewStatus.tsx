@@ -72,7 +72,7 @@ export function ViewStatus({
     setIsReplyingMode(false);
     setReplyText('');
     setIsReplyInputFocused(false);
-    if (isPaused) { // Only unpause if it was paused due to reply interaction
+    if (isPaused) { 
         setIsPaused(false); 
     }
   }, [isPaused, isReplyInputFocused]);
@@ -268,7 +268,7 @@ export function ViewStatus({
      if (isReplyingMode ||
         navLeftRef.current?.contains(target) ||
         navRightRef.current?.contains(target) ||
-        replyAreaRef.current?.contains(target) || // Check if touch is on replyArea itself
+        replyAreaRef.current?.contains(target) ||
         (event.target as HTMLElement).closest('button') ||
         (event.target as HTMLElement).closest('textarea')
        ) {
@@ -284,7 +284,7 @@ export function ViewStatus({
   }, [isPaused, progressValue, isReplyingMode]);
 
   const handlePointerUp = useCallback(() => {
-    if (isPaused && !isReplyingMode) { // Only unpause if not in replying mode
+    if (isPaused && !isReplyingMode) { 
       setIsPaused(false);
     }
   }, [isPaused, isReplyingMode]);
@@ -325,7 +325,6 @@ export function ViewStatus({
       } else if (isReplyingMode && swipeDistance < -MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
         handleCancelReply(); 
       } else if (!isReplyingMode && isPaused) {
-         // If swipe wasn't enough to open, but touch started on replyArea, unpause
          setIsPaused(false);
          unpausedDueToNoAction = true;
       }
@@ -333,10 +332,8 @@ export function ViewStatus({
     replyAreaTouchStartYRef.current = null;
     isSwipingOnReplyAreaRef.current = false;
     
-    // If we specifically unpaused because the swipe on replyArea wasn't enough to open it,
-    // and we are not in replying mode, then we should ensure the main status timer resumes.
     if (unpausedDueToNoAction && !isReplyingMode) {
-        // startTimers(progressAtPauseRef.current) // This will be handled by the useEffect for isPaused change
+        // This will be handled by the useEffect for isPaused change
     }
   };
 
@@ -353,9 +350,8 @@ export function ViewStatus({
       )}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp} // Ensure pause ends if pointer leaves screen
+      onPointerLeave={handlePointerUp} 
     >
-      {/* Navigation Areas (Left/Right Tap) */}
       <div
         ref={navLeftRef}
         className="absolute top-0 left-0 h-full w-1/3 z-10"
@@ -369,7 +365,6 @@ export function ViewStatus({
         aria-label="Status Berikutnya"
       />
 
-      {/* Header: Progress Bars & User Info */}
       <div className="absolute top-0 left-0 right-0 p-3 md:p-4 z-20 bg-gradient-to-b from-black/50 via-black/30 to-transparent pointer-events-none">
         <div className="flex items-center gap-1 mb-2">
           {statuses.map((_, index) => (
@@ -377,12 +372,12 @@ export function ViewStatus({
               {index === currentIndex ? (
                 <Progress
                   value={isPaused || isReplyingMode ? progressAtPauseRef.current : progressValue}
-                  className="h-full bg-transparent" // Track is transparent
-                  indicatorClassName="bg-white transition-transform duration-100 ease-linear" // Indicator is white
+                  className="h-full bg-transparent" 
+                  indicatorClassName="bg-white transition-transform duration-100 ease-linear" 
                 />
               ) : index < currentIndex ? (
-                <div className="h-full bg-white rounded-full" /> // Seen statuses are fully white
-              ) : null /* Unseen future statuses are just the bg-white/40 track */ }
+                <div className="h-full bg-white rounded-full" /> 
+              ) : null }
             </div>
           ))}
         </div>
@@ -417,10 +412,9 @@ export function ViewStatus({
         </div>
       </div>
 
-      {/* Status Content */}
       <div className={cn(
           "flex-1 flex w-full items-center justify-center overflow-hidden px-4 pb-10 pt-20 md:pt-24 z-0 pointer-events-none",
-          isReplyingMode && "opacity-70" // Slightly dim content when replying
+          isReplyingMode && currentStatus.userId !== currentUser?.id && "opacity-70"
         )}
       >
         <p
@@ -434,87 +428,87 @@ export function ViewStatus({
         </p>
       </div>
 
-      {/* Reply Gesture Area & UI Container */}
-      <div
-        ref={replyAreaRef}
-        className={cn(
-          "absolute bottom-0 left-0 right-0 z-30 overflow-hidden",
-          "flex flex-col items-center", // For aligning content when open
-          "transition-[height,background-color] duration-300 ease-out",
-          isReplyingMode
-            ? "bg-black/90 h-auto" // Open state: semi-transparent black, height auto
-            : "h-[40vh] bg-transparent" // Closed state (gesture area): 40% screen height, transparent
-        )}
-        onTouchStart={handleReplyAreaTouchStart}
-        onTouchMove={handleReplyAreaTouchMove}
-        onTouchEnd={handleReplyAreaTouchEnd}
-      >
-        {/* Inner Content Wrapper for Sliding Animation */}
+      {/* Only render reply area if it's not the current user's status */}
+      {currentUser && currentStatus.userId !== currentUser.id && (
         <div
+          ref={replyAreaRef}
           className={cn(
-            "w-full transition-transform duration-300 ease-out",
-            isReplyingMode ? "translate-y-0" : "translate-y-full" // Slides in from bottom
+            "absolute bottom-0 left-0 right-0 z-30 overflow-hidden",
+            "flex flex-col items-center",
+            "transition-[height,background-color] duration-300 ease-out",
+            "pointer-events-auto", 
+            isReplyingMode
+              ? "bg-black/90 h-auto"
+              : "bg-transparent h-[40vh]" 
           )}
+          onTouchStart={handleReplyAreaTouchStart}
+          onTouchMove={handleReplyAreaTouchMove}
+          onTouchEnd={handleReplyAreaTouchEnd}
         >
-          {isReplyingMode && ( // Only render reply UI content when it's supposed to be visible
-            <>
-              {/* Chevron Down to close reply area */}
-              <div
-                className="flex flex-col items-center justify-center text-center w-full cursor-pointer py-2"
-                onClick={(e) => { e.stopPropagation(); handleCancelReply(); }}
-                onTouchStart={(e) => e.stopPropagation()} 
-              >
-                <ChevronDown className="h-5 w-5 text-neutral-400" />
-              </div>
-
-              {/* Reply Input and Buttons */}
-              <div className="w-full max-w-xl mx-auto px-3 pb-3 pt-1">
-                <div className="flex items-center space-x-2">
-                  <Textarea
-                    ref={replyInputRef}
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder={`Balas ke ${currentStatus.userName}...`}
-                    onFocus={() => setIsReplyInputFocused(true)}
-                    onBlur={() => { if(!replyText.trim() && !isSwipingOnReplyAreaRef.current) setIsReplyInputFocused(false); }}
-                    className="flex-1 bg-neutral-700 border-neutral-600 text-white placeholder-neutral-400 rounded-2xl py-2.5 px-4 resize-none min-h-[40px] max-h-[100px] focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-neutral-500 text-sm"
-                    rows={1}
-                    onClick={(e) => e.stopPropagation()} // Prevent main status pause
-                    onTouchStart={(e) => e.stopPropagation()} // Prevent main status pause
-                  />
-                  {isReplyInputFocused || replyText.trim() ? (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="bg-sky-600 hover:bg-sky-500 rounded-full h-10 w-10 p-0 shrink-0"
-                      onClick={(e) => { e.stopPropagation(); handleSendReply(); }}
-                      disabled={!replyText.trim()}
-                      aria-label="Kirim balasan"
-                      onTouchStart={(e) => e.stopPropagation()} // Prevent main status pause
-                    >
-                      <SendHorizonal className="h-5 w-5 text-white" />
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="bg-neutral-700 hover:bg-neutral-600 rounded-full h-10 w-10 p-0 shrink-0"
-                      onClick={(e) => {
-                          e.stopPropagation(); // Prevent main status pause
-                          toast({ title: `Status ${currentStatus.userName} disukai!`});
-                      }}
-                      aria-label="Sukai status"
-                      onTouchStart={(e) => e.stopPropagation()} // Prevent main status pause
-                    >
-                      <Heart className="h-5 w-5 text-white" />
-                    </Button>
-                  )}
+          <div
+            className={cn(
+              "w-full transition-transform duration-300 ease-out",
+              isReplyingMode ? "translate-y-0" : "translate-y-full"
+            )}
+          >
+            {isReplyingMode && ( 
+              <>
+                <div
+                  className="flex flex-col items-center justify-center text-center w-full cursor-pointer py-2"
+                  onClick={(e) => { e.stopPropagation(); handleCancelReply(); }}
+                  onTouchStart={(e) => e.stopPropagation()} 
+                >
+                  <ChevronDown className="h-5 w-5 text-neutral-400" />
                 </div>
-              </div>
-            </>
-          )}
+
+                <div className="w-full max-w-xl mx-auto px-3 pb-3 pt-1">
+                  <div className="flex items-center space-x-2">
+                    <Textarea
+                      ref={replyInputRef}
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder={`Balas ke ${currentStatus.userName}...`}
+                      onFocus={() => setIsReplyInputFocused(true)}
+                      onBlur={() => { if(!replyText.trim() && !isSwipingOnReplyAreaRef.current) setIsReplyInputFocused(false); }}
+                      className="flex-1 bg-neutral-700 border-neutral-600 text-white placeholder-neutral-400 rounded-2xl py-2.5 px-4 resize-none min-h-[40px] max-h-[100px] focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-neutral-500 text-sm"
+                      rows={1}
+                      onClick={(e) => e.stopPropagation()} 
+                      onTouchStart={(e) => e.stopPropagation()}
+                    />
+                    {isReplyInputFocused || replyText.trim() ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="bg-sky-600 hover:bg-sky-500 rounded-full h-10 w-10 p-0 shrink-0"
+                        onClick={(e) => { e.stopPropagation(); handleSendReply(); }}
+                        disabled={!replyText.trim()}
+                        aria-label="Kirim balasan"
+                        onTouchStart={(e) => e.stopPropagation()} 
+                      >
+                        <SendHorizonal className="h-5 w-5 text-white" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="bg-neutral-700 hover:bg-neutral-600 rounded-full h-10 w-10 p-0 shrink-0"
+                        onClick={(e) => {
+                            e.stopPropagation(); 
+                            toast({ title: `Status ${currentStatus.userName} disukai!`});
+                        }}
+                        aria-label="Sukai status"
+                        onTouchStart={(e) => e.stopPropagation()} 
+                      >
+                        <Heart className="h-5 w-5 text-white" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
