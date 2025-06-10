@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import dynamic from 'next/dynamic';
-import type { User, Chat, Message, RegisteredUser, UserStatus, ReadStatusTimestamps } from "@/types";
+import type { User, Chat, Message, RegisteredUser, UserStatus, ReadStatusTimestamps, StatusColorThemeName } from "@/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import useLocalStorage from "@/hooks/use-local-storage";
 import { AppLogo } from "@/components/core/AppLogo";
@@ -49,7 +49,13 @@ const WelcomeMessage = dynamic(() => import('@/components/chat/WelcomeMessage').
 const NewDirectChatDialog = dynamic(() => import('@/components/chat/NewDirectChatDialog').then(mod => mod.NewDirectChatDialog), { ssr: false });
 const NewGroupChatDialog = dynamic(() => import('@/components/chat/NewGroupChatDialog').then(mod => mod.NewGroupChatDialog), { ssr: false });
 const AddUserToGroupDialog = dynamic(() => import('@/components/chat/AddUserToGroupDialog').then(mod => mod.AddUserToGroupDialog), { ssr: false });
+
 const StatusPage = dynamic(() => import('@/components/status/StatusPage').then(mod => mod.StatusPage), { ssr: false, loading: () => <div className="flex-1 flex items-center justify-center"><AppLogo className="w-10 h-10 text-primary animate-pulse" /></div> });
+const CreateTextStatus = dynamic(() => import('@/components/status/CreateTextStatus').then(mod => mod.CreateTextStatus), { ssr: false });
+const ViewStatus = dynamic(() => import('@/components/status/ViewStatus').then(mod => mod.ViewStatus), {
+  ssr: false,
+  loading: () => <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50"><AppLogo className="w-10 h-10 text-primary animate-pulse" /></div>
+});
 
 
 const LS_USER_KEY = "ngecet_user";
@@ -59,7 +65,9 @@ const LS_REGISTERED_USERS_KEY = "ngecet_registered_users";
 const LS_USER_STATUSES_KEY = "ngecet_user_statuses";
 const LS_STATUS_READ_TIMESTAMPS_KEY = "ngecet_status_read_timestamps";
 
-const MIN_SWIPE_DISTANCE_TAB = 50; // Minimum distance in pixels for a swipe to be registered for tab switching
+const MIN_SWIPE_DISTANCE_TAB = 50;
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
 
 export default function ChatPage() {
   const { toast } = useToast();
@@ -113,19 +121,21 @@ export default function ChatPage() {
   const [currentTranslateX, setCurrentTranslateX] = useState<number>(0);
   const screenWidthRef = useRef<number>(0);
 
+  // State for Status Creation and Viewing (lifted from StatusPage)
+  const [isCreatingTextStatus, setIsCreatingTextStatus] = useState(false);
+  const [viewingUserAllStatuses, setViewingUserAllStatuses] = useState<UserStatus[] | null>(null);
+  const [viewingUserInitialStatusIndex, setViewingUserInitialStatusIndex] = useState<number>(0);
+
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Initialize and update screenWidthRef and set initial/resized currentTranslateX for mobile view
   useEffect(() => {
     if (isMobileView) {
       const updateLayout = () => {
         const newScreenWidth = window.innerWidth;
         screenWidthRef.current = newScreenWidth;
-        
-        // Set currentTranslateX without animation for initial load and resize
         if (mobileTabContainerRef.current) {
           mobileTabContainerRef.current.style.transition = 'none';
         }
@@ -137,7 +147,6 @@ export default function ChatPage() {
     }
   }, [isMobileView, activeMobileTab]);
 
-  // Effect to animate currentTranslateX when activeMobileTab changes programmatically (e.g., bottom nav)
   useEffect(() => {
     if (isMobileView && screenWidthRef.current > 0 && !isSwipingRef.current) {
       if (mobileTabContainerRef.current) {
@@ -145,22 +154,94 @@ export default function ChatPage() {
       }
       setCurrentTranslateX(activeMobileTab === 'chat' ? 0 : -screenWidthRef.current);
     }
-  }, [activeMobileTab, isMobileView]); // Removed screenWidthRef.current as a dependency
+  }, [activeMobileTab, isMobileView]);
 
-  
-  const handleAddUserStatus = useCallback((newStatus: UserStatus) => {
+
+  // STATUS RELATED FUNCTIONS (LIFTED/ADAPTED)
+  const activeUserStatuses = useMemo(() => {
+    const now = Date.now();
+    return userStatuses
+            .filter(status => (now - status.timestamp) < TWENTY_FOUR_HOURS_MS)
+            .sort((a,b) => b.timestamp - a.timestamp);
+  }, [userStatuses]);
+
+  const currentUserActiveStatuses = useMemo(() => {
+    if (!currentUser) return [];
+    return activeUserStatuses.filter(status => status.userId === currentUser.id);
+  }, [activeUserStatuses, currentUser]);
+
+  const otherUsersGroupedStatuses = useMemo(() => {
+    if (!currentUser) return {};
+    const grouped: Record<string, UserStatus[]> = {};
+    activeUserStatuses.forEach(status => {
+      if (status.userId !== currentUser.id) {
+        if (!grouped[status.userId]) {
+          grouped[status.userId] = [];
+        }
+        grouped[status.userId].push(status);
+      }
+    });
+    return grouped;
+  }, [activeUserStatuses, currentUser]);
+
+
+  const handleTriggerCreateStatus = useCallback(() => {
+    setIsCreatingTextStatus(true);
+  }, []);
+
+  const handlePostUserStatus = useCallback((text: string, backgroundColorName: StatusColorThemeName) => {
+    if (!currentUser) return;
+    const newStatus: UserStatus = {
+      id: `status_${Date.now()}_${currentUser.id}`,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userAvatarUrl: currentUser.avatarUrl,
+      type: 'text',
+      content: text,
+      backgroundColorName,
+      timestamp: Date.now(),
+    };
     setUserStatuses(prevStatuses => {
       const updatedStatuses = [...prevStatuses, newStatus].sort((a,b) => b.timestamp - a.timestamp);
       return updatedStatuses;
     });
+    setIsCreatingTextStatus(false);
     toast({ title: "Status Terkirim", description: "Status teks Anda telah diposting." });
-  }, [setUserStatuses, toast]);
+  }, [currentUser, setUserStatuses, toast]);
+  
+  const handleTriggerViewUserStatuses = useCallback((userIdToView: string) => {
+    let statusesToDisplay: UserStatus[] = [];
+    if (currentUser && userIdToView === currentUser.id) {
+      statusesToDisplay = [...currentUserActiveStatuses].sort((a, b) => a.timestamp - b.timestamp); // ViewStatus sorts newest first internally
+    } else {
+      statusesToDisplay = [...(otherUsersGroupedStatuses[userIdToView] || [])].sort((a, b) => a.timestamp - b.timestamp);
+    }
+
+    if (statusesToDisplay.length > 0) {
+      setViewingUserAllStatuses(statusesToDisplay);
+      setViewingUserInitialStatusIndex(0); // ViewStatus handles its own internal current index. This just sets the initial.
+    } else if (currentUser && userIdToView === currentUser.id) {
+      handleTriggerCreateStatus();
+    }
+  }, [currentUser, currentUserActiveStatuses, otherUsersGroupedStatuses, handleTriggerCreateStatus]);
 
   const handleDeleteUserStatus = useCallback((statusId: string) => {
     setUserStatuses(prevStatuses => prevStatuses.filter(status => status.id !== statusId));
     toast({ title: "Status Dihapus" });
   }, [setUserStatuses, toast]);
 
+  const handleDeleteStatusInView = useCallback((statusIdToDelete: string) => {
+    handleDeleteUserStatus(statusIdToDelete); // Call the main delete handler
+    setViewingUserAllStatuses(prev => {
+        if (!prev) return null;
+        const updated = prev.filter(s => s.id !== statusIdToDelete);
+        if (updated.length === 0) {
+             return null; // This will close ViewStatus
+        }
+        return updated;
+    });
+  }, [handleDeleteUserStatus]);
+  
   const handleMarkUserStatusesAsRead = useCallback((viewedUserId: string, latestTimestampViewed: number) => {
     if (!currentUser) return;
     setStatusReadTimestamps(prev => {
@@ -322,9 +403,7 @@ export default function ChatPage() {
     if (existingChat) {
       setSelectedChat(existingChat);
       if (existingChat.blockedByUser && existingChat.blockedByUser === currentUser.id) {
-        // User is blocked by current user - message will appear in ChatView
       } else if (existingChat.blockedByUser && existingChat.blockedByUser !== currentUser.id) {
-        // User is blocked by the other user
       } else if (existingChat.pendingApprovalFromUserId === currentUser.id) {
         toast({ title: "Permintaan Tertunda", description: `Anda memiliki permintaan chat dari ${recipientUser.name}. Terima atau tolak dari daftar chat.` });
       }
@@ -870,7 +949,6 @@ export default function ChatPage() {
         } else if (existingDirectChat.isRejected) {
             reasonForInvalid = `Chat langsung dengan ${userObjectToAdd.name} sebelumnya ditolak.`;
         } else if (!existingDirectChat.pendingApprovalFromUserId && !existingDirectChat.isRejected && !existingDirectChat.blockedByUser) {
-            // Direct chat is active and fine
         } else {
              reasonForInvalid = `Anda tidak memiliki chat langsung yang aktif dengan ${userObjectToAdd.name}.`;
         }
@@ -1151,13 +1229,11 @@ export default function ChatPage() {
     toast({ title: "Blokir Dibuka", description: `Anda telah membuka blokir ${otherParticipantName}.` });
   }, [currentUser, chats, selectedChat, setChats, toast]);
 
-  // Swipe Navigation Handlers for Mobile Tabs
   const handleMobileTabTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 1 && isMobileView && screenWidthRef.current > 0) {
         touchStartXRef.current = e.targetTouches[0].clientX;
         swipeStartTranslateXRef.current = currentTranslateX;
         isSwipingRef.current = true;
-        // No need to change transition here, style object handles it
     }
   }, [isMobileView, currentTranslateX]);
 
@@ -1168,38 +1244,26 @@ export default function ChatPage() {
     const currentX = e.targetTouches[0].clientX;
     const deltaX = currentX - touchStartXRef.current;
     let newTranslateX = swipeStartTranslateXRef.current + deltaX;
-
-    // Clamp newTranslateX
     newTranslateX = Math.max(-screenWidthRef.current, Math.min(0, newTranslateX));
     setCurrentTranslateX(newTranslateX);
   }, [isMobileView]);
 
   const handleMobileTabTouchEnd = useCallback((e: React.TouchEvent) => {
     if (!isSwipingRef.current || touchStartXRef.current === null || !isMobileView || screenWidthRef.current === 0) {
-        isSwipingRef.current = false; // Ensure swiping flag is reset
+        isSwipingRef.current = false; 
         return;
     }
-
-    isSwipingRef.current = false; // Transition will be re-enabled by style object
-
+    isSwipingRef.current = false; 
     const endX = e.changedTouches[0].clientX;
     const finalDeltaX = endX - touchStartXRef.current;
-    const threshold = screenWidthRef.current / 3; // Swipe 1/3 of screen to change tabs
-
+    const threshold = screenWidthRef.current / 3;
     let newActiveTab = activeMobileTab;
-
-    if (swipeStartTranslateXRef.current === 0) { // Was on chat tab
-        if (finalDeltaX < -threshold) {
-            newActiveTab = 'status';
-        }
-    } else if (swipeStartTranslateXRef.current === -screenWidthRef.current) { // Was on status tab
-        if (finalDeltaX > threshold) {
-            newActiveTab = 'chat';
-        }
+    if (swipeStartTranslateXRef.current === 0) {
+        if (finalDeltaX < -threshold) newActiveTab = 'status';
+    } else if (swipeStartTranslateXRef.current === -screenWidthRef.current) {
+        if (finalDeltaX > threshold) newActiveTab = 'chat';
     }
-    
-    setActiveMobileTab(newActiveTab); // This will trigger useEffect to animate/set currentTranslateX
-
+    setActiveMobileTab(newActiveTab);
     touchStartXRef.current = null;
   }, [activeMobileTab, isMobileView, setActiveMobileTab]);
 
@@ -1222,7 +1286,7 @@ export default function ChatPage() {
 
   if (isMobileView) {
     return (
-      <SidebarProvider defaultOpen> {/* SidebarProvider for mobile specific dialogs/sheets if needed, or general context */}
+      <SidebarProvider defaultOpen>
         <div className="flex h-screen w-full flex-col">
           <div
             className="flex flex-1 flex-col overflow-hidden" 
@@ -1234,7 +1298,7 @@ export default function ChatPage() {
               ref={mobileTabContainerRef}
               style={{
                 display: 'flex',
-                width: '200%', // Two tabs
+                width: '200%',
                 height: '100%',
                 transform: `translateX(${currentTranslateX}px)`,
                 transition: isSwipingRef.current ? 'none' : 'transform 0.3s ease-out',
@@ -1264,7 +1328,7 @@ export default function ChatPage() {
                     isMobileView={isMobileView}
                   />
                 ) : (
-                  <div className="flex flex-1 flex-col bg-sidebar text-sidebar-foreground h-full"> {/* Ensure this container takes full height */}
+                  <div className="flex flex-1 flex-col bg-sidebar text-sidebar-foreground h-full">
                     <SidebarHeader className="p-0 shrink-0">
                       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
                         <div className="flex items-center gap-2 shrink-0 mr-2">
@@ -1324,7 +1388,7 @@ export default function ChatPage() {
                         </div>
                       </div>
                     </SidebarHeader>
-                    <SidebarContent className="p-0 flex-1"> {/* Ensure SidebarContent can flex grow */}
+                    <SidebarContent className="p-0 flex-1">
                       <ChatList
                         chats={chats}
                         currentUser={currentUser}
@@ -1349,11 +1413,12 @@ export default function ChatPage() {
               <div style={{ width: '50%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
                  <StatusPage 
                     currentUser={currentUser} 
-                    userStatuses={userStatuses}
-                    onAddUserStatus={handleAddUserStatus}
-                    onDeleteUserStatus={handleDeleteUserStatus}
+                    userStatuses={activeUserStatuses} // Use filtered active statuses
+                    onTriggerCreateStatus={handleTriggerCreateStatus}
+                    onTriggerViewUserStatuses={handleTriggerViewUserStatuses}
                     statusReadTimestamps={statusReadTimestamps}
-                    onMarkUserStatusesAsRead={handleMarkUserStatusesAsRead}
+                    currentUserActiveStatusesCount={currentUserActiveStatuses.length}
+                    otherUsersGroupedStatuses={otherUsersGroupedStatuses}
                  />
               </div>
             </div>
@@ -1362,9 +1427,35 @@ export default function ChatPage() {
           <BottomNavigationBar
               activeTab={activeMobileTab}
               onTabChange={(tab) => {
-                  setActiveMobileTab(tab); // This will trigger useEffect to animate currentTranslateX
+                  setActiveMobileTab(tab);
               }}
           />
+
+          {/* Moved Status Creation/Viewing Modals to top level for mobile */}
+          {isCreatingTextStatus && currentUser && (
+            <CreateTextStatus
+              currentUser={currentUser}
+              onClose={() => setIsCreatingTextStatus(false)}
+              onPostStatus={handlePostUserStatus}
+            />
+          )}
+          {viewingUserAllStatuses && viewingUserAllStatuses.length > 0 && currentUser && (
+            <ViewStatus
+              statuses={viewingUserAllStatuses}
+              initialStatusIndex={viewingUserInitialStatusIndex}
+              onClose={() => {
+                setViewingUserAllStatuses(null);
+                setViewingUserInitialStatusIndex(0);
+              }}
+              currentUser={currentUser}
+              onDeleteStatus={handleDeleteStatusInView}
+              onMarkAsRead={(timestamp) => {
+                if (viewingUserAllStatuses && viewingUserAllStatuses.length > 0) {
+                  onMarkUserStatusesAsRead(viewingUserAllStatuses[0].userId, timestamp);
+                }
+              }}
+            />
+          )}
 
           {isNewDirectChatDialogOpen && <NewDirectChatDialog
               isOpen={isNewDirectChatDialogOpen}
@@ -1577,6 +1668,7 @@ export default function ChatPage() {
         </SidebarInset>
       </div>
 
+      {/* Dialogs for Desktop and general use */}
       {isClient && isNewDirectChatDialogOpen && <NewDirectChatDialog
         isOpen={isNewDirectChatDialogOpen}
         onOpenChange={setIsNewDirectChatDialogOpen}
