@@ -65,7 +65,6 @@ const LS_REGISTERED_USERS_KEY = "ngecet_registered_users";
 const LS_USER_STATUSES_KEY = "ngecet_user_statuses";
 const LS_STATUS_READ_TIMESTAMPS_KEY = "ngecet_status_read_timestamps";
 
-const MIN_SWIPE_DISTANCE_TAB = 50;
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 
@@ -136,26 +135,31 @@ export default function ChatPage() {
       const updateLayout = () => {
         const newScreenWidth = window.innerWidth;
         screenWidthRef.current = newScreenWidth;
-        if (mobileTabContainerRef.current) {
+        if (mobileTabContainerRef.current && !isSwipingRef.current) { // Only force no transition if not swiping
           mobileTabContainerRef.current.style.transition = 'none';
         }
-        setCurrentTranslateX(activeMobileTab === 'chat' ? 0 : -newScreenWidth);
+        // Always update translate X based on active tab if not swiping, to handle resize correctly
+        if (!isSwipingRef.current) {
+            setCurrentTranslateX(activeMobileTab === 'chat' ? 0 : -newScreenWidth);
+        }
       };
-      updateLayout();
+      updateLayout(); // Initial call
       window.addEventListener('resize', updateLayout);
       return () => window.removeEventListener('resize', updateLayout);
     }
-  }, [isMobileView, activeMobileTab]);
+  }, [isMobileView, activeMobileTab]); // Re-run if activeMobileTab changes and it's a mobile view, to ensure correct position on resize
 
   useEffect(() => {
+    // This effect handles the animated snap to the correct tab position
+    // when activeMobileTab changes OR when a swipe ends (isSwipingRef becomes false).
     if (isMobileView && screenWidthRef.current > 0 && !isSwipingRef.current) {
-      if (mobileTabContainerRef.current) {
-        mobileTabContainerRef.current.style.transition = 'transform 0.3s ease-out';
-      }
+      // The inline style for mobileTabContainerRef will ensure transition is 'transform 0.3s ease-out'
+      // because isSwipingRef.current is false.
       setCurrentTranslateX(activeMobileTab === 'chat' ? 0 : -screenWidthRef.current);
     }
-  }, [activeMobileTab, isMobileView]);
-
+  }, [activeMobileTab, isMobileView]); // isSwipingRef.current is not a dependency here because its change
+                                       // (from true to false) is what makes the transition in the style object active.
+                                       // This useEffect then sets the final target for that animation.
 
   // STATUS RELATED FUNCTIONS (LIFTED/ADAPTED)
   const activeUserStatuses = useMemo(() => {
@@ -212,14 +216,14 @@ export default function ChatPage() {
   const handleTriggerViewUserStatuses = useCallback((userIdToView: string) => {
     let statusesToDisplay: UserStatus[] = [];
     if (currentUser && userIdToView === currentUser.id) {
-      statusesToDisplay = [...currentUserActiveStatuses].sort((a, b) => a.timestamp - b.timestamp); // ViewStatus sorts newest first internally
+      statusesToDisplay = [...currentUserActiveStatuses].sort((a, b) => a.timestamp - b.timestamp); 
     } else {
       statusesToDisplay = [...(otherUsersGroupedStatuses[userIdToView] || [])].sort((a, b) => a.timestamp - b.timestamp);
     }
 
     if (statusesToDisplay.length > 0) {
       setViewingUserAllStatuses(statusesToDisplay);
-      setViewingUserInitialStatusIndex(0); // ViewStatus handles its own internal current index. This just sets the initial.
+      setViewingUserInitialStatusIndex(0); 
     } else if (currentUser && userIdToView === currentUser.id) {
       handleTriggerCreateStatus();
     }
@@ -231,12 +235,12 @@ export default function ChatPage() {
   }, [setUserStatuses, toast]);
 
   const handleDeleteStatusInView = useCallback((statusIdToDelete: string) => {
-    handleDeleteUserStatus(statusIdToDelete); // Call the main delete handler
+    handleDeleteUserStatus(statusIdToDelete); 
     setViewingUserAllStatuses(prev => {
         if (!prev) return null;
         const updated = prev.filter(s => s.id !== statusIdToDelete);
         if (updated.length === 0) {
-             return null; // This will close ViewStatus
+             return null; 
         }
         return updated;
     });
@@ -1253,17 +1257,32 @@ export default function ChatPage() {
         isSwipingRef.current = false; 
         return;
     }
-    isSwipingRef.current = false; 
+    
     const endX = e.changedTouches[0].clientX;
     const finalDeltaX = endX - touchStartXRef.current;
-    const threshold = screenWidthRef.current / 3;
-    let newActiveTab = activeMobileTab;
-    if (swipeStartTranslateXRef.current === 0) {
-        if (finalDeltaX < -threshold) newActiveTab = 'status';
-    } else if (swipeStartTranslateXRef.current === -screenWidthRef.current) {
-        if (finalDeltaX > threshold) newActiveTab = 'chat';
+    const MIN_SWIPE_DISTANCE_TO_SWITCH_TAB = screenWidthRef.current / 3;
+
+    let intendedActiveTab = activeMobileTab;
+
+    if (activeMobileTab === 'chat') {
+        if (finalDeltaX < -MIN_SWIPE_DISTANCE_TO_SWITCH_TAB) {
+            intendedActiveTab = 'status';
+        }
+    } else { // activeMobileTab === 'status'
+        if (finalDeltaX > MIN_SWIPE_DISTANCE_TO_SWITCH_TAB) {
+            intendedActiveTab = 'chat';
+        }
     }
-    setActiveMobileTab(newActiveTab);
+    
+    isSwipingRef.current = false; 
+
+    if (intendedActiveTab !== activeMobileTab) {
+        setActiveMobileTab(intendedActiveTab); 
+    } else {
+        // Snap back to the current tab's position
+        setCurrentTranslateX(activeMobileTab === 'chat' ? 0 : -screenWidthRef.current);
+    }
+
     touchStartXRef.current = null;
   }, [activeMobileTab, isMobileView, setActiveMobileTab]);
 
@@ -1287,7 +1306,7 @@ export default function ChatPage() {
   if (isMobileView) {
     return (
       <>
-        <SidebarProvider defaultOpen> {/* Moved SidebarProvider to wrap the entire mobile view */}
+        <SidebarProvider defaultOpen> 
           <div className="flex h-screen w-full flex-col">
             <div
               className="flex flex-1 flex-col overflow-hidden" 
@@ -1303,6 +1322,7 @@ export default function ChatPage() {
                   height: '100%',
                   transform: `translateX(${currentTranslateX}px)`,
                   transition: isSwipingRef.current ? 'none' : 'transform 0.3s ease-out',
+                  willChange: 'transform',
                 }}
               >
                 <div style={{ width: '50%', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -1434,7 +1454,6 @@ export default function ChatPage() {
           </div>
         </SidebarProvider>
 
-        {/* Moved Status Creation/Viewing Modals to top level for mobile */}
         {isCreatingTextStatus && currentUser && (
           <CreateTextStatus
             currentUser={currentUser}
@@ -1452,7 +1471,7 @@ export default function ChatPage() {
             }}
             currentUser={currentUser}
             onDeleteStatus={handleDeleteStatusInView}
-            onMarkAsRead={(timestamp) => {
+            onMarkAsRead={(timestamp) => { 
               if (viewingUserAllStatuses && viewingUserAllStatuses.length > 0) {
                  handleMarkUserStatusesAsRead(viewingUserAllStatuses[0].userId, timestamp);
               }
@@ -1670,7 +1689,6 @@ export default function ChatPage() {
         </SidebarInset>
       </div>
 
-      {/* Dialogs for Desktop and general use */}
       {isClient && isNewDirectChatDialogOpen && <NewDirectChatDialog
         isOpen={isNewDirectChatDialogOpen}
         onOpenChange={setIsNewDirectChatDialogOpen}
