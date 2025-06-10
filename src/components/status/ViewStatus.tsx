@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
-import { X, Trash2, SendHorizonal, Heart, ChevronDown } from 'lucide-react'; // ChevronUp dihilangkan
+import { X, Trash2, SendHorizonal, Heart, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStatusThemeClasses } from '@/config/statusThemes';
 import { format } from 'date-fns';
@@ -63,16 +63,18 @@ export function ViewStatus({
     return null;
   }, [statuses, currentIndex]);
 
+
   const themeClasses = useMemo(() => getStatusThemeClasses(currentStatus?.backgroundColorName), [currentStatus]);
 
   const handleCancelReply = useCallback(() => {
     if (replyInputRef.current && isReplyInputFocused) {
-      replyInputRef.current.blur();
+      replyInputRef.current.blur(); // Remove focus
     }
     setIsReplyingMode(false);
     setReplyText('');
-    setIsReplyInputFocused(false); // Pastikan ini direset
-    if (isPaused) { // Hanya unpause jika memang dipause oleh interaksi reply
+    setIsReplyInputFocused(false);
+    // Only unpause if it was paused due to reply interaction
+    if (isPaused) {
         setIsPaused(false);
     }
   }, [isPaused, isReplyInputFocused]);
@@ -85,7 +87,7 @@ export function ViewStatus({
       description: replyText,
     });
     const statusBeingRepliedTo = currentStatus;
-    handleCancelReply();
+    handleCancelReply(); // This will also unpause if needed
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
     onMarkAsRead(statusBeingRepliedTo.timestamp);
@@ -209,7 +211,7 @@ export function ViewStatus({
       return;
     }
 
-    if (isPaused || isReplyingMode) { // If replying mode is active, timers should be paused.
+    if (isPaused || isReplyingMode) { 
       return;
     }
 
@@ -223,7 +225,7 @@ export function ViewStatus({
 
 
   const handleManualNavigation = useCallback((direction: 'next' | 'prev') => {
-    if (isReplyingMode) return; // Don't navigate if replying
+    if (isReplyingMode) return; 
 
     const statusBeingLeft = statuses[currentIndex];
     if (direction === 'next') {
@@ -291,12 +293,12 @@ export function ViewStatus({
 
 
   const handleReplyAreaTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.stopPropagation(); // Prevent main status pause/nav
     if (e.touches.length === 1) {
-      e.stopPropagation(); // Critical: stop propagation to parent's onPointerDown
       replyAreaTouchStartYRef.current = e.targetTouches[0].clientY;
       isSwipingOnReplyAreaRef.current = true;
 
-      if (!isPaused) { // Pause if not already paused (e.g. by main screen tap)
+      if (!isPaused && !isReplyingMode) {
           setIsPaused(true);
           progressAtPauseRef.current = progressValue;
           if (timerRef.current) clearTimeout(timerRef.current);
@@ -312,22 +314,20 @@ export function ViewStatus({
   };
 
   const handleReplyAreaTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     if (replyAreaTouchStartYRef.current && isSwipingOnReplyAreaRef.current) {
-      e.stopPropagation();
       const touchEndY = e.changedTouches[0].clientY;
       const swipeDistance = replyAreaTouchStartYRef.current - touchEndY;
 
       if (!isReplyingMode && swipeDistance > MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
         setIsReplyingMode(true);
-        // isPaused should already be true from onTouchStart
+        // isPaused should already be true from onTouchStart or handlePointerDown
         setIsReplyInputFocused(true);
         setTimeout(() => replyInputRef.current?.focus(), 50);
       } else if (isReplyingMode && swipeDistance < -MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
         handleCancelReply();
       } else if (!isReplyingMode && isPaused) {
-        // If swipe wasn't enough to open, and the tap was on the reply area,
-        // it means the user interacted with the reply area but didn't open it.
-        // We should unpause because the main onPointerUp won't fire due to stopPropagation.
+        // If swipe wasn't enough to open, but touch started on replyArea, unpause
          setIsPaused(false);
       }
     }
@@ -412,7 +412,7 @@ export function ViewStatus({
 
       <div className={cn(
           "flex-1 flex w-full items-center justify-center overflow-hidden px-4 pb-10 pt-20 md:pt-24 z-0 pointer-events-none",
-          isReplyingMode && "opacity-70" // Keep content visible but faded when replying
+          isReplyingMode && "opacity-70" 
         )}
       >
         <p
@@ -426,14 +426,14 @@ export function ViewStatus({
         </p>
       </div>
 
-      {/* Reply Area Container: always present for touch, content animates */}
+      {/* Reply Area Container: Structure Changed */}
       <div
         ref={replyAreaRef}
         className={cn(
           "absolute bottom-0 left-0 right-0 z-30 overflow-hidden",
           "flex flex-col items-center",
-          "transition-[height,background-color] duration-300 ease-out", // Transition height and background
-          isReplyingMode ? "bg-black/90 h-auto" : "bg-red-500/5 h-[50px]" // Debug bg-red-500/5
+          "transition-[height,background-color] duration-300 ease-out",
+          isReplyingMode ? "bg-black/90 h-auto" : "bg-red-500/5 h-[80px]" // Increased height to 80px
         )}
         onTouchStart={handleReplyAreaTouchStart}
         onTouchMove={handleReplyAreaTouchMove}
@@ -443,7 +443,7 @@ export function ViewStatus({
         <div
           className={cn(
             "w-full transition-transform duration-300 ease-out",
-            isReplyingMode ? "translate-y-0" : "translate-y-full" // Slides this content
+            isReplyingMode ? "translate-y-0" : "translate-y-full"
           )}
         >
           {isReplyingMode && ( // Only render content when it's supposed to be visible or animating in
@@ -506,3 +506,4 @@ export function ViewStatus({
     </div>
   );
 }
+
