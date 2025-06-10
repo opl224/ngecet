@@ -1,5 +1,22 @@
+
 // src/config/statusThemes.ts
-export const statusColorThemes = [
+export type StatusColorThemeName = 
+  | 'Mustard' 
+  | 'Forest' 
+  | 'Sky' 
+  | 'Royal' 
+  | 'Rose' 
+  | 'Slate' 
+  | 'Teal';
+
+export interface StatusTheme {
+  name: StatusColorThemeName;
+  bg: string;
+  text: string;
+  placeholder: string;
+}
+
+export const statusColorThemes: StatusTheme[] = [
   { name: 'Mustard', bg: 'bg-yellow-500', text: 'text-white', placeholder: 'placeholder-yellow-200' },
   { name: 'Forest', bg: 'bg-green-600', text: 'text-white', placeholder: 'placeholder-green-200' },
   { name: 'Sky', bg: 'bg-sky-500', text: 'text-white', placeholder: 'placeholder-sky-200' },
@@ -9,13 +26,13 @@ export const statusColorThemes = [
   { name: 'Teal', bg: 'bg-teal-500', text: 'text-white', placeholder: 'placeholder-teal-200' },
 ];
 
-export type StatusColorThemeName = typeof statusColorThemes[number]['name'];
 
-export const getStatusThemeClasses = (themeName: StatusColorThemeName | string | undefined) => {
+export const getStatusThemeClasses = (themeNameInput: StatusColorThemeName | string | undefined): StatusTheme => {
+  const themeName = themeNameInput as StatusColorThemeName; // Cast for find
   const theme = statusColorThemes.find(t => t.name === themeName);
   if (theme) {
-    return { bg: theme.bg, text: theme.text, name: theme.name };
+    return theme;
   }
-  // Return a default theme if not found
-  return { bg: statusColorThemes[0].bg, text: statusColorThemes[0].text, name: statusColorThemes[0].name };
+  // Return a default theme if not found or input is undefined
+  return statusColorThemes[0]; // Default to Mustard
 };

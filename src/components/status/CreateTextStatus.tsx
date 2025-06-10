@@ -22,16 +22,23 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
   const [currentThemeIndex, setCurrentThemeIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const currentTheme = statusColorThemes[currentThemeIndex];
-  const themeClasses = getStatusThemeClasses(currentTheme.name);
+  // Get the full theme object using the current index
+  const currentThemeObject = statusColorThemes[currentThemeIndex];
+  // Then, ensure we get a consistently structured theme object for applying classes
+  const appliedTheme = getStatusThemeClasses(currentThemeObject.name);
 
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.focus();
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      // Ensure scrollHeight is calculated after potential placeholder/text changes due to theme
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+      });
     }
-  }, [statusText, currentThemeIndex]); // Re-adjust on theme change too as placeholder might change
+  }, [statusText, currentThemeIndex]); // Re-adjust on theme change too
 
   const handleCycleTheme = () => {
     setCurrentThemeIndex((prevIndex) => (prevIndex + 1) % statusColorThemes.length);
@@ -46,9 +53,9 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
       });
       return;
     }
-    onPostStatus(statusText.trim(), currentTheme.name as StatusColorThemeName);
+    // Pass the name from the appliedTheme object which is guaranteed to be a StatusColorThemeName
+    onPostStatus(statusText.trim(), appliedTheme.name);
     // Toast for success is handled by the onAddUserStatus callback in page.tsx
-    // onClose will be called by onPostStatus in parent if successful
   };
   
   useEffect(() => {
@@ -67,20 +74,20 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
     <div
       className={cn(
         "fixed inset-0 z-[60] flex flex-col items-center justify-center p-4 transition-colors duration-300",
-        themeClasses.bg
+        appliedTheme.bg // Use bg from the consistently resolved theme object
       )}
     >
       <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-4">
-        <Button variant="ghost" size="icon" onClick={onClose} className={cn("rounded-full hover:bg-black/20", themeClasses.text)}>
+        <Button variant="ghost" size="icon" onClick={onClose} className={cn("rounded-full hover:bg-black/20", appliedTheme.text)}>
           <X className="h-6 w-6" />
           <span className="sr-only">Tutup</span>
         </Button>
         <div className="flex space-x-2">
-          <Button variant="ghost" size="icon" onClick={() => toast({ title: "Fitur Segera Hadir", description: "Mengganti jenis huruf akan segera tersedia."})} className={cn("rounded-full hover:bg-black/20", themeClasses.text)}>
+          <Button variant="ghost" size="icon" onClick={() => toast({ title: "Fitur Segera Hadir", description: "Mengganti jenis huruf akan segera tersedia."})} className={cn("rounded-full hover:bg-black/20", appliedTheme.text)}>
             <Type className="h-6 w-6" />
             <span className="sr-only">Jenis Huruf</span>
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleCycleTheme} className={cn("rounded-full hover:bg-black/20", themeClasses.text)}>
+          <Button variant="ghost" size="icon" onClick={handleCycleTheme} className={cn("rounded-full hover:bg-black/20", appliedTheme.text)}>
             <Palette className="h-6 w-6" />
             <span className="sr-only">Ganti Warna Latar</span>
           </Button>
@@ -95,8 +102,8 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
           placeholder="Ketik status"
           className={cn(
             "bg-transparent border-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-center text-3xl md:text-4xl lg:text-5xl font-medium resize-none w-full max-w-2xl overflow-y-auto hide-scrollbar p-2",
-            themeClasses.text,
-            currentTheme.placeholder, // Use specific placeholder class from theme object
+            appliedTheme.text, // Use text class from resolved theme
+            appliedTheme.placeholder, // Use placeholder class from resolved theme
             "h-auto min-h-[100px] max-h-[70vh]"
           )}
           style={{ lineHeight: '1.4' }}
