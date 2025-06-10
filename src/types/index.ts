@@ -51,6 +51,14 @@ export interface RegisteredUser {
 
 // Status related types
 export type StatusType = 'text' | 'image'; // For future use
+export type StatusColorThemeName = 
+  | 'Mustard' 
+  | 'Forest' 
+  | 'Sky' 
+  | 'Royal' 
+  | 'Rose' 
+  | 'Slate' 
+  | 'Teal';
 
 export interface UserStatus {
   id: string; // Unique ID for the status
@@ -59,8 +67,9 @@ export interface UserStatus {
   userAvatarUrl?: string;
   type: StatusType;
   content: string; // For text status, this is the text. For image, could be URL.
-  backgroundColorName?: string; // For text status, e.g., 'Mustard'
+  backgroundColorName?: StatusColorThemeName; // For text status, e.g., 'Mustard'
   timestamp: number;
+  seenBy?: string[]; // Array of user IDs who have seen this status
   // impressions?: User[]; // Who has seen this status (future)
   // duration?: number; // Default 24 hours (future)
 }
@@ -68,3 +77,4 @@ export interface UserStatus {
 // Type for storing read status timestamps
 // Structure: { [viewerId: string]: { [statusAuthorId: string]: lastStatusTimestampRead } }
 export type ReadStatusTimestamps = Record<string, Record<string, number>>;
+
