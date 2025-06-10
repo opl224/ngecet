@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
-import { X, Trash2, SendHorizonal, Heart, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, Trash2, SendHorizonal, Heart, ChevronDown } from 'lucide-react'; // ChevronUp dihilangkan
 import { cn } from '@/lib/utils';
 import { getStatusThemeClasses } from '@/config/statusThemes';
 import { format } from 'date-fns';
@@ -71,11 +71,12 @@ export function ViewStatus({
     }
     setIsReplyingMode(false);
     setReplyText('');
-    setIsReplyInputFocused(false);
-    if (isPaused) { 
-        setIsPaused(false); 
+    setIsReplyInputFocused(false); // Pastikan ini direset
+    if (isPaused) { // Hanya unpause jika memang dipause oleh interaksi reply
+        setIsPaused(false);
     }
   }, [isPaused, isReplyInputFocused]);
+
 
   const handleSendReply = useCallback(() => {
     if (!replyText.trim() || !currentStatus) return;
@@ -83,12 +84,12 @@ export function ViewStatus({
       title: `Balasan terkirim ke ${currentStatus.userName}`,
       description: replyText,
     });
-    const statusBeingRepliedTo = currentStatus; // Capture currentStatus before it might change
-    handleCancelReply(); 
+    const statusBeingRepliedTo = currentStatus;
+    handleCancelReply();
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
-    onMarkAsRead(statusBeingRepliedTo.timestamp); // Use captured status
-    onClose(); 
+    onMarkAsRead(statusBeingRepliedTo.timestamp);
+    onClose();
   }, [replyText, currentStatus, toast, handleCancelReply, onClose, onMarkAsRead]);
 
 
@@ -124,16 +125,16 @@ export function ViewStatus({
 
   const performCloseActions = useCallback(() => {
     if (isReplyingMode) {
-      handleCancelReply(); 
-      return; 
+      handleCancelReply();
+      return;
     }
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
 
-    if (currentStatus) { 
+    if (currentStatus) {
       onMarkAsRead(currentStatus.timestamp);
     }
-    queueMicrotask(() => onClose()); 
+    queueMicrotask(() => onClose());
   }, [onClose, isReplyingMode, handleCancelReply, currentStatus, onMarkAsRead]);
 
 
@@ -141,7 +142,7 @@ export function ViewStatus({
     if (newIndex >= 0 && newIndex < statuses.length) {
       setCurrentIndex(newIndex);
       setProgressValue(0);
-      progressAtPauseRef.current = 0; 
+      progressAtPauseRef.current = 0;
     } else if (newIndex >= statuses.length) {
       performCloseActions();
     }
@@ -151,25 +152,25 @@ export function ViewStatus({
   const startTimers = useCallback((resumeFromPercent = 0) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
-    if (!currentStatus) return; 
+    if (!currentStatus) return;
 
     const effectiveInitialProgress = resumeFromPercent > 0 ? resumeFromPercent : 0;
-    setProgressValue(effectiveInitialProgress); 
+    setProgressValue(effectiveInitialProgress);
 
     const remainingDuration = STATUS_VIEW_DURATION * (1 - (effectiveInitialProgress / 100));
 
-    if (remainingDuration <= 0) { 
+    if (remainingDuration <= 0) {
       onMarkAsRead(currentStatus.timestamp);
       advanceToStatus(currentIndex + 1);
-      if(resumeFromPercent === 0) { 
+      if(resumeFromPercent === 0) {
           progressAtPauseRef.current = 0;
       }
       return;
     }
-    
+
     const progressToDo = 100 - effectiveInitialProgress;
-    const intervalsCount = remainingDuration / 100; 
-    const incrementPerInterval = intervalsCount > 0 ? progressToDo / intervalsCount : progressToDo; 
+    const intervalsCount = remainingDuration / 100;
+    const incrementPerInterval = intervalsCount > 0 ? progressToDo / intervalsCount : progressToDo;
 
 
     intervalRef.current = setInterval(() => {
@@ -185,12 +186,12 @@ export function ViewStatus({
 
     timerRef.current = setTimeout(() => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      setProgressValue(100); 
+      setProgressValue(100);
       onMarkAsRead(currentStatus.timestamp);
       advanceToStatus(currentIndex + 1);
     }, remainingDuration);
 
-    if(resumeFromPercent === 0){ 
+    if(resumeFromPercent === 0){
         progressAtPauseRef.current = 0;
     }
 
@@ -200,15 +201,15 @@ export function ViewStatus({
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
 
-    if (!currentStatus) { 
+    if (!currentStatus) {
       if ((statuses.length === 0 && prevCurrentStatusRef.current !== null) ||
           (currentIndex >= statuses.length && statuses.length > 0 && prevCurrentStatusRef.current !== null)) {
          performCloseActions();
       }
-      return; 
+      return;
     }
-    
-    if (isPaused || isReplyingMode) {
+
+    if (isPaused || isReplyingMode) { // If replying mode is active, timers should be paused.
       return;
     }
 
@@ -222,26 +223,25 @@ export function ViewStatus({
 
 
   const handleManualNavigation = useCallback((direction: 'next' | 'prev') => {
-    if (isPaused && !isReplyingMode) return; 
-    if (isReplyingMode) return; 
+    if (isReplyingMode) return; // Don't navigate if replying
 
-    const statusBeingLeft = statuses[currentIndex]; 
+    const statusBeingLeft = statuses[currentIndex];
     if (direction === 'next') {
-      if (statusBeingLeft) { 
+      if (statusBeingLeft) {
         onMarkAsRead(statusBeingLeft.timestamp);
       }
       advanceToStatus(currentIndex + 1);
-    } else { 
-      advanceToStatus(currentIndex - 1); 
+    } else {
+      advanceToStatus(currentIndex - 1);
     }
-  }, [currentIndex, statuses, onMarkAsRead, advanceToStatus, isPaused, isReplyingMode]);
+  }, [currentIndex, statuses, onMarkAsRead, advanceToStatus, isReplyingMode]);
 
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         performCloseActions();
-      } else if (!isReplyingMode && !isReplyInputFocused) { 
+      } else if (!isReplyingMode && !isReplyInputFocused) {
         if (event.key === 'ArrowRight') {
           handleManualNavigation('next');
         } else if (event.key === 'ArrowLeft') {
@@ -259,25 +259,25 @@ export function ViewStatus({
     if (currentUser && currentStatus && currentStatus.userId === currentUser.id && onDeleteStatus) {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (intervalRef.current) clearInterval(intervalRef.current);
-      onDeleteStatus(currentStatus.id); 
+      onDeleteStatus(currentStatus.id);
     }
   };
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const target = event.target as Node;
-    if (isReplyingMode || 
-        navLeftRef.current?.contains(target) || 
+     if (isReplyingMode ||
+        navLeftRef.current?.contains(target) ||
         navRightRef.current?.contains(target) ||
-        replyAreaRef.current?.contains(target) || 
-        (event.target as HTMLElement).closest('button') || 
-        (event.target as HTMLElement).closest('textarea') 
+        replyAreaRef.current?.contains(target) ||
+        (event.target as HTMLElement).closest('button') ||
+        (event.target as HTMLElement).closest('textarea')
        ) {
       return;
     }
 
-    if (!isPaused) { 
+    if (!isPaused) {
       setIsPaused(true);
-      progressAtPauseRef.current = progressValue; 
+      progressAtPauseRef.current = progressValue;
       if (timerRef.current) clearTimeout(timerRef.current);
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
@@ -285,18 +285,18 @@ export function ViewStatus({
 
   const handlePointerUp = useCallback(() => {
     if (isPaused && !isReplyingMode) {
-      setIsPaused(false); 
+      setIsPaused(false);
     }
   }, [isPaused, isReplyingMode]);
 
 
   const handleReplyAreaTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (e.touches.length === 1) {
+      e.stopPropagation(); // Critical: stop propagation to parent's onPointerDown
       replyAreaTouchStartYRef.current = e.targetTouches[0].clientY;
       isSwipingOnReplyAreaRef.current = true;
-      e.stopPropagation(); // Important: Stop propagation
 
-      if (!isReplyingMode && !isPaused) {
+      if (!isPaused) { // Pause if not already paused (e.g. by main screen tap)
           setIsPaused(true);
           progressAtPauseRef.current = progressValue;
           if (timerRef.current) clearTimeout(timerRef.current);
@@ -304,38 +304,35 @@ export function ViewStatus({
       }
     }
   };
-  
+
   const handleReplyAreaTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     if (isSwipingOnReplyAreaRef.current) {
-      e.stopPropagation(); // Important: Stop propagation during move
-      // Future: Add interactive drag logic here if needed
+      e.stopPropagation();
     }
   };
 
   const handleReplyAreaTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
     if (replyAreaTouchStartYRef.current && isSwipingOnReplyAreaRef.current) {
-      e.stopPropagation(); // Important: Stop propagation
+      e.stopPropagation();
       const touchEndY = e.changedTouches[0].clientY;
-      const swipeDistance = replyAreaTouchStartYRef.current - touchEndY; 
+      const swipeDistance = replyAreaTouchStartYRef.current - touchEndY;
 
       if (!isReplyingMode && swipeDistance > MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
         setIsReplyingMode(true);
-        // setIsPaused is already true from onTouchStart
-        setIsReplyInputFocused(true); 
-        setTimeout(() => replyInputRef.current?.focus(), 50); 
-      } else if (isReplyingMode && swipeDistance < -MIN_SWIPE_UP_DISTANCE_REPLY_AREA) { 
+        // isPaused should already be true from onTouchStart
+        setIsReplyInputFocused(true);
+        setTimeout(() => replyInputRef.current?.focus(), 50);
+      } else if (isReplyingMode && swipeDistance < -MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
         handleCancelReply();
       } else if (!isReplyingMode && isPaused) {
-        // If swipe wasn't enough to open, but we paused, unpause.
-        // However, if they just tapped, we might want different behavior (e.g. toggle reply mode).
-        // For now, a failed swipe means unpause.
-        // setIsPaused(false); // This might cause a flicker if it was a tap.
-        // Consider what should happen on a tap on the hidden area.
-        // For now, let's assume only swipe matters. If swipe fails, it stays paused until pointer up on main screen.
+        // If swipe wasn't enough to open, and the tap was on the reply area,
+        // it means the user interacted with the reply area but didn't open it.
+        // We should unpause because the main onPointerUp won't fire due to stopPropagation.
+         setIsPaused(false);
       }
     }
     replyAreaTouchStartYRef.current = null;
-    isSwipingOnReplyAreaRef.current = false; 
+    isSwipingOnReplyAreaRef.current = false;
   };
 
 
@@ -346,22 +343,22 @@ export function ViewStatus({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[70] flex flex-col items-center justify-center bg-background transition-colors duration-300 select-none",
-        themeClasses.bg 
+        "fixed inset-0 z-[70] flex flex-col items-center justify-center transition-colors duration-300 select-none",
+        themeClasses.bg
       )}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp} 
+      onPointerLeave={handlePointerUp}
     >
       <div
         ref={navLeftRef}
-        className="absolute top-0 left-0 h-full w-1/3 z-10" 
+        className="absolute top-0 left-0 h-full w-1/3 z-10"
         onClickCapture={(e) => { if (!isPaused && !isReplyingMode) handleManualNavigation('prev'); e.stopPropagation();}}
         aria-label="Status Sebelumnya"
       />
       <div
         ref={navRightRef}
-        className="absolute top-0 right-0 h-full w-1/3 z-10" 
+        className="absolute top-0 right-0 h-full w-1/3 z-10"
         onClickCapture={(e) => { if (!isPaused && !isReplyingMode) handleManualNavigation('next'); e.stopPropagation();}}
         aria-label="Status Berikutnya"
       />
@@ -372,17 +369,17 @@ export function ViewStatus({
             <div key={index} className="flex-1 h-0.5 bg-white/40 rounded-full overflow-hidden">
               {index === currentIndex ? (
                 <Progress
-                  value={isPaused || isReplyingMode ? progressAtPauseRef.current : progressValue} 
-                  className="h-full bg-transparent" 
-                  indicatorClassName="bg-white transition-transform duration-100 ease-linear" 
+                  value={isPaused || isReplyingMode ? progressAtPauseRef.current : progressValue}
+                  className="h-full bg-transparent"
+                  indicatorClassName="bg-white transition-transform duration-100 ease-linear"
                 />
               ) : index < currentIndex ? (
-                <div className="h-full bg-white rounded-full" /> 
+                <div className="h-full bg-white rounded-full" />
               ) : null }
             </div>
           ))}
         </div>
-        <div className="flex items-center justify-between pointer-events-auto"> 
+        <div className="flex items-center justify-between pointer-events-auto">
           <div className="flex items-center space-x-2">
             <Avatar className="h-9 w-9 border-2 border-white/80">
               <AvatarImage src={currentStatus.userAvatarUrl} alt={currentStatus.userName} data-ai-hint="person abstract"/>
@@ -398,7 +395,7 @@ export function ViewStatus({
               <Button
                 variant="ghost"
                 size="icon"
-                onClickCapture={(e) => { handleDeleteClick(); e.stopPropagation(); }} 
+                onClickCapture={(e) => { handleDeleteClick(); e.stopPropagation(); }}
                 className="text-white rounded-full hover:bg-white/20"
                 aria-label="Hapus Status"
               >
@@ -414,14 +411,14 @@ export function ViewStatus({
       </div>
 
       <div className={cn(
-          "flex-1 flex w-full items-center justify-center overflow-hidden px-4 pb-10 pt-20 md:pt-24 z-0 pointer-events-none", 
-          isReplyingMode && "opacity-70" 
+          "flex-1 flex w-full items-center justify-center overflow-hidden px-4 pb-10 pt-20 md:pt-24 z-0 pointer-events-none",
+          isReplyingMode && "opacity-70" // Keep content visible but faded when replying
         )}
       >
         <p
           className={cn(
             "text-center text-3xl md:text-4xl lg:text-5xl font-medium break-words w-full max-w-2xl",
-            themeClasses.text, 
+            themeClasses.text,
           )}
           style={{ lineHeight: '1.4' }}
         >
@@ -429,83 +426,83 @@ export function ViewStatus({
         </p>
       </div>
 
+      {/* Reply Area Container: always present for touch, content animates */}
       <div
         ref={replyAreaRef}
         className={cn(
-          "absolute bottom-0 left-0 right-0 z-30 transition-all duration-300 ease-out",
+          "absolute bottom-0 left-0 right-0 z-30 overflow-hidden",
           "flex flex-col items-center",
-          isReplyingMode ? "bg-black/90" : "bg-red-500/5 pointer-events-auto" // DEBUG: bg-red-500/5 for hidden state
+          "transition-[height,background-color] duration-300 ease-out", // Transition height and background
+          isReplyingMode ? "bg-black/90 h-auto" : "bg-red-500/5 h-[50px]" // Debug bg-red-500/5
         )}
-        style={{
-          height: isReplyingMode ? 'auto' : '50px', // Target height when hidden
-        }}
         onTouchStart={handleReplyAreaTouchStart}
         onTouchMove={handleReplyAreaTouchMove}
         onTouchEnd={handleReplyAreaTouchEnd}
       >
-        {isReplyingMode && (
-          <>
-            <div
-              className={cn(
-                "flex flex-col items-center justify-center text-center w-full cursor-pointer",
-                "py-2"
-              )}
-              onClick={(e) => {
-                e.stopPropagation(); 
-                handleCancelReply();
-              }}
-            >
-              <ChevronDown className="h-5 w-5 text-neutral-400" />
-            </div>
-
-            <div className="w-full max-w-xl mx-auto px-3 pb-3 pt-1"> 
-              <div className="flex items-center space-x-2">
-                <Textarea
-                  ref={replyInputRef}
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder={`Balas ke ${currentStatus.userName}...`}
-                  onFocus={() => setIsReplyInputFocused(true)}
-                  onBlur={() => { if(!replyText.trim() && !isSwipingOnReplyAreaRef.current) setIsReplyInputFocused(false); }}
-                  className="flex-1 bg-neutral-700 border-neutral-600 text-white placeholder-neutral-400 rounded-2xl py-2.5 px-4 resize-none min-h-[40px] max-h-[100px] focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-neutral-500 text-sm"
-                  rows={1}
-                  onClick={(e) => e.stopPropagation()} 
-                  onTouchStart={(e) => e.stopPropagation()} // Stop touch on textarea from triggering panel swipe
-                />
-                {isReplyInputFocused || replyText.trim() ? (
-                  <Button
-                    variant="ghost" 
-                    size="icon"
-                    className="bg-sky-600 hover:bg-sky-500 rounded-full h-10 w-10 p-0 shrink-0"
-                    onClick={(e) => { e.stopPropagation(); handleSendReply(); }}
-                    disabled={!replyText.trim()}
-                    aria-label="Kirim balasan"
-                    onTouchStart={(e) => e.stopPropagation()}
-                  >
-                    <SendHorizonal className="h-5 w-5 text-white" />
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="bg-neutral-700 hover:bg-neutral-600 rounded-full h-10 w-10 p-0 shrink-0"
-                    onClick={(e) => {
-                        e.stopPropagation(); 
-                        toast({ title: `Status ${currentStatus.userName} disukai!`});
-                    }}
-                    aria-label="Sukai status"
-                    onTouchStart={(e) => e.stopPropagation()}
-                  >
-                    <Heart className="h-5 w-5 text-white" />
-                  </Button>
-                )}
+        {/* Inner Content Wrapper for Sliding Animation */}
+        <div
+          className={cn(
+            "w-full transition-transform duration-300 ease-out",
+            isReplyingMode ? "translate-y-0" : "translate-y-full" // Slides this content
+          )}
+        >
+          {isReplyingMode && ( // Only render content when it's supposed to be visible or animating in
+            <>
+              <div
+                className="flex flex-col items-center justify-center text-center w-full cursor-pointer py-2"
+                onClick={(e) => { e.stopPropagation(); handleCancelReply(); }}
+                onTouchStart={(e) => e.stopPropagation()} // Prevent interference
+              >
+                <ChevronDown className="h-5 w-5 text-neutral-400" />
               </div>
-            </div>
-          </>
-        )}
+
+              <div className="w-full max-w-xl mx-auto px-3 pb-3 pt-1">
+                <div className="flex items-center space-x-2">
+                  <Textarea
+                    ref={replyInputRef}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder={`Balas ke ${currentStatus.userName}...`}
+                    onFocus={() => setIsReplyInputFocused(true)}
+                    onBlur={() => { if(!replyText.trim() && !isSwipingOnReplyAreaRef.current) setIsReplyInputFocused(false); }}
+                    className="flex-1 bg-neutral-700 border-neutral-600 text-white placeholder-neutral-400 rounded-2xl py-2.5 px-4 resize-none min-h-[40px] max-h-[100px] focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-neutral-500 text-sm"
+                    rows={1}
+                    onClick={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                  />
+                  {isReplyInputFocused || replyText.trim() ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="bg-sky-600 hover:bg-sky-500 rounded-full h-10 w-10 p-0 shrink-0"
+                      onClick={(e) => { e.stopPropagation(); handleSendReply(); }}
+                      disabled={!replyText.trim()}
+                      aria-label="Kirim balasan"
+                      onTouchStart={(e) => e.stopPropagation()}
+                    >
+                      <SendHorizonal className="h-5 w-5 text-white" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="bg-neutral-700 hover:bg-neutral-600 rounded-full h-10 w-10 p-0 shrink-0"
+                      onClick={(e) => {
+                          e.stopPropagation();
+                          toast({ title: `Status ${currentStatus.userName} disukai!`});
+                      }}
+                      aria-label="Sukai status"
+                      onTouchStart={(e) => e.stopPropagation()}
+                    >
+                      <Heart className="h-5 w-5 text-white" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
-
-    
