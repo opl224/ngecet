@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
-import { X, Trash2, SendHorizonal, Heart, ChevronDown, Eye } from 'lucide-react'; // Added Eye
+import { X, Trash2, SendHorizonal, Heart, ChevronDown, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStatusThemeClasses } from '@/config/statusThemes';
 import { format } from 'date-fns';
@@ -24,10 +24,10 @@ interface ViewStatusProps {
   onClose: () => void;
   currentUser: User | null;
   onDeleteStatus?: (statusId: string) => void;
-  onMarkAsReadGeneral: (viewedUserId: string, latestTimestampViewed: number) => void; // For general read status (rings)
-  onRecordSingleStatusView: (statusId: string) => void; // For "seenBy" tracking
-  onOpenSeenByDialog: (status: UserStatus) => void; // To open the "Seen By" dialog
-  registeredUsers: RegisteredUser[]; // To resolve user details if needed for "Seen By"
+  onMarkAsReadGeneral: (viewedUserId: string, latestTimestampViewed: number) => void;
+  onRecordSingleStatusView: (statusId: string) => void;
+  onOpenSeenByDialog: (status: UserStatus) => void;
+  registeredUsers: RegisteredUser[];
 }
 
 export function ViewStatus({
@@ -39,7 +39,7 @@ export function ViewStatus({
   onMarkAsReadGeneral,
   onRecordSingleStatusView,
   onOpenSeenByDialog,
-  registeredUsers, // Added to props
+  registeredUsers,
 }: ViewStatusProps) {
   const { toast } = useToast();
   const [currentIndex, setCurrentIndex] = useState(initialStatusIndex);
@@ -58,6 +58,7 @@ export function ViewStatus({
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
 
   const replyAreaRef = useRef<HTMLDivElement>(null);
+  const contentWrapperRef = useRef<HTMLDivElement>(null);
   const replyAreaTouchStartYRef = useRef<number | null>(null);
   const isSwipingOnReplyAreaRef = useRef<boolean>(false);
   const prevCurrentStatusRef = useRef<UserStatus | null>(null);
@@ -95,12 +96,10 @@ export function ViewStatus({
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
     
-    // Mark general read for user's statuses (for ring logic)
     onMarkAsReadGeneral(statusBeingRepliedTo.userId, statusBeingRepliedTo.timestamp);
-    // Specific status view is recorded by onRecordSingleStatusView when timer completes or navigates
     
-    onClose();
-  }, [replyText, currentStatus, toast, handleCancelReply, onClose, onMarkAsReadGeneral]);
+    performCloseActions(); // Close view after sending reply
+  }, [replyText, currentStatus, toast, handleCancelReply, onMarkAsReadGeneral]);
 
 
   useEffect(() => {
@@ -135,15 +134,14 @@ export function ViewStatus({
 
   const performCloseActions = useCallback(() => {
     if (isReplyingMode) {
-      handleCancelReply();
-      return;
+      handleCancelReply(); // This will also unpause if needed
+      return; 
     }
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
 
     if (currentStatus) {
       onMarkAsReadGeneral(currentStatus.userId, currentStatus.timestamp);
-      // Individual status view recording (for seenBy) happens when the status completes or is navigated past
     }
     queueMicrotask(() => onClose());
   }, [onClose, isReplyingMode, handleCancelReply, currentStatus, onMarkAsReadGeneral]);
@@ -289,7 +287,7 @@ export function ViewStatus({
      if (isReplyingMode ||
         navLeftRef.current?.contains(target) ||
         navRightRef.current?.contains(target) ||
-        replyAreaRef.current?.contains(target) ||
+        replyAreaRef.current?.contains(target) || // Check if touch started on replyArea itself
         (event.target as HTMLElement).closest('button') ||
         (event.target as HTMLElement).closest('textarea')
        ) {
@@ -311,8 +309,8 @@ export function ViewStatus({
   }, [isPaused, isReplyingMode]);
 
 
-  const handleReplyAreaTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.stopPropagation(); 
+ const handleReplyAreaTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     if (e.touches.length === 1) {
       replyAreaTouchStartYRef.current = e.targetTouches[0].clientY;
       isSwipingOnReplyAreaRef.current = true;
@@ -335,25 +333,34 @@ export function ViewStatus({
   const handleReplyAreaTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
     e.stopPropagation();
     let unpausedDueToNoAction = false;
-    if (replyAreaTouchStartYRef.current && isSwipingOnReplyAreaRef.current) {
+
+    if (replyAreaTouchStartYRef.current && isSwipingOnReplyAreaRef.current && currentStatus) {
       const touchEndY = e.changedTouches[0].clientY;
       const swipeDistance = replyAreaTouchStartYRef.current - touchEndY;
 
-      if (!isReplyingMode && swipeDistance > MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
-        setIsReplyingMode(true);
-        setIsReplyInputFocused(true);
-        setTimeout(() => replyInputRef.current?.focus(), 50);
+      if (swipeDistance > MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
+        if (currentStatus.userId === currentUser?.id) {
+          onOpenSeenByDialog(currentStatus);
+          // Don't set isReplyingMode true, keep timer paused (dialog will overlay)
+          // If dialog is closed, main view pause logic should handle unpausing if appropriate
+        } else if (!isReplyingMode) {
+          setIsReplyingMode(true);
+          setIsReplyInputFocused(true);
+          setTimeout(() => replyInputRef.current?.focus(), 50);
+          // Timer remains paused due to isReplyingMode = true
+        }
       } else if (isReplyingMode && swipeDistance < -MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
-        handleCancelReply(); 
+        handleCancelReply(); // This will unpause if appropriate
       } else if (!isReplyingMode && isPaused) {
-         setIsPaused(false);
+         setIsPaused(false); // Unpause if swipe was not enough and not in reply mode
          unpausedDueToNoAction = true;
       }
     }
     replyAreaTouchStartYRef.current = null;
     isSwipingOnReplyAreaRef.current = false;
     
-    if (unpausedDueToNoAction && !isReplyingMode && isPaused) { // Check isPaused again, as it might have been set by other means
+    // Explicitly unpause if no action taken and was paused by this area's touch start
+    if (unpausedDueToNoAction && !isReplyingMode && isPaused) {
         setIsPaused(false);
     }
   };
@@ -366,8 +373,8 @@ export function ViewStatus({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[70] flex flex-col items-center justify-center transition-colors duration-300 select-none",
-        themeClasses.bg
+        "fixed inset-0 z-[70] flex flex-col items-center justify-center transition-colors duration-300 select-none bg-background", // Base background
+        themeClasses.bg // Theme-specific background on top
       )}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
@@ -448,107 +455,107 @@ export function ViewStatus({
           {currentStatus.content}
         </p>
       </div>
-
       
-      {/* Reply Area or SeenBy Area */}
-      {currentUser && (
+      {/* Clickable "Seen By" indicator for own status */}
+      {currentUser && currentStatus.userId === currentUser.id && (
+        <div 
+          className="absolute bottom-0 left-0 right-0 z-30 flex justify-center items-center p-3 pointer-events-auto"
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "flex items-center gap-2 rounded-full px-3 py-1.5",
+              themeClasses.text, 
+              "bg-black/30 hover:bg-black/50 backdrop-blur-sm"
+            )}
+            onClickCapture={(e) => {
+              e.stopPropagation(); 
+              onOpenSeenByDialog(currentStatus);
+            }}
+            onTouchStart={(e) => e.stopPropagation()} 
+          >
+            <Eye className="h-4 w-4" />
+            <span>{currentStatus.seenBy?.length || 0}</span>
+          </Button>
+        </div>
+      )}
+
+      {/* Swipe-up area and Reply Panel (only for others' status) */}
+      {currentUser && currentStatus.userId !== currentUser.id && (
         <div
             ref={replyAreaRef}
             className={cn(
-                "absolute bottom-0 left-0 right-0 z-30 overflow-hidden",
+                "absolute bottom-0 left-0 right-0 z-20 overflow-hidden", // z-20 so "Seen By" button for own status can be z-30
                 "flex flex-col items-center",
                 "transition-[height,background-color] duration-300 ease-out",
                 "pointer-events-auto",
-                isReplyingMode
-                ? "bg-black/90 h-auto"
-                : (currentStatus.userId === currentUser.id ? "h-[50px] bg-transparent" : "h-[40vh] bg-transparent") 
+                isReplyingMode ? "bg-black/90 h-auto" : "bg-transparent h-[40vh]"
             )}
             onTouchStart={handleReplyAreaTouchStart}
             onTouchMove={handleReplyAreaTouchMove}
             onTouchEnd={handleReplyAreaTouchEnd}
         >
             <div
+                ref={contentWrapperRef}
                 className={cn(
                     "w-full transition-transform duration-300 ease-out",
-                    isReplyingMode || (currentStatus.userId === currentUser.id && (currentStatus.seenBy?.length || 0) > 0)
-                    ? "translate-y-0"
-                    : "translate-y-full"
+                    isReplyingMode ? "translate-y-0" : "translate-y-full"
                 )}
             >
-                {/* Content for replying or showing seen by count */}
                 {isReplyingMode && currentStatus.userId !== currentUser.id && (
                     <>
                         <div
-                        className="flex flex-col items-center justify-center text-center w-full cursor-pointer py-2"
-                        onClick={(e) => { e.stopPropagation(); handleCancelReply(); }}
-                        onTouchStart={(e) => e.stopPropagation()}
+                            className="flex flex-col items-center justify-center text-center w-full cursor-pointer py-2"
+                            onClick={(e) => { e.stopPropagation(); handleCancelReply(); }}
+                            onTouchStart={(e) => e.stopPropagation()}
                         >
-                        <ChevronDown className="h-5 w-5 text-neutral-400" />
+                            <ChevronDown className="h-5 w-5 text-neutral-400" />
                         </div>
                         <div className="w-full max-w-xl mx-auto px-3 pb-3 pt-1">
-                        <div className="flex items-center space-x-2">
-                            <Textarea
-                            ref={replyInputRef}
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            placeholder={`Balas ke ${currentStatus.userName}...`}
-                            onFocus={() => setIsReplyInputFocused(true)}
-                            onBlur={() => { if(!replyText.trim() && !isSwipingOnReplyAreaRef.current) setIsReplyInputFocused(false); }}
-                            className="flex-1 bg-neutral-700 border-neutral-600 text-white placeholder-neutral-400 rounded-2xl py-2.5 px-4 resize-none min-h-[40px] max-h-[100px] focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-neutral-500 text-sm"
-                            rows={1}
-                            onClick={(e) => e.stopPropagation()} 
-                            onTouchStart={(e) => e.stopPropagation()}
-                            />
-                            {isReplyInputFocused || replyText.trim() ? (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="bg-sky-600 hover:bg-sky-500 rounded-full h-10 w-10 p-0 shrink-0"
-                                onClick={(e) => { e.stopPropagation(); handleSendReply(); }}
-                                disabled={!replyText.trim()}
-                                aria-label="Kirim balasan"
-                                onTouchStart={(e) => e.stopPropagation()} 
-                            >
-                                <SendHorizonal className="h-5 w-5 text-white" />
-                            </Button>
-                            ) : (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="bg-neutral-700 hover:bg-neutral-600 rounded-full h-10 w-10 p-0 shrink-0"
-                                onClick={(e) => {
-                                    e.stopPropagation(); 
-                                    toast({ title: `Status ${currentStatus.userName} disukai!`});
-                                }}
-                                aria-label="Sukai status"
-                                onTouchStart={(e) => e.stopPropagation()} 
-                            >
-                                <Heart className="h-5 w-5 text-white" />
-                            </Button>
-                            )}
-                        </div>
+                            <div className="flex items-center space-x-2">
+                                <Textarea
+                                    ref={replyInputRef}
+                                    value={replyText}
+                                    onChange={(e) => setReplyText(e.target.value)}
+                                    placeholder={`Balas ke ${currentStatus.userName}...`}
+                                    onFocus={() => setIsReplyInputFocused(true)}
+                                    onBlur={() => { if(!replyText.trim() && !isSwipingOnReplyAreaRef.current) setIsReplyInputFocused(false); }}
+                                    className="flex-1 bg-neutral-700 border-neutral-600 text-white placeholder-neutral-400 rounded-2xl py-2.5 px-4 resize-none min-h-[40px] max-h-[100px] focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-neutral-500 text-sm"
+                                    rows={1}
+                                    onClick={(e) => e.stopPropagation()} 
+                                    onTouchStart={(e) => e.stopPropagation()}
+                                />
+                                {isReplyInputFocused || replyText.trim() ? (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="bg-sky-600 hover:bg-sky-500 rounded-full h-10 w-10 p-0 shrink-0"
+                                    onClick={(e) => { e.stopPropagation(); handleSendReply(); }}
+                                    disabled={!replyText.trim()}
+                                    aria-label="Kirim balasan"
+                                    onTouchStart={(e) => e.stopPropagation()} 
+                                >
+                                    <SendHorizonal className="h-5 w-5 text-white" />
+                                </Button>
+                                ) : (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="bg-neutral-700 hover:bg-neutral-600 rounded-full h-10 w-10 p-0 shrink-0"
+                                    onClick={(e) => {
+                                        e.stopPropagation(); 
+                                        toast({ title: `Status ${currentStatus.userName} disukai!`});
+                                    }}
+                                    aria-label="Sukai status"
+                                    onTouchStart={(e) => e.stopPropagation()} 
+                                >
+                                    <Heart className="h-5 w-5 text-white" />
+                                </Button>
+                                )}
+                            </div>
                         </div>
                     </>
-                )}
-                {/* Seen By UI for own status */}
-                {currentStatus.userId === currentUser.id && (
-                    <div 
-                        className="flex flex-col items-center justify-center text-center w-full cursor-pointer py-3"
-                        onClick={(e) => { 
-                            e.stopPropagation(); 
-                            if ((currentStatus.seenBy?.length || 0) > 0) {
-                                onOpenSeenByDialog(currentStatus);
-                            } else {
-                                toast({ title: "Status Saya", description: "Belum ada yang melihat status ini."})
-                            }
-                        }}
-                        onTouchStart={(e) => e.stopPropagation()} // Important to prevent parent touch handlers
-                    >
-                        <Eye className="h-5 w-5 text-white" />
-                        <span className="text-white text-sm font-medium ml-1.5">
-                            {currentStatus.seenBy?.length || 0}
-                        </span>
-                    </div>
                 )}
             </div>
         </div>
