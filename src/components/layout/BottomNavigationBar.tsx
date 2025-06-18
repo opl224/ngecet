@@ -24,10 +24,17 @@ export function BottomNavigationBar({ activeTab, onTabChange }: BottomNavigation
         return (
           <Button
             key={item.name}
-            variant="ghost"
+            variant="ghost" // Keep ghost for base structure, but override problematic styles
             className={cn(
-              "flex h-full flex-1 flex-col items-center justify-center rounded-none p-1 text-xs focus:z-10 relative", // Added relative for indicator positioning
-              isActive ? "text-primary" : "text-muted-foreground" // Removed hover:text-foreground/80
+              "flex h-full flex-1 flex-col items-center justify-center rounded-none p-1 text-xs focus:z-10 relative",
+              // Explicitly set static and hover background to match footer (bg-background)
+              // This overrides any potential background from 'ghost' or other sources.
+              "bg-background hover:bg-background",
+              // Set text color based on active state, and maintain it on hover
+              // This overrides hover:text-accent-foreground from 'ghost'
+              isActive
+                ? "text-primary hover:text-primary"
+                : "text-muted-foreground hover:text-muted-foreground"
             )}
             onClick={() => onTabChange(item.name)}
             aria-current={isActive ? "page" : undefined}
