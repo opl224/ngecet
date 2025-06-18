@@ -1293,6 +1293,10 @@ export default function ChatPage() {
     if (intendedActiveTab !== activeMobileTab) {
         setActiveMobileTab(intendedActiveTab); 
     } else {
+        // Snap back
+        if (mobileTabContainerRef.current) {
+            mobileTabContainerRef.current.style.transition = 'transform 0.3s ease-out';
+        }
         setCurrentTranslateX(activeMobileTab === 'chat' ? 0 : -screenWidthRef.current);
     }
 
@@ -1458,12 +1462,14 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <BottomNavigationBar
-                activeTab={activeMobileTab}
-                onTabChange={(tab) => {
-                    setActiveMobileTab(tab);
-                }}
-            />
+            {isMobileView && !selectedChat && (
+              <BottomNavigationBar
+                  activeTab={activeMobileTab}
+                  onTabChange={(tab) => {
+                      setActiveMobileTab(tab);
+                  }}
+              />
+            )}
           </div>
         </SidebarProvider>
 
@@ -1484,7 +1490,7 @@ export default function ChatPage() {
             }}
             currentUser={currentUser}
             onDeleteStatus={handleDeleteStatusInView}
-            onMarkAsReadGeneral={(userId, timestamp) => { // Renamed for clarity
+            onMarkAsReadGeneral={(userId, timestamp) => { 
               if (viewingUserAllStatuses && viewingUserAllStatuses.length > 0) {
                  handleMarkUserStatusesAsRead(userId, timestamp);
               }
@@ -1520,7 +1526,6 @@ export default function ChatPage() {
             onCreateChat={handleCreateGroupChat}
             currentUserObj={currentUser}
             initialMemberName={groupDialogInitialMemberName}
-            chats={chats}
         />}
         {isAddUserToGroupDialogOpen && selectedChat && (
             <AddUserToGroupDialog
@@ -1528,9 +1533,6 @@ export default function ChatPage() {
             onOpenChange={setIsAddUserToGroupDialogOpen}
             onAddUser={handleAddNewUserToGroup}
             currentUserObj={currentUser}
-            chats={chats}
-            chatIdToAddTo={chatIdToAddTo}
-            registeredUsers={registeredUsers}
             />
         )}
         <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
@@ -1732,16 +1734,12 @@ export default function ChatPage() {
         onCreateChat={handleCreateGroupChat}
         currentUserObj={currentUser}
         initialMemberName={groupDialogInitialMemberName}
-        chats={chats}
       />}
       {isClient && isAddUserToGroupDialogOpen && <AddUserToGroupDialog
         isOpen={isAddUserToGroupDialogOpen}
         onOpenChange={setIsAddUserToGroupDialogOpen}
         onAddUser={handleAddNewUserToGroup}
         currentUserObj={currentUser}
-        chats={chats}
-        chatIdToAddTo={chatIdToAddTo}
-        registeredUsers={registeredUsers}
       />}
        <AlertDialog open={isDeleteGroupConfirmOpen} onOpenChange={setIsDeleteGroupConfirmOpen}>
         <AlertDialogContent>
