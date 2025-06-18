@@ -26,12 +26,19 @@ export function BottomNavigationBar({ activeTab, onTabChange }: BottomNavigation
             key={item.name}
             variant="ghost"
             className={cn(
-              "flex h-full flex-1 flex-col items-center justify-center rounded-none p-1 text-xs focus:z-10", // Adjusted padding and focus
-              isActive ? "text-primary" : "text-muted-foreground hover:text-foreground/80"
+              "flex h-full flex-1 flex-col items-center justify-center rounded-none p-1 text-xs focus:z-10 relative", // Added relative for indicator positioning
+              isActive ? "text-primary" : "text-muted-foreground" // Removed hover:text-foreground/80
             )}
             onClick={() => onTabChange(item.name)}
             aria-current={isActive ? "page" : undefined}
           >
+            <span
+              className={cn(
+                "absolute top-[2px] h-[3px] w-6 rounded-b-lg bg-primary transition-opacity duration-300 ease-out",
+                isActive ? "opacity-100" : "opacity-0 pointer-events-none"
+              )}
+              aria-hidden="true"
+            />
             <Icon className={cn("mb-0.5 h-5 w-5", isActive ? "text-primary" : "")} />
             {item.label}
           </Button>
