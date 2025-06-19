@@ -29,6 +29,8 @@ interface ChatListProps {
   isMobileView: boolean;
 }
 
+type ActiveFilterType = 'all' | 'unread' | 'group' | 'direct' | null;
+
 export function ChatList({
   chats,
   currentUser,
@@ -43,7 +45,7 @@ export function ChatList({
   onUnblockUser,
   isMobileView,
 }: ChatListProps) {
-  const [activeFilter, setActiveFilter] = useState<'direct' | 'group' | null>(null);
+  const [activeFilter, setActiveFilter] = useState<ActiveFilterType>(isMobileView ? 'all' : null);
 
   if (!currentUser) {
     return <div className="p-4 text-sm text-sidebar-foreground/70">Memuat pengguna...</div>;
@@ -72,44 +74,105 @@ export function ChatList({
       return tsB - tsA;
     });
 
-  const handleFilterClick = (filter: 'direct' | 'group') => {
-    setActiveFilter(prevFilter => prevFilter === filter ? null : filter);
+  const handleFilterClick = (filter: ActiveFilterType) => {
+    if (isMobileView) {
+      setActiveFilter(filter);
+    } else {
+      // Desktop toggle behavior for 'direct' and 'group'
+      if (filter === 'direct' || filter === 'group') {
+        setActiveFilter(prevFilter => (prevFilter === filter ? null : filter));
+      } else {
+        setActiveFilter(filter); // Should not happen for desktop with current UI
+      }
+    }
   };
 
   const filteredChats = sortedChatsWithUnread.filter(chat => {
-    if (!activeFilter) return true;
-    return chat.type === activeFilter;
+    if (isMobileView) {
+      if (activeFilter === 'all') return true;
+      if (activeFilter === 'unread') return (chat.calculatedUnreadCount || 0) > 0;
+      if (activeFilter === 'group') return chat.type === 'group';
+    } else { // Desktop view
+      if (activeFilter === null) return true; // Show all if no filter selected
+      if (activeFilter === 'direct') return chat.type === 'direct';
+      if (activeFilter === 'group') return chat.type === 'group';
+    }
+    return true; // Fallback
   });
 
   const getEmptyStateMessage = () => {
     if (!currentUser) return "Memuat pengguna...";
-    if (activeFilter === 'direct' && filteredChats.length === 0) return "Belum ada pesan!";
-    if (activeFilter === 'group' && filteredChats.length === 0) return "Belum ada grup!";
-    if (visibleChats.length === 0) return "Tambah pesan untuk saling berinteraksi";
-    return "Tidak ada pesan yang cocok.";
+    if (filteredChats.length > 0) return ""; // Not an empty state, chats will be rendered
+
+    if (visibleChats.length === 0) { // No chats at all for the current user
+        return "Mulai percakapan atau buat grup baru!";
+    }
+
+    // visibleChats.length > 0, but filteredChats.length === 0 for the current filter
+    if (isMobileView) {
+        if (activeFilter === 'unread') return "Tidak ada pesan belum dibaca.";
+        if (activeFilter === 'group') return "Belum ada grup chat yang dibuat.";
+    } else { // Desktop
+        if (activeFilter === 'direct') return "Tidak ada pesan langsung.";
+        if (activeFilter === 'group') return "Tidak ada grup chat.";
+    }
+    return "Tidak ada chat yang cocok."; // Generic fallback
   };
 
 
   return (
-    <div className="flex flex-col flex-1 relative"> {/* Changed h-full to flex-1 */}
-      <div className="p-4 border-b border-sidebar-border flex items-center space-x-2">
-        <Button
-          variant={activeFilter === 'direct' ? 'secondary' : 'ghost'}
-          size="sm"
-          onClick={() => handleFilterClick('direct')}
-          className="flex-1 h-9"
-        >
-          Pesan
-        </Button>
-        <Button
-          variant={activeFilter === 'group' ? 'secondary' : 'ghost'}
-          size="sm"
-          onClick={() => handleFilterClick('group')}
-          className="flex-1 h-9"
-        >
-          Grup
-        </Button>
-      </div>
+    <div className="flex flex-col flex-1 relative">
+      {isMobileView ? (
+        <div className="p-4 border-b border-sidebar-border">
+          {/* Mobile specific header could go here if needed, e.g., a title like "Chat" */}
+          {/* <h2 className="text-lg font-semibold text-sidebar-foreground mb-3">Chat</h2> */}
+          <div className="flex items-center space-x-2">
+            <Button
+              variant={activeFilter === 'all' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => handleFilterClick('all')}
+              className="flex-1 h-9"
+            >
+              Semua
+            </Button>
+            <Button
+              variant={activeFilter === 'unread' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => handleFilterClick('unread')}
+              className="flex-1 h-9"
+            >
+              Belum Dibaca
+            </Button>
+            <Button
+              variant={activeFilter === 'group' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => handleFilterClick('group')}
+              className="flex-1 h-9"
+            >
+              Grup
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 border-b border-sidebar-border flex items-center space-x-2">
+          <Button
+            variant={activeFilter === 'direct' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => handleFilterClick('direct')}
+            className="flex-1 h-9"
+          >
+            Pesan
+          </Button>
+          <Button
+            variant={activeFilter === 'group' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => handleFilterClick('group')}
+            className="flex-1 h-9"
+          >
+            Grup
+          </Button>
+        </div>
+      )}
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-1">
           {filteredChats.length > 0 ? (
