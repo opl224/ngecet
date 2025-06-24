@@ -372,8 +372,7 @@ export function ViewStatus({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[70] flex flex-col items-center justify-center transition-colors duration-300 select-none bg-background", // Base background
-        themeClasses.bg // Theme-specific background on top
+        "fixed inset-0 z-[70] flex flex-col items-center justify-center transition-colors duration-300 select-none bg-background"
       )}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
@@ -410,13 +409,13 @@ export function ViewStatus({
         </div>
         <div className="flex items-center justify-between pointer-events-auto">
           <div className="flex items-center space-x-2">
-            <Avatar className="h-12 w-12 border-2 border-white/80">
+            <Avatar className="h-12 w-12 border-2 border-border">
               <AvatarImage src={currentStatus.userAvatarUrl} alt={currentStatus.userName} data-ai-hint="person abstract"/>
-              <AvatarFallback className="text-black bg-white/80">{getInitials(currentStatus.userName)}</AvatarFallback>
+              <AvatarFallback>{getInitials(currentStatus.userName)}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-semibold text-white text-sm leading-tight">{currentStatus.userName}</p>
-              <p className="text-xs text-white/80 leading-tight">{formatTimestampForView(currentStatus.timestamp)}</p>
+              <p className="font-semibold text-foreground text-sm leading-tight">{currentStatus.userName}</p>
+              <p className="text-xs text-muted-foreground leading-tight">{formatTimestampForView(currentStatus.timestamp)}</p>
             </div>
           </div>
           <div className="flex items-center space-x-1">
@@ -425,13 +424,13 @@ export function ViewStatus({
                 variant="ghost"
                 size="icon"
                 onClickCapture={(e) => { handleDeleteClick(); e.stopPropagation(); }}
-                className="text-white rounded-full hover:bg-white/20"
+                className="text-foreground rounded-full hover:bg-accent"
                 aria-label="Hapus Status"
               >
                 <Trash2 className="h-5 w-5" />
               </Button>
             )}
-            <Button variant="ghost" size="icon" onClickCapture={(e) => { performCloseActions(); e.stopPropagation();}} className="text-white rounded-full hover:bg-white/20">
+            <Button variant="ghost" size="icon" onClickCapture={(e) => { performCloseActions(); e.stopPropagation();}} className="text-foreground rounded-full hover:bg-accent">
               <X className="h-6 w-6" />
               <span className="sr-only">Tutup</span>
             </Button>
@@ -447,7 +446,7 @@ export function ViewStatus({
         <p
           className={cn(
             "text-center text-3xl md:text-4xl lg:text-5xl font-medium break-words w-full max-w-2xl",
-            themeClasses.text,
+            "text-foreground",
           )}
           style={{ lineHeight: '1.4' }}
         >
@@ -455,7 +454,6 @@ export function ViewStatus({
         </p>
       </div>
       
-      {/* Clickable "Seen By" indicator for own status */}
       {currentUser && currentStatus.userId === currentUser.id && (
         <div 
           className="absolute bottom-0 left-0 right-0 z-30 flex justify-center items-center p-3 pointer-events-auto"
@@ -465,8 +463,8 @@ export function ViewStatus({
             size="sm"
             className={cn(
               "flex items-center gap-2 rounded-full px-3 py-1.5",
-              themeClasses.text, 
-              "bg-black/30 hover:bg-black/50 backdrop-blur-sm"
+              "text-foreground", 
+              "bg-background/50 hover:bg-muted backdrop-blur-sm"
             )}
             onClickCapture={(e) => {
               e.stopPropagation(); 
