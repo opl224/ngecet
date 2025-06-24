@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import dynamic from 'next/dynamic';
-import type { User, Chat, Message, RegisteredUser, UserStatus, ReadStatusTimestamps, StatusColorThemeName } from "@/types";
+import type { User, Chat, Message, RegisteredUser, UserStatus, ReadStatusTimestamps } from "@/types";
 import { useIsMobile } from "@/hooks/use-mobile";
 import useLocalStorage from "@/hooks/use-local-storage";
 import { AppLogo } from "@/components/core/AppLogo";
@@ -190,7 +190,7 @@ export default function ChatPage() {
     setIsCreatingTextStatus(true);
   }, []);
 
-  const handlePostUserStatus = useCallback((text: string, backgroundColorName: StatusColorThemeName) => {
+  const handlePostUserStatus = useCallback((text: string) => {
     if (!currentUser) return;
     const newStatus: UserStatus = {
       id: `status_${Date.now()}_${currentUser.id}`,
@@ -199,7 +199,6 @@ export default function ChatPage() {
       userAvatarUrl: currentUser.avatarUrl,
       type: 'text',
       content: text,
-      backgroundColorName,
       timestamp: Date.now(),
       seenBy: [],
     };
@@ -1297,19 +1296,20 @@ export default function ChatPage() {
 
     isSwipingRef.current = false;
 
+    if (mobileTabContainerRef.current) {
+        mobileTabContainerRef.current.style.transition = 'transform 0.3s ease-in-out';
+    }
+
     if (intendedActiveTab !== activeMobileTab) {
         // setActiveMobileTab will trigger the useEffect to apply smooth transition
         setActiveMobileTab(intendedActiveTab);
     } else {
         // Snap back to the current active tab's position
-        if (mobileTabContainerRef.current) {
-            mobileTabContainerRef.current.style.transition = 'transform 0.3s ease-in-out';
-        }
         setCurrentTranslateX(activeMobileTab === 'chat' ? 0 : -screenWidthRef.current);
     }
 
     touchStartXRef.current = null;
-  }, [activeMobileTab, isMobileView, setActiveMobileTab]);
+  }, [activeMobileTab, isMobileView]);
 
 
   if (!isClient) {
@@ -1346,7 +1346,6 @@ export default function ChatPage() {
                   width: '200%',
                   height: '100%',
                   transform: `translateX(${currentTranslateX}px)`,
-                  // Transition is now managed by useEffect and touch handlers
                   willChange: 'transform',
                 }}
               >

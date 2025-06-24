@@ -26,7 +26,7 @@ interface StatusPageProps {
 const createSegmentedRingSVGSimple = (
   segmentCount: number,
   isAllRead: boolean,
-  avatarSize: number = 48,
+  avatarSize: number = 56, // Increased from 48
   strokeWidth: number = 2.5,
   gapPercentage: number = 0.08
 ): string => {
@@ -148,7 +148,7 @@ export function StatusPage({
                 { currentUserActiveStatusesCount > 0 && (
                      <div
                         className="absolute inset-0 pointer-events-none"
-                        dangerouslySetInnerHTML={{ __html: createSegmentedRingSVGSimple(currentUserActiveStatusesCount, false) }} // false for isAllRead for own status ring for now
+                        dangerouslySetInnerHTML={{ __html: createSegmentedRingSVGSimple(currentUserActiveStatusesCount, false, 56) }} // false for isAllRead for own status ring for now
                     />
                 )}
               </div>
@@ -157,12 +157,6 @@ export function StatusPage({
                     <p className="font-medium text-foreground truncate">
                         Status Saya
                     </p>
-                    {currentUserActiveStatusesCount > 0 && myLatestStatus && (
-                         <div className={cn(
-                            "h-2 w-2 rounded-full shrink-0",
-                            getStatusThemeClasses(myLatestStatus.backgroundColorName).bg
-                         )} />
-                    )}
                  </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {currentUserActiveStatusesCount > 0 && myLatestStatus
@@ -195,7 +189,7 @@ export function StatusPage({
                             <div className="relative">
                                 <div
                                     className="absolute inset-0 pointer-events-none"
-                                    dangerouslySetInnerHTML={{ __html: createSegmentedRingSVGSimple(segmentCount, isAllRead) }}
+                                    dangerouslySetInnerHTML={{ __html: createSegmentedRingSVGSimple(segmentCount, isAllRead, 56) }}
                                 />
                                 <Avatar className="h-12 w-12 border-2 border-transparent">
                                 <AvatarImage src={latestStatusOfUser.userAvatarUrl} alt={latestStatusOfUser.userName} data-ai-hint="person abstract status"/>
@@ -254,4 +248,5 @@ export function StatusPage({
     </div>
   );
 }
+
 

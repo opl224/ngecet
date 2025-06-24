@@ -2,28 +2,23 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import type { User, StatusColorThemeName } from '@/types'; // Added StatusColorThemeName
+import type { User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { X, Palette, Type, SendHorizonal } from 'lucide-react';
+import { X, Type, SendHorizonal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { statusColorThemes, getStatusThemeClasses } from '@/config/statusThemes';
 
 interface CreateTextStatusProps {
   currentUser: User;
   onClose: () => void;
-  onPostStatus: (text: string, backgroundColorName: StatusColorThemeName) => void;
+  onPostStatus: (text: string) => void;
 }
 
 export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateTextStatusProps) {
   const { toast } = useToast();
   const [statusText, setStatusText] = useState('');
-  const [currentThemeIndex, setCurrentThemeIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const currentThemeObject = statusColorThemes[currentThemeIndex];
-  const appliedTheme = getStatusThemeClasses(currentThemeObject.name);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -35,11 +30,7 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
         }
       });
     }
-  }, [statusText, currentThemeIndex]);
-
-  const handleCycleTheme = () => {
-    setCurrentThemeIndex((prevIndex) => (prevIndex + 1) % statusColorThemes.length);
-  };
+  }, [statusText]);
 
   const handlePost = () => {
     if (!statusText.trim()) {
@@ -50,7 +41,7 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
       });
       return;
     }
-    onPostStatus(statusText.trim(), appliedTheme.name);
+    onPostStatus(statusText.trim());
   };
   
   useEffect(() => {
@@ -69,22 +60,18 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
     <div
       className={cn(
         "fixed inset-0 z-[60] flex flex-col items-center justify-center p-4 transition-colors duration-300",
-        appliedTheme.bg 
+        "bg-background"
       )}
     >
       <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-4">
-        <Button variant="ghost" size="icon" onClick={onClose} className={cn("rounded-full hover:bg-black/20", appliedTheme.text)}>
+        <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full text-foreground hover:bg-muted">
           <X className="h-6 w-6" />
           <span className="sr-only">Tutup</span>
         </Button>
         <div className="flex space-x-2">
-          <Button variant="ghost" size="icon" onClick={() => toast({ title: "Fitur Segera Hadir", description: "Mengganti jenis huruf akan segera tersedia."})} className={cn("rounded-full hover:bg-black/20", appliedTheme.text)}>
+          <Button variant="ghost" size="icon" onClick={() => toast({ title: "Fitur Segera Hadir", description: "Mengganti jenis huruf akan segera tersedia."})} className="rounded-full text-foreground hover:bg-muted">
             <Type className="h-6 w-6" />
             <span className="sr-only">Jenis Huruf</span>
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handleCycleTheme} className={cn("rounded-full hover:bg-black/20", appliedTheme.text)}>
-            <Palette className="h-6 w-6" />
-            <span className="sr-only">Ganti Warna Latar</span>
           </Button>
         </div>
       </div>
@@ -97,8 +84,8 @@ export function CreateTextStatus({ currentUser, onClose, onPostStatus }: CreateT
           placeholder="Ketik status"
           className={cn(
             "bg-transparent border-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-center text-3xl md:text-4xl lg:text-5xl font-medium resize-none w-full max-w-2xl overflow-y-auto hide-scrollbar p-2",
-            appliedTheme.text, 
-            appliedTheme.placeholder, 
+            "text-foreground", 
+            "placeholder-muted-foreground", 
             "h-auto min-h-[100px] max-h-[70vh]"
           )}
           style={{ lineHeight: '1.4' }}
