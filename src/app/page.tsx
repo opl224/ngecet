@@ -190,7 +190,7 @@ export default function ChatPage() {
     setIsCreatingTextStatus(true);
   }, []);
 
-  const handlePostUserStatus = useCallback((text: string) => {
+  const handlePostUserStatus = useCallback(() => {
     if (!currentUser) return;
     const newStatus: UserStatus = {
       id: `status_${Date.now()}_${currentUser.id}`,
@@ -198,7 +198,7 @@ export default function ChatPage() {
       userName: currentUser.name,
       userAvatarUrl: currentUser.avatarUrl,
       type: 'text',
-      content: text,
+      content: 'Status Teks',
       timestamp: Date.now(),
       seenBy: [],
     };
@@ -1375,7 +1375,7 @@ export default function ChatPage() {
                   ) : (
                     <div className="flex flex-1 flex-col bg-sidebar text-sidebar-foreground h-full">
                       <SidebarHeader className="p-0 shrink-0">
-                        <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
+                        <div className="flex items-center justify-between p-4">
                           <div className="flex items-center gap-2 shrink-0 mr-2">
                             <AppLogo className="h-7 w-7" />
                             <h1 className="text-xl font-semibold text-sidebar-primary-foreground dark:text-white">Ngecet</h1>

@@ -113,18 +113,8 @@ export function StatusPage({
 
   return (
     <div className="flex flex-1 flex-col bg-background h-full relative">
-      <header className="flex items-center justify-between p-4 sticky top-0 bg-background z-10 border-b border-sidebar-border">
+      <header className="flex items-center justify-between p-4 sticky top-0 bg-background z-10">
         <h1 className="text-xl font-semibold text-foreground">Pembaruan</h1>
-        <div className="flex items-center space-x-1">
-          <Button variant="ghost" size="icon" className="text-foreground/70 md:hover:text-foreground">
-            <Search className="h-5 w-5" />
-            <span className="sr-only">Cari</span>
-          </Button>
-          <Button variant="ghost" size="icon" className="text-foreground/70 md:hover:text-foreground">
-            <MoreVertical className="h-5 w-5" />
-            <span className="sr-only">Opsi lainnya</span>
-          </Button>
-        </div>
       </header>
 
       <ScrollArea className="flex-1">
