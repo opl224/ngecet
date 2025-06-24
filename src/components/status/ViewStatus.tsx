@@ -334,15 +334,14 @@ export function ViewStatus({
     e.stopPropagation();
     let unpausedDueToNoAction = false;
 
-    if (replyAreaTouchStartYRef.current && isSwipingOnReplyAreaRef.current && currentStatus) {
+    if (replyAreaTouchStartYRef.current && isSwipingOnReplyAreaRef.current && currentStatus && currentUser) {
       const touchEndY = e.changedTouches[0].clientY;
       const swipeDistance = replyAreaTouchStartYRef.current - touchEndY;
 
       if (swipeDistance > MIN_SWIPE_UP_DISTANCE_REPLY_AREA) {
-        if (currentStatus.userId === currentUser?.id) {
+        if (currentStatus.userId === currentUser.id) {
           onOpenSeenByDialog(currentStatus);
           // Don't set isReplyingMode true, keep timer paused (dialog will overlay)
-          // If dialog is closed, main view pause logic should handle unpausing if appropriate
         } else if (!isReplyingMode) {
           setIsReplyingMode(true);
           setIsReplyInputFocused(true);
@@ -411,7 +410,7 @@ export function ViewStatus({
         </div>
         <div className="flex items-center justify-between pointer-events-auto">
           <div className="flex items-center space-x-2">
-            <Avatar className="h-9 w-9 border-2 border-white/80">
+            <Avatar className="h-12 w-12 border-2 border-white/80">
               <AvatarImage src={currentStatus.userAvatarUrl} alt={currentStatus.userName} data-ai-hint="person abstract"/>
               <AvatarFallback className="text-black bg-white/80">{getInitials(currentStatus.userName)}</AvatarFallback>
             </Avatar>
@@ -481,16 +480,16 @@ export function ViewStatus({
         </div>
       )}
 
-      {/* Swipe-up area and Reply Panel (only for others' status) */}
-      {currentUser && currentStatus.userId !== currentUser.id && (
+      {/* Swipe-up area and Reply Panel (only for others' status or own status) */}
+      {currentUser && (
         <div
             ref={replyAreaRef}
             className={cn(
-                "absolute bottom-0 left-0 right-0 z-20 overflow-hidden", // z-20 so "Seen By" button for own status can be z-30
+                "absolute bottom-0 left-0 right-0 z-20 overflow-hidden",
                 "flex flex-col items-center",
                 "transition-[height,background-color] duration-300 ease-out",
                 "pointer-events-auto",
-                isReplyingMode ? "bg-black/90 h-auto" : "bg-transparent h-[40vh]"
+                isReplyingMode && currentStatus.userId !== currentUser.id ? "bg-black/90 h-auto" : "bg-transparent h-[40vh]"
             )}
             onTouchStart={handleReplyAreaTouchStart}
             onTouchMove={handleReplyAreaTouchMove}
@@ -500,9 +499,10 @@ export function ViewStatus({
                 ref={contentWrapperRef}
                 className={cn(
                     "w-full transition-transform duration-300 ease-out",
-                    isReplyingMode ? "translate-y-0" : "translate-y-full"
+                    isReplyingMode && currentStatus.userId !== currentUser.id ? "translate-y-0" : "translate-y-full"
                 )}
             >
+                {/* This content only shows for replying to others */}
                 {isReplyingMode && currentStatus.userId !== currentUser.id && (
                     <>
                         <div
@@ -564,3 +564,6 @@ export function ViewStatus({
   );
 }
 
+
+
+    

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict, isToday, isYesterday, format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
-import { User as UserIcon, Users, AlertTriangle, Check, X, ShieldOff, ShieldAlert } from "lucide-react";
+import { User as UserIcon, Users, AlertTriangle, Check, X, ShieldOff, ShieldAlert, Trash2 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 
 interface ChatItemProps {
@@ -129,7 +129,7 @@ export function ChatItem({
         showActions && "cursor-default" // Reset cursor if actions are present
       )}
     >
-      <Avatar className="h-10 w-10 mr-3 shrink-0">
+      <Avatar className="h-12 w-12 mr-3 shrink-0">
         <AvatarImage src={avatarUrl} alt={name} data-ai-hint={chat.type === 'group' ? 'group abstract' : 'person abstract'} />
         <AvatarFallback>
           {initials !== "?" ? initials : <IconComponent className="h-5 w-5 text-muted-foreground" />}
@@ -221,3 +221,5 @@ export function ChatItem({
     </div>
   );
 }
+
+    

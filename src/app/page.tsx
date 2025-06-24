@@ -1390,7 +1390,7 @@ export default function ChatPage() {
                             />
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-sidebar-foreground h-9 w-9">
+                                <Button variant="ghost" size="icon" className="text-sidebar-foreground h-12 w-12">
                                   <Settings className="h-5 w-5" />
                                   <span className="sr-only">Pengaturan</span>
                                 </Button>
@@ -1567,11 +1567,10 @@ export default function ChatPage() {
             <AlertDialogHeader>
                 <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
                 <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
-                Ngecet adalah aplikasi chatting sederhana.
-                Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
+                Ngecet adalah aplikasi chatting sederhana. Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
                 </AlertDialogDescription>
                 <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
-                Tech: Next.js, React, ShadCN UI, Tailwind CSS dan Genkit.
+                Tech: Next.js, React, ShadCN UI dan Tailwind CSS.
                 </AlertDialogDescription>
                 <AlertDialogDescription className="text-sm text-muted-foreground font-semibold pt-4 pb-6">
                 Jika ada bug atau ui error, mon map masih tahap pengembangan!
@@ -1774,11 +1773,10 @@ export default function ChatPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
-              Ngecet adalah aplikasi chatting sederhana.
-              Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
+              Ngecet adalah aplikasi chatting sederhana. Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
             </AlertDialogDescription>
              <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
-              Tech: Next.js, React, ShadCN UI, Tailwind CSS dan Genkit.
+              Tech: Next.js, React, ShadCN UI dan Tailwind CSS.
             </AlertDialogDescription>
             <AlertDialogDescription className="text-sm text-muted-foreground font-semibold pt-4 pb-6">
               Jika ada bug atau ui error, mon map masih tahap pengembangan!
@@ -1826,5 +1824,7 @@ export default function ChatPage() {
   );
 }
 
+
+    
 
     

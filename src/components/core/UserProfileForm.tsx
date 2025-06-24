@@ -104,8 +104,8 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
     <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
       {displayMode === "compact" ? (
         <DialogTrigger asChild>
-          <Button variant="ghost" size="icon" className="rounded-full p-0 h-9 w-9 hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent">
-            <Avatar className="h-8 w-8">
+          <Button variant="ghost" size="icon" className="rounded-full p-0 h-12 w-12 hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent">
+            <Avatar className="h-12 w-12">
               <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} data-ai-hint="abstract person small" />
               <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
             </Avatar>
@@ -188,3 +188,6 @@ export function UserProfileForm({ currentUser, onSaveProfile, displayMode = "ful
   );
 }
 
+
+
+    

@@ -396,7 +396,7 @@ export function ChatView({
             )}
             <DialogTrigger asChild>
               <div className="flex items-center space-x-3 cursor-pointer group flex-1 min-w-0">
-                <Avatar className="h-10 w-10 shrink-0">
+                <Avatar className="h-12 w-12 shrink-0">
                   <AvatarImage src={displayDetails.avatarUrl} alt={displayDetails.name || 'Chat Avatar'} data-ai-hint={chat.type === 'group' ? 'group abstract' : 'person abstract'}/>
                   <AvatarFallback>
                     <displayDetails.Icon className="h-5 w-5 text-muted-foreground" />
@@ -420,7 +420,7 @@ export function ChatView({
           </div>
 
           <div className="flex items-center space-x-1">
-             {isChatActive && (
+             {isChatActive && !isMobileView && (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="shrink-0">
@@ -541,7 +541,7 @@ export function ChatView({
                     return (
                       <li key={participantUser.id} className="flex items-center justify-between space-x-2 p-2 hover:bg-muted/50 rounded-md">
                          <div className="flex items-center space-x-2 min-w-0 flex-1">
-                           <Avatar className="h-8 w-8">
+                           <Avatar className="h-10 w-10">
                              <AvatarImage src={participantUser.avatarUrl} alt={participantName} data-ai-hint="person abstract small"/>
                              <AvatarFallback>{participantUser?.name?.substring(0,1).toUpperCase() || '?'}</AvatarFallback>
                            </Avatar>
@@ -765,5 +765,7 @@ export function ChatView({
     </div>
   );
 }
+
+    
 
     
