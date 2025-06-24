@@ -1567,7 +1567,7 @@ export default function ChatPage() {
             <AlertDialogHeader>
                 <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
                 <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
-                Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
+                Ngecet adalah aplikasi chatting sederhana.
                 Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
                 </AlertDialogDescription>
                 <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
@@ -1774,7 +1774,7 @@ export default function ChatPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Tentang Ngecet</AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-muted-foreground pt-4 pb-2">
-              Ngecet adalah aplikasi chatting sederhana yang dibuat untuk Project IDX.
+              Ngecet adalah aplikasi chatting sederhana.
               Fitur-fitur meliputi pesan langsung, grup chat, dan penyimpanan lokal.
             </AlertDialogDescription>
              <AlertDialogDescription className="text-sm text-muted-foreground pt-0 pb-6">
