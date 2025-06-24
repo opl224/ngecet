@@ -10,7 +10,7 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNowStrict, isToday, isYesterday, format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale/id';
-import { getStatusThemeClasses } from '@/config/statusThemes';
+import { useToast } from "@/hooks/use-toast";
 
 
 interface StatusPageProps {
@@ -66,6 +66,7 @@ export function StatusPage({
   onTriggerViewUserStatuses,
   statusReadTimestamps,
 }: StatusPageProps) {
+  const { toast } = useToast();
 
   const getInitials = (name: string | undefined, length: number = 1) => {
     if (!name) return "?";
@@ -109,11 +110,10 @@ export function StatusPage({
       </div>
     );
   }
-  const currentUserActiveStatusesCount = currentUserActiveStatuses.length;
 
   return (
     <div className="flex flex-1 flex-col bg-background h-full relative">
-      <header className="flex items-center justify-between p-4 sticky top-0 bg-background z-10 border-b">
+      <header className="flex items-center justify-between p-4 sticky top-0 bg-background z-10 border-b border-sidebar-border">
         <h1 className="text-xl font-semibold text-foreground">Pembaruan</h1>
         <div className="flex items-center space-x-1">
           <Button variant="ghost" size="icon" className="text-foreground/70 md:hover:text-foreground">
@@ -140,15 +140,15 @@ export function StatusPage({
                   <AvatarImage src={currentUser.avatarUrl} alt="My Status Avatar" data-ai-hint="person abstract"/>
                   <AvatarFallback>{getInitials(currentUser.name, 2)}</AvatarFallback>
                 </Avatar>
-                { currentUserActiveStatusesCount === 0 && (
+                { currentUserActiveStatuses.length === 0 && (
                     <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-background flex items-center justify-center">
                         <Plus className="h-3 w-3 text-white" />
                     </div>
                 )}
-                { currentUserActiveStatusesCount > 0 && (
+                { currentUserActiveStatuses.length > 0 && (
                      <div
                         className="absolute inset-0 pointer-events-none"
-                        dangerouslySetInnerHTML={{ __html: createSegmentedRingSVGSimple(currentUserActiveStatusesCount, false, 56) }} // false for isAllRead for own status ring for now
+                        dangerouslySetInnerHTML={{ __html: createSegmentedRingSVGSimple(currentUserActiveStatuses.length, false, 56) }} // false for isAllRead for own status ring for now
                     />
                 )}
               </div>
@@ -159,8 +159,8 @@ export function StatusPage({
                     </p>
                  </div>
                 <p className="text-xs text-muted-foreground truncate">
-                  {currentUserActiveStatusesCount > 0 && myLatestStatus
-                    ? `${currentUserActiveStatusesCount} pembaruan • ${formatTimestamp(myLatestStatus.timestamp)}`
+                  {currentUserActiveStatuses.length > 0 && myLatestStatus
+                    ? `${currentUserActiveStatuses.length} pembaruan • ${formatTimestamp(myLatestStatus.timestamp)}`
                     : "Ketuk untuk menambahkan pembaruan status"}
                 </p>
               </div>
@@ -208,7 +208,7 @@ export function StatusPage({
               </div>
             </div>
           )}
-           {otherUsersLatestStatus.length === 0 && userStatuses.length > 0 && currentUserActiveStatusesCount === userStatuses.length && (
+           {otherUsersLatestStatus.length === 0 && userStatuses.length > 0 && currentUserActiveStatuses.length === userStatuses.length && (
              <div className="pt-8 text-center px-2">
                 <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground/50" />
                 <p className="mt-2 text-sm text-muted-foreground">Belum ada pembaruan dari pengguna lain.</p>
@@ -248,5 +248,3 @@ export function StatusPage({
     </div>
   );
 }
-
-
