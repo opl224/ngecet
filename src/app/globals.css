@@ -39,7 +39,7 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 96%; /* Light Gray #F5F5F5 */
+    --background: 45 44% 96%; /* #F9F6EE */
     --foreground: 0 0% 10%; /* Dark Gray for text */
     --card: 0 0% 100%; /* White */
     --card-foreground: 0 0% 10%;
@@ -66,7 +66,7 @@ body {
     --radius: 0.5rem;
 
     /* Sidebar specific colors, can be same as main or slightly different */
-    --sidebar-background: 0 0% 98%; /* Almost white, clean */
+    --sidebar-background: 45 44% 96%; /* #F9F6EE */
     --sidebar-foreground: 200 20% 30%; /* Muted dark blue text */
     --sidebar-primary: 200 69% 84%; /* Same as app primary */
     --sidebar-primary-foreground: 200 50% 30%; /* Same as app primary foreground */
@@ -77,7 +77,7 @@ body {
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 0 0% 7%; /* #121212 */
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;
@@ -102,7 +102,7 @@ body {
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
-    --sidebar-background: 240 5.9% 10%;
+    --sidebar-background: 0 0% 7%; /* #121212 */
     --sidebar-foreground: 0 0% 95%;
     --sidebar-primary: 200 69% 84%;
     --sidebar-primary-foreground: 200 50% 20%;
@@ -122,5 +122,3 @@ body {
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
-
-    
